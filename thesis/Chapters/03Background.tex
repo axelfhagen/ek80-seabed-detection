@@ -1,0 +1,136 @@
+% Background chapter. Domain physics of EK80 echosounder data plus the traditional
+% detection algorithms used as baseline and label generator. Scoped to what a
+% reader needs to interpret the inputs and label decisions in later chapters.
+
+An echosounder transmits short acoustic pulses and records the returning pressure from backscattered sound as a function of time \cite{demer_calibration_2015}; each transmitted pulse and its received trace is a ping. The \emph{transceiver} generates the transmitted waveform, receives the electrical return signal, digitises it, and applies front-end processing before the samples are stored. The transducer is the wet-end element: it converts the outgoing electrical waveform into pressure waves in water and converts returning pressure fluctuations back into electrical signals. The instrument does not measure depth directly. It measures two-way travel time, and the one-way acoustic range $R = ct/2$ follows from the travel time $t$ and local sound speed $c$. For a return from a downward-looking transducer, this range is treated as depth. Unless another reference frame is named, ``depth'' in this thesis means acoustic range below the transducer, not chart depth below a vertical datum or depth below the sea surface. The reported bottom lines are therefore not corrected for transducer draft, tide, heave, pitch, or roll. Both inputs to the range conversion carry uncertainty, and so does the choice of which feature of the return marks the seabed.
+
+Interpreting an EK80 echogram therefore requires limited acoustic context. This chapter explains propagation, calibrated volume backscattering strength, beam geometry, seabed returns, and the main artefacts that distort the bottom echo. Section~\ref{sec:traditional_bottom_detection} then describes the traditional detector family used as both baseline and reference-label generator.
+
+\section{Acoustic Propagation in Seawater}
+\label{sec:propagation}
+
+Sound in seawater travels at approximately $c = 1500\,\text{m/s}$, with variation set by temperature, salinity, and pressure \cite{mackenzie_nineterm_1981,npl_sound_speed_seawater}. Vertical sound-speed gradients can refract an acoustic beam, especially near thermoclines. This work does not model refraction explicitly; it assumes straight-line propagation and uses the configured sound speed when converting sample time to range. A sound-speed error $\delta c$ scales the range estimate by $\delta R/R=\delta c/c$, so a $5\,\text{m/s}$ error at $c=1500\,\text{m/s}$ gives about $0.33\%$ range error, or roughly $0.7\,\text{m}$ at $200\,\text{m}$ range. The labels are therefore interpreted as acoustic-range labels, not as a geodetic depth product.
+
+Acoustic energy is attenuated by geometric spreading and absorption \cite{acoustics_unpacked_sonar_equation}. Spreading is frequency-independent: energy distributes over a growing wavefront, so intensity falls with range. Absorption converts acoustic energy into heat and rises strongly with frequency \cite{francois_sound_1982b}. Acoustic levels in this chapter are reported in decibels (dB), a logarithmic scale; for power-like quantities, a change of $10\,\text{dB}$ corresponds to a factor of ten in linear intensity.
+
+The practical consequence for this thesis is the unequal range of the two input frequencies. Table~\ref{tab:absorption} gives representative absorption coefficients $\alpha_{\mathrm{abs}}$ in dB/m, computed with the Francois-Garrison model \cite{francois_sound_1982a,francois_sound_1982b,npl_sea_absorption_2006}. A target at 300\,m range implies a 600\,m two-way path and costs about $6\,\text{dB}$ at $38\,\text{kHz}$ but around $32\,\text{dB}$ at $200\,\text{kHz}$. Deep-water bottom detection is therefore expected to depend more on the $38\,\text{kHz}$ channel when the $200\,\text{kHz}$ seabed return is weak or absent.
+
+\begin{table}[htbp]
+\centering
+\caption{Absorption at the two operating frequencies computed with the Francois-Garrison model for representative seawater ($T=10\,^\circ\text{C}$, $S=35\,\text{PSU}$, $\text{pH}=8$) at 100\,m depth.}
+\label{tab:absorption}
+\begin{tabular}{lcc}
+\toprule
+Frequency & $\alpha_{\mathrm{abs}}$ [dB/m] & Two-way loss over 300\,m range [dB] \\
+\midrule
+38\,kHz & 0.010 & 6.0 \\
+200\,kHz & 0.054 & 32.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Beam Formation and Directivity}
+\label{sec:beam_formation}
+
+A transducer face is a finite aperture, not a point source. The emitted field therefore has a beam pattern: a main lobe around the acoustic axis, weaker side lobes, and angular attenuation away from the axis \cite{acoustics_unpacked_transducers}. By convention the beam angle $\beta$ is the full width of the main lobe at half power ($-3\,\text{dB}$) \cite{demer_calibration_2015,acoustics_unpacked_transducers}. The composite ES38-18$|$200-18CR transducer used here has a nominal $\beta \approx 18^\circ$ at both frequencies \cite{kongsberg_es38_18_200_18cr}. The equivalent beam angle reported for calibration is a separate integrated directivity quantity; it is not the footprint angle used in the geometric estimates below.
+
+At range $R$ the main lobe illuminates a footprint with radius $R\tan(\beta/2)$. For $\beta = 18^\circ$ and $R = 100\,\text{m}$ this radius is about $16\,\text{m}$, so one sample in the bottom return already averages over a seabed patch tens of metres across. The footprint grows with range, which makes the seabed return spatially coarser in deeper water.
+
+Side lobes matter because they can return energy from outside the nominal beam. If an off-axis scatterer or slope lies at shorter range than the nadir return, its echo can arrive earlier and bias the detected depth shallower. On a sloping seabed, the leading return may correspond to the shortest acoustic path within the footprint, not to the vertical depth directly beneath the transducer. Split-beam processing can estimate the direction of isolated point targets, but distributed seabed echoes overlap across the beam and do not yield a single target angle. Sidelobe energy can therefore remain part of the calibrated seabed signal.
+
+\section{Single-Beam and Split-Beam Systems}
+
+A single-beam echosounder records total backscatter intensity from the sound-illuminated cone and cannot determine where inside that cone a scatterer sat \cite{demer_calibration_2015}. An off-axis target is attenuated by the beam pattern and may look like a weaker on-axis target at the same range.
+
+A split-beam echosounder divides the transducer face into quadrants and compares received phase across them. The phase differences estimate the angular position of isolated scatterers, so point-target strength can be corrected for off-axis attenuation \cite{andersen_quantitative_2024,demer_calibration_2015,echoview_sonic_split_beam_compensation}. The label pipeline used in this thesis does not use split-beam phase information. For seabed returns, calibration accounts for the beam pattern in aggregate; it does not move an off-axis echo to a different depth.
+
+\section{Beam Geometry and Pulse Volume}
+\label{sec:beam_geometry}
+
+The sound volume contributing to a sample is bounded laterally by the beam and longitudinally by the pulse. A pulse of duration $\tau$ has physical length $c\tau$ in water, but the corresponding two-way range extent is
+\begin{equation}
+    h = \frac{c\tau}{2}.
+\end{equation}
+A single range sample therefore receives backscatter from a finite vertical extent. The bottom echo is not an infinitesimally thin line; its leading edge is the feature closest to the first water-sediment interface, while the peak may lie slightly deeper within the illuminated pulse volume.
+
+\section{Waveform Modes and Pulse Compression}
+
+The EK80 supports narrowband CW pulses and frequency-modulated FM chirps \cite{demer_evaluation_2017,andersen_quantitative_2024}. For a CW pulse, range resolution is set by the pulse duration,
+\begin{equation}
+    \Delta r_{\text{CW}} = \frac{c\tau}{2}.
+\end{equation}
+For an FM chirp, matched filtering compresses the long transmitted pulse into a shorter effective response with approximate range resolution
+\begin{equation}
+    \Delta r_{\text{FM}} \approx \frac{c}{2B},
+\end{equation}
+where $B$ is the chirp bandwidth \cite{demer_evaluation_2017}. This keeps much of the energy of a long pulse while approaching the range resolution of a short pulse. Pulse compression can introduce range sidelobes around strong reflectors such as the seabed.
+
+The data used in this project consist of complex baseband IQ samples: values $z = I + \mathrm{i}Q$, where $I$ is the in-phase component and $Q$ is the quadrature component shifted by a quarter cycle. The transceiver demodulates and decimates the received signal to this baseband form, so the echo is represented by slowly varying amplitude and phase instead of the full high-frequency pressure wave. In this pipeline, matched filtering against the transmit chirp is applied during the conversion to calibrated backscatter (Chapter~\ref{chap:data}). The compressed response helps determine the range scale used for patch extraction and mask generation in Chapter~\ref{chap:method}.
+
+\section{Calibrated Backscatter and TVG}
+\label{sec:sonar_eq}
+
+For distributed water-column scatterers such as fish layers and plankton, the calibrated acoustic quantity used here is volume backscattering strength,
+\begin{equation}
+    S_v = 10 \log_{10} s_v \quad (\text{dB re } 1\,\text{m}^{-1}),
+\end{equation}
+where $s_v$ is the volume backscattering coefficient in linear units of m$^{-1}$ \cite{nerc_acoustic_volume_backscattering_strength,acoustics_unpacked_sonar_equation}. Calibrated $S_v$ is the quantity the EK80 pipeline computes and the zarr files store. The seabed echo is represented on the same echogram scale, but it is a boundary return, not a volume-scattering process in the water column. Chapter~\ref{chap:data} describes how the raw files are converted to this representation.
+
+One-way transmission loss combines spreading and absorption,
+\begin{equation}
+    TL = 20 \log_{10} R + \alpha_{\mathrm{abs}} R,
+\end{equation}
+with $R$ in metres and $\alpha_{\mathrm{abs}}$ the absorption coefficient in dB/m. The received echo has travelled out and back, so absorption enters the volume-backscatter correction over a two-way path. Because loss grows with range, equal volume backscattering coefficients at different depths would otherwise give different received levels. Time-varying gain (TVG) compensates for this range dependence for distributed volume targets \cite{demer_calibration_2015},
+\begin{equation}
+    TVG(R) = 20 \log_{10}(R) + 2\alpha_{\mathrm{abs}} R.
+\end{equation}
+TVG for $S_v$ differs from the $40\log_{10}R$ spreading term used for point-target strength; the distinction matters because this work trains on volume-backscatter echograms instead of isolated target-strength measurements. TVG makes $S_v$ values more comparable across depth, but it also amplifies background noise at long range. In deep water or low signal-to-noise ratio conditions, the amplified noise floor can approach the level of a weak seabed return.
+
+A simple uncalibrated intensity image can be formed as $10\log_{10}|z|^2$ from complex IQ sample $z$ and then clipped to a working range. Calibrated $S_v$ also includes TVG, absorption, system gain, beam-pattern integration, and gain correction from a reference-sphere calibration of known target strength. The model in Chapter~\ref{chap:method} is trained on calibrated $S_v$, so the reported detector thresholds are not meaningful on uncalibrated power.
+
+\section{The Echogram}
+
+An echogram is a two-dimensional image of acoustic backscatter intensity in dB. Columns index successive pings and rows index range samples from the transducer downward \cite{demer_calibration_2015}; Figure~\ref{fig:echogram_formation} shows how one-dimensional ping profiles form the image. Both axes are time-domain in origin. Within-ping sample time on the vertical axis maps to range through $R=ct/2$ under the constant sound-speed assumption of Section~\ref{sec:propagation}. Ping-firing time on the horizontal axis maps to along-track distance through vessel motion, and is uniformly spatial only if vessel speed is steady between pings. Speed changes compress or stretch the horizontal echogram scale, while heave, pitch, and roll can shift or smear the apparent bottom return when they are not explicitly corrected. Section~\ref{sec:vessel-speed-prior} returns to this caveat.
+
+Pixels carry either calibrated $S_v$ or, where calibration is unavailable, uncalibrated received power $|z|^2$. The calibrated form is used throughout this work. If samples are indexed from $i=0$ to $N_s-1$ with spacing $\Delta t$, their ranges are $r_i=i c\Delta t/2$, and the maximum recorded range is
+\begin{equation}
+    R_{\max} = (N_s-1)\frac{c\Delta t}{2}.
+\end{equation}
+Equivalently, $N_s \approx 2R_{\max}/(c\Delta t)+1$. Reducing $R_{\max}$ by cropping truncates the range axis but does not change the sample spacing.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/echogram_formation.png}
+    \caption{How an echogram is assembled, shown on synthetic data. A single ping is a one-dimensional profile of backscatter against range (left). Rendering that profile as a column of colour (centre) and placing successive pings side by side produces the two-dimensional echogram (right), with range on the vertical axis and ping number along the horizontal axis. The marked column locates the demonstration ping within the full image.}
+    \label{fig:echogram_formation}
+\end{figure}
+
+\section{Seabed Acoustic Response}
+
+The seabed reflects acoustic energy because acoustic impedance changes across the water-sediment interface. Acoustic impedance is $Z=\rho c$, the product of medium density and sound speed; where $Z$ changes, part of the incident energy is reflected and part transmitted \cite{fonseca_simplified_2025}. Higher impedance contrast generally produces a stronger near-normal return, although roughness and volume scattering also affect the echo. Layered or soft substrates can shift the detected feature away from the first interface, so the peak of the return need not equal the physical seabed depth \cite{simrad_ek80_reference_2025}.
+
+Biology near the seabed interferes with this signal. Fish often aggregate within a few metres of the bottom, in an acoustic dead zone where their echoes overlap the seabed return and cannot be cleanly separated from it \cite{ona_mitson_1996,scalabrin_blind_2009}. Fish with swimbladders also respond differently by frequency, so the same aggregation can register differently at $38\,\text{kHz}$ and $200\,\text{kHz}$ \cite{foote_swimbladder_1980,korneliussen_synthetic_2003}. Seafloor backscatter can also vary with frequency and substrate, but the contrast between biological and bottom returns still motivates the model input channels: $S_v^{38}$, $S_v^{200}$, and their difference, where the superscripts denote frequency in kHz.
+
+\section{Noise and Artefacts}
+\label{sec:artefacts}
+
+Several recurring artefacts can move or obscure the apparent bottom return. Bubble sweep-down occurs when air entrained beneath the hull attenuates or scatters sound along the acoustic path. The bottom return can disappear for a run of pings or fluctuate sharply from one ping to the next \cite{delacroix_bubble_2016}. This is one source of burst errors that temporal post-processing must handle.
+
+A second echo occurs when energy from the first seabed reflection reflects at the sea surface, travels back to the seabed, and then returns to the receiver. It appears at approximately twice the true bottom depth when that doubled range lies inside the recorded range window \cite{xiong_false_2024}. Although the second echo is weaker before correction, TVG applies a larger gain at the doubled range, so it can still appear as a strong line in the echogram. Section~\ref{sec:traditional_bottom_detection} describes the heuristic used to reassign such detections to the half-depth location.
+
+Near-surface biological scattering layers form when plankton and small fish aggregate in the upper water column. These layers can be misread as structure by a detector that relies on amplitude alone. Sidelobe returns create a different error: off-axis energy from a strong scatterer or slope can arrive before the nadir return and bias the detected depth shallower. Split-beam phase processing does not remove this problem for distributed seabed echoes, because no single scatterer angle can be assigned to the overlapping return.
+
+\section{Traditional Bottom Detectors}
+\label{sec:traditional_bottom_detection}
+
+Traditional bottom detection in echosounders uses signal-processing heuristics tuned to the artefacts described above. These heuristics serve here as both baseline and label source; Chapter~\ref{chap:method} gives the concrete detectors and parameter settings used to generate training labels. The public EK80 documentation exposes controls such as detector limits and Bottom Backstep but not a reproducible implementation, so this work builds on the open-source CRIMAC bottom-detection algorithms \cite{simrad_ek80_reference_2025,crimac_classifiers_bottom}. They use threshold-and-refinement heuristics, but they are not presented here as a clone of the commercial procedure.
+
+Each detector reads a ping as a one-dimensional profile of $S_v$ against range. The water column registers as a noisy floor, and the seabed usually appears as a sharp rise to a peak. The water-sediment interface lies at the leading edge of that rise, slightly shallower than the peak, because the peak may come from the strongest scatterer within the pulse volume.
+
+The simplest detector searches below a minimum range and selects the strongest sample whose $S_v$ exceeds a fixed threshold \cite{bourguignon_methodological_2009}. This works over a hard, flat seabed with good signal-to-noise ratio, but it fails when biology above the bottom is stronger than the seabed or when the seabed return is too weak to cross the threshold.
+
+Back-step refinement moves the estimate from the peak toward the leading edge of the bottom echo \cite{crimac_classifiers_bottom}. Starting from the detected peak, the algorithm scans upward in short range segments and stops when the signal drops below a chosen fraction of the peak value. This reduces the tendency to place the bottom below the first interface.
+
+Second-echo disambiguation compares the mean linear $s_v$ around a bright detection at range $R$ with the corresponding half-range region. When the half-range region is also strong, the detection is reassigned to the shallower location on the assumption that the deeper peak is a reverberation echo \cite{crimac_classifiers_bottom}. The heuristic is relevant on the Oslofjord route, where the seabed is often shallow enough for second echoes to fall inside the recorded range.
+
+Adjacent pings sample nearby locations along the vessel track, so bottom depth normally varies smoothly except at steep transitions. Traditional pipelines exploit this regularity by combining complementary detectors per ping and then applying track-level smoothing. A sliding median and interpolation over local outliers catch burst errors caused by bubble sweep-down, reverberation, or short detector lock-ons to biological scatter. The same step also builds a continuity assumption into the reference: abrupt but genuine seabed changes may be attenuated, and ambiguous detections can be replaced by an interpolated trajectory rather than by a directly observed echo.

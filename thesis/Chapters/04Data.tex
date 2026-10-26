@@ -1,0 +1,167 @@
+\label{chap:data}
+
+Recordings from the Bast\o{} Electric provide the training, validation, conformal-calibration, and within-route test data for the Bast\o{} Standard U-Net. NOAA Pacific hake survey SH2306 is an external transfer dataset used for zero-shot testing, conformal recalibration, and a separate adaptation experiment. It is not used to select or modify the Bast\o{} Standard model.
+
+\section{The Bast\o{} Electric Dataset}
+
+The primary dataset comes from the M/F Bast\o{} Electric, a Bast\o{}-Fosen ferry on the Moss-Horten route across the Oslofjord. The vessel carries a Simrad EK80 wideband echosounder with an ES38-18|200-18CR composite transducer, transmitting simultaneously at 38\,kHz and 200\,kHz. The installation is part of the Frisk Oslofjord project \cite{frisk_oslofjord_mapping}.
+
+The echosounder runs continuously during operation, giving repeated acoustic coverage of the same route.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/basto_route/v6/basto_route_clean.png}
+    \caption[Geographic coverage of the Bast\o{} Electric dataset.]{Geographic coverage of the Bast\o{} Electric dataset. The 6.63 million GPS-located pings are coloured by labelled depth.}
+    \label{fig:basto-route}
+\end{figure}
+\FloatBarrier
+
+On weekdays the ferry completes about 24 one-way crossings along the fixed roughly 10.5\,km route; on Sundays it drops to about 9 round trips. The route-projected crossing diagnostics use the retained GPS span after preprocessing, which covers about 9.2\,km and excludes some harbour-approach endpoints. Each raw file covers a partial or full transit, with a median of about 3\,300 pings. Figure~\ref{fig:basto-route} shows the transect coverage. Since the echogram axis is ping number, not distance, vessel speed and ping rate stretch or compress apparent bottom slopes. The bathymetry ranges from shallow harbour approaches (5--15\,m) to the central Oslofjord channel (100--200\,m), with two steep transitions. Repeated transects over the same seabed expose detection errors that a single crossing would hide.
+
+\section{NOAA Pacific Hake Survey}
+\label{sec:noaa-transfer}
+
+NOAA Pacific hake survey SH2306 provides the public external dataset \cite{noaa_sh2306_ek80}. The \textit{Bell M.\ Shimada} surveyed between 27 June and 5 September 2023 using EK80 split-beam transducers at 18, 38, 70, 120, and 200\,kHz in continuous-wave mode \cite{clemons_hake_2024}. The deeper water, acquisition settings, and vessel-survey geometry differ from the fixed Bast\o{} route.
+
+The analysis uses 95 public raw files, each containing 214 pings. The raw files are calibrated to $S_v$ with echopype, and the transfer experiments retain the 38\,kHz and 200\,kHz channels expected by the Bast\o{} Standard U-Net. At the deepest locations, the 200\,kHz recording ends near 300\,m and does not contain the seabed return, while 38\,kHz is recorded to approximately 750\,m. The selected transects contain labelled bottom depths of approximately 360--700\,m. Three consecutive raw files are stitched into 642-ping echograms for the zero-shot transect comparisons, avoiding interpolation of each 214-ping file to the 512-ping model width. Chapter~\ref{chap:method} gives the processing and experimental protocols.
+
+Zero-shot inference measures how the unchanged Bast\o{} Standard U-Net behaves under this distribution shift. A separate experiment fine-tunes a copy of the checkpoint on hake files and evaluates it on held-out hake data. Neither experiment changes the standard checkpoint or contributes to its selection.
+
+\section{Bast\o{} Coverage and Acquisition}
+
+The Bast\o{} recordings come from an archive on the University of Oslo Educloud Research platform under project ec291. At the time of access, the archive held more than 900\,GB of EK80 recordings from roughly two years of near-continuous operation. We sampled random batches and retained approximately 181\,GB of raw recordings. Appendix~\ref{app:data-access} describes access to the archive.
+
+Each retained raw file is parsed and converted to a calibrated zarr store using echopype \cite{lee_interoperable_2024}. The conversion applies time-varied gain, absorption, system gain, and beam-pattern corrections to produce volume backscattering strength $S_v$, reported in dB re 1\,m$^{-1}$, at 38\,kHz and 200\,kHz. Chapter~\ref{chap:method} describes calibration, label generation, normalisation, and patch extraction.
+
+The retained recordings were not filtered for acoustic quality. Bubble interference, biological scattering, vessel-state changes, detector failures, and periods where the vessel was docked or moored therefore remain in the dataset. Removing ambiguous segments without expert review would replace part of the operating distribution with an author-selected subset. Appendix~\ref{app:time-of-day} documents the retained docked recordings.
+
+The dataset used was collected intermittently over 18 months, from December 2023 to June 2025. For the Bast\o{} archive, \emph{recording period} denotes a date-defined group of ferry recordings from the same fixed route. This term separates the Bast\o{} splits from vessel surveys such as NOAA Pacific hake survey SH2306, where ``survey'' refers to a field campaign with a different sampling design. Table~\ref{tab:surveys} groups the Bast\o{} recordings into nine recording periods.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Recording periods from the Bast\o{} Electric dataset. File counts refer to calibrated zarr stores; raw sizes are rounded to the nearest gigabyte.}
+\label{tab:surveys}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllrr}
+\toprule
+Period & Dates & Season & Days & Files & Raw size (GB) \\
+\midrule
+Dec 2023      & 20--21 Dec 2023              & Winter & 2  & 21  & 2 \\
+Jan 2024      & 31 Jan -- 1 Feb 2024         & Winter & 2  & 89  & 9 \\
+Apr 2024      & 8--9, 18--21 Apr 2024        & Spring & 6  & 65  & 6 \\
+Jul 2024      & 1--16 Jul 2024               & Summer & 16 & 357 & 35 \\
+% Sep and Oct 2024 are one continuous autumn campaign split at the month boundary.
+% File counts (292/378) are exact; the 65 GB combined raw size is apportioned by
+% file count (~28/~37 GB), since per-month sizes were not measured separately.
+Sep 2024      & 14, 24--30 Sep 2024          & Autumn & 8  & 292 & 28 \\
+Oct 2024      & 1--9, 25 Oct 2024            & Autumn & 10 & 378 & 37 \\
+Jan 2025      & 14--23 Jan 2025              & Winter & 10 & 391 & 38 \\
+Feb 2025      & 1, 12--14 Feb 2025           & Winter & 4  & 121 & 12 \\
+% VERIFIED (not a typo): the 14-files / 14-GB coincidence is real. The 14 raw files
+% total 13.90 GiB (= 14.93 GB decimal); du-style GiB rounding gives 14 GB, matching the
+% file count by chance. Do not flag this row as an error.
+Jun 2025      & 24--26 Jun 2025              & Summer & 3  & 14  & 14 \\
+\midrule
+\multicolumn{4}{l}{Total} & 1\,728 & 181 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/example_echogram/per_survey/v2/survey_echogram_panel_38kHz.png}
+    \caption[Random 38\,kHz echograms per recording period.]{One random 38\,kHz deep-water echogram per recording period, plotted on a common $S_v$ scale of $-80$ to $-34$\,dB re 1\,m$^{-1}$ using matplotlib \textit{viridis} colorscale.}
+    \label{fig:survey-echogram-panel}
+\end{figure}
+
+Figure~\ref{fig:survey-echogram-panel} shows acoustic variation across periods: Dec 2023 resolves both channel slopes and a near-surface bubble curtain, Jan 2024 almost obscures the bottom return with water-column scattering, and later periods differ in slope shape, pelagic layers, and noise level. These differences support evaluation across recording periods rather than random mixing over the full archive. The common plotting limits match the clipping interval used by the canonical model input, but the figure applies them only as display limits.
+
+\subsection{Acquisition Settings}
+\label{sec:acq-settings}
+
+Calibrated echograms follow the array convention $(N_s,N_p)$, with range samples on the first axis and pings on the second. Patch extraction uses the native range spacing rather than imposing a common maximum range. The XML field \texttt{sample\_interval}, denoted by $\Delta t$, and the configured sound speed $c$ determine metres per range sample. The number of samples $N_s$ determines the recorded range extent before resampling to the common 512-row model grid.
+
+The sample interval $\Delta t = 128\,\mu$s and configured sound speed $c = 1491.5$\,m/s are identical across all nine periods, giving $c\Delta t / 2 \approx 0.0955$\,m per sample. The operator-selected $N_s$ changes the maximum recorded range. Modal settings of 2807, 3016, 3239, and 3250 samples give extents of approximately 268, 288, 309, and 310\,m, all beyond the deepest part of the route (${\sim}200$\,m). No file-level minimum recorded-range filter is applied: all 1\,728 calibrated stores in Table~\ref{tab:surveys} enter the chronological partition. Supervised patch extraction later omits a patch when the reference mask contains no detected bottom.
+
+\begin{table}[htbp]
+\centering
+\caption{Modal range-sample count and recorded range extent per Bast\o{} recording period. The constants $\Delta t=128\,\mu$s and $c=1491.5$\,m/s apply throughout, with $R_{\max} = (N_s - 1)c\Delta t/2$.}
+\label{tab:acq-settings}
+\begin{tabular}{lrr}
+\toprule
+Period & Modal $N_s$ & Modal $R_{\max}$ (m) \\
+\midrule
+Dec 2023      & 3016 & 288 \\
+Jan 2024      & 3239 & 309 \\
+Apr 2024      & 2807 & 268 \\
+Jul 2024      & 3239 & 309 \\
+Sep 2024      & 2807 & 268 \\
+Oct 2024      & 2807 & 268 \\
+Jan 2025      & 3250 & 310 \\
+Feb 2025      & 3250 & 310 \\
+Jun 2025      & 3250 & 310 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Noise-Floor Drift}
+\label{sec:noise-floor}
+
+Training on one recording period and deploying on another assumes comparable acoustic data across time. Temperature and salinity affect propagation loss, while biological composition changes the volume backscatter itself \cite{francois_sound_1982a,francois_sound_1982b,nerc_acoustic_volume_backscattering_strength}. Calibration state and acquisition settings also affect the estimated $S_v$ \cite{demer_calibration_2015,simrad_ek80_reference_2025}. A file-level noise-floor diagnostic measures the resulting temporal variation before the recording periods are assigned to model-development roles.
+
+The full marginal $S_v$ distribution mixes instrument response, biological scatter, and the seabed return. Bathymetry drives much of the right tail, so the diagnostic uses a fixed $5$--$15$\,m range gate. In the central channel the gate contains only sea water. The seabed can enter the gate near the terminals, but a lower-tail statistic reduces its influence.
+
+For each calibrated file, the noise-floor proxy is the 10th percentile of finite $S_v$ samples in the gate, computed separately at 38\,kHz and 200\,kHz. The $5$--$15$\,m gate and 10th percentile are fixed descriptive settings rather than fitted parameters. This lower-envelope summary is less sensitive to seabed returns, biological scatterers, and bubble interference than central or upper-tail summaries. Period summaries use the median and interquartile range across files.
+
+Across recording periods the per-file noise floor varies by about $15$\,dB at each frequency. At 38\,kHz the per-period median runs from $-99$ to $-84$\,dB re 1\,m$^{-1}$, from Jan 2024 to Jul 2024. At 200\,kHz it runs from $-91$ to $-77$\,dB re 1\,m$^{-1}$. Winter periods sit at the quiet end and spring-summer periods at the loud end. The interquartile spread is typically $5$--$10$\,dB.
+
+The offsets show that the periods are not identically distributed. They still define one within-route learning problem because the vessel, installation, and seabed are fixed. Jan 2025 and Feb 2025 are close under this proxy, whereas Jun 2025 provides a less similar held-out period. Section~\ref{sec:conformal-exchangeability-results} assesses the calibration-test relation using nonconformity scores and realised coverage.
+
+\section{Data Partitioning}
+\label{sec:data-partitioning}
+
+The canonical Bast\o{} split is chronological. Training uses Dec 2023, Jan 2024, Apr 2024, Jul 2024, and Sep 2024, for 824 files in total. The 378 Oct 2024 files form the validation period, Jan 2025 is reserved for conformal calibration, and the 121 Feb 2025 files together with the 14 Jun 2025 files form the test periods. September and October 2024 come from one continuous autumn campaign divided at the month boundary, with the 292 September files assigned to training and the 378 October files to validation.
+
+Split membership is assigned at the source-file level before patch extraction. Every patch inherits the role of its raw file and calibrated zarr store; no file contributes patches to more than one of the training, validation, calibration, or test sets. The split prevents file and patch leakage, but it is not geographic because all Bast\o{} periods re-cross the same route.
+
+Some analyses use subsets of these period-level sets. Encoder-freezing and dataset-variant comparisons use an 80/20 file-level split of the 89 Jan 2024 files with a fixed seed. Those results measure in-period agreement rather than temporal generalisation. The scored conformal analysis uses 29 valid Jan 2025 calibration files and 44 held-out test files from Feb and Jun 2025, where valid means that the cached file yielded finite reference and predicted bottom depths after preprocessing and score construction. The ensemble analysis uses the full 135-file Feb-Jun test set. Chapter~\ref{chap:method} states the subset used by each experiment.
+% [UNCLEAR: Verify whether the conformal-cache validity criterion included implementation filters beyond finite reference and predicted bottom depths.]
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/data_split/data_split_timeline.pdf}
+    \caption[Chronological data split across recording periods.]{Canonical chronological split of the Bast\o{} Electric recording periods. Boxes run left to right in calendar order and are coloured by role: training, validation, conformal calibration, and test. NOAA Pacific hake survey SH2306 is isolated from the Bast\o{} pipeline; separate hake-only diagnostic splits are defined in the text.}
+    \label{fig:data-split-timeline}
+\end{figure}
+
+A chronological split matches the intended deployment setting: a trained model is applied to future data from the same operating area. Random mixing would overestimate generalisation across acquisition conditions, since test-period conditions would also appear in training. The split does not test transfer to unseen seabed.
+
+Conformal prediction requires a held-out calibration set whose nonconformity scores are exchangeable with the test scores. Jan 2025 is used as a pragmatic within-route calibration set. The noise-floor diagnostics screen this choice but do not prove exchangeability; Section~\ref{sec:conformal-exchangeability-results} tests the resulting scores and realised coverage. Feb 2025 and Jun 2025 are used only for testing.
+
+The hake protocols are separate from the canonical Bast\o{} split. Zero-shot transfer applies the unchanged Bast\o{} Standard U-Net to the external survey. Threshold-only conformal recalibration then assigns 20 hake files to calibration and 49 to held-out evaluation without changing the model weights. The fine-tuning diagnostic uses a separate 60/15/9/9 file-level split for training, validation, calibration, and testing. These counts are not added together: they belong to separate diagnostic runs over the processed hake pool. Fine-tuning starts from a copy of the Bast\o{} Standard checkpoint; the original checkpoint and all Bast\o{} results remain unchanged.
+
+\section{Positioning and Label Consistency}
+\label{sec:label-consistency}
+
+Neither dataset has an independently measured seabed reference. The simple threshold-and-back-step detector and the edge detector generate per-ping estimates from calibrated 38\,kHz $S_v$; their average is smoothed before mask construction, as described in Chapter~\ref{chap:method}. For each ping, the detected range is converted to a binary mask in which the detected bottom sample and all samples at greater range form the positive \emph{bottom-or-below} class. The term \emph{labelled bottom depth} denotes this acoustic range from the transducer to the detected return, computed from sample index without heave correction; it is not chart-referenced water depth. The 200\,kHz and difference channels do not enter label generation. The same 38\,kHz label construction is used for the hake diagnostics because 200\,kHz does not reach the seabed in the deepest hake recordings.
+
+Table~\ref{tab:class-balance} estimates the Bast\o{} bottom-or-below fraction from up to fifteen calibrated zarr stores sampled without replacement from each recording period with seed 42. The fractions are computed from full-file masks at native range resolution, before range resampling and before patches without a detected bottom are omitted. The estimated fraction lies between 0.83 and 0.89, so bottom-or-below pixels outnumber water-column pixels throughout the archive. Chapter~\ref{chap:method} uses these data to define the segmentation loss and evaluation metrics.
+
+\input{Tables/class_balance.tex}
+
+Each Bast\o{} ping carries a timestamp, and the vessel logs a GPS position every second. The fixes contain jumps of several hundred metres between consecutive samples. Intermittent satellite lock loss in harbour areas is plausible; the logs do not identify the cause. Together with the absence of an independent depth measurement and heave correction, these position errors preclude quantitative validation against charted bathymetry.
+
+The repeated-crossing diagnostic uses GPS only to assign retained pings to positions along the ferry route. Missing coordinates are discarded, and the remaining positions are restricted to the route bounding box $10.470^\circ$--$10.680^\circ$E and $59.395^\circ$--$59.445^\circ$N. Crossing fragments must contain at least 200 pings and span at least 3\,km; a recording gap longer than 300\,s starts a new fragment. Retained coordinates are projected onto the straight Horten--Moss route axis, and projections outside its approximately 9.2\,km span are removed. These restrictions reduce the effect of harbour endpoints and gross position errors, but the diagnostic tests spatial repeatability rather than absolute geographic accuracy.
+
+The repeated-transect design tests label stability without an external depth reference. A stable detector should return nearly the same labelled bottom depth at a fixed route location across crossings; large spread indicates label noise. We project retained pings onto route arc length and divide the transect into fixed 50\,m bins. Each crossing contributes its median labelled bottom depth within a bin. The disagreement score is the robust standard deviation of these medians, $1.4826$ times their median absolute deviation, and is computed only for bins with at least six contributing crossings. The bin width and minimum crossing count are fixed descriptive settings rather than fitted parameters. Figure~\ref{fig:worst-bins-spotlight} reports the sixteen bins with the largest disagreement.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/failure_mining/worst_bins_spotlight.pdf}
+    \caption[The most inconsistent locations along the route.]{The sixteen 50\,m route bins with the highest detector-label cross-crossing disagreement. Each dot is one detector-label crossing median; the black bar marks the bin median, and colour encodes the robust standard deviation.}
+    \label{fig:worst-bins-spotlight}
+\end{figure}
+
+The largest disagreements occur mainly in the deep central channel and its adjacent slope, not in the shallow terminal basins. This detector-label consistency cache contains 1{,}051 crossing identifiers and is distinct from the 1{,}051 model-prediction transits used for label-free validation in Section~\ref{sec:repeated-crossings}. Each displayed bin aggregates 498--885 detector-label crossing medians, and some estimates at a single route location span more than 100\,m. The most inconsistent bin, at 3.5\,km with median labelled bottom depth 139\,m, has a robust standard deviation of 51\,m across 516 crossings. Repeated coverage identifies route segments where the algorithmic reference is least reliable; it does not establish the true seabed depth. Section~\ref{sec:weaknesses} returns to this limitation.

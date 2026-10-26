@@ -1,0 +1,319 @@
+\label{chap:method}
+
+The method has five stages. Raw EK80 files are parsed and calibrated to $S_v$; the offline bottom detector of Chapter~\ref{chap:background} generates reference labels; a ResNet-34 U-Net maps fixed echogram patches to bottom-or-below probability masks; the predicted masks are reduced to per-ping bottom depths; and conformal prediction turns that point estimate into a calibrated uncertainty band. The ensemble diagnostic is evaluated separately as a possible uncertainty signal. The Bast\o{} Standard U-Net (\texttt{chunk\_arch\_sweep\_2}) is the deterministic single-model inference point used in the main analyses unless another checkpoint is named.
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=1.0\linewidth]{Figures/patching_pipeline/data_flowchart_v3_fxF_fyT.pdf}
+    \caption[Preprocessing and patching pipeline.]{Preprocessing and patching pipeline from raw EK80 files to model outputs. Raw recordings are calibrated to full-file $S_v$ echograms. The simple threshold-and-back-step detector and edge detector operate on calibrated 38\,kHz $S_v$; their averaged and smoothed bottom line creates the reference mask. The full echogram and mask are cropped into paired 512-ping windows; the range axis is resized to 512 rows so each training pair becomes an input tensor $x \in \mathbb{R}^{3 \times 512 \times 512}$ and a reference mask $y \in \{0,1\}^{512 \times 512}$. Only $x$ enters the U-Net; $y$ supervises the loss during training. The network output is a per-pixel bottom-or-below probability map, which is thresholded at $p \geq p_\mathrm{th} = 0.5$ into a binary mask and reduced to a bottom line per ping.}
+    \label{fig:patching-pipeline}
+\end{figure}
+
+\section{Experimental Design}
+\label{sec:experimental-design}
+
+Six primary experiment families are used, each answering a separate question about the learned seabed detector. The sixth family, transfer to an external survey, is not a single test but a group of hake sub-experiments spanning zero-shot inference, threshold-only recalibration, fine-tuning, and a from-scratch control. The split names and the files assigned to each set are defined in Chapter~\ref{chap:data}; Figure~\ref{fig:experiment-model-map} gives the corresponding model and evaluation data.
+
+First, the Jan 2024 development ablation trains models on the 89-file January 31st 2024 recording-period subset with an 80/20 file-level train-validation split and evaluates them on the held-out 17 files from the same period. This controlled setting compares freeze strategies, loss functions, dataset variants, and channel inputs. Since the training and validation data come from the same recording period, these results measure agreement under nearly fixed acoustic conditions and are not temporal generalisation estimates. These experiments were conducted before the full dataset was available, and used for narrowing the hyper-parameter space in subsequent model selection experiments.
+
+For augmentation, a separate 100-file random subset isolates the effect of the training-time corruptions. Eighty files are used for training and 20 for validation. Every run uses a the same baseline; frozen ResNet-34 encoder, Dice+BCE loss, and fixed $512\times512$ patches, while only the augmentation configuration changes.
+
+Canonical within-route validation evaluates models trained on all chronological training periods up to September 2024 on the held-out October 2024 period. The full-data architecture sweep contains 57 ResNet-34 U-Net variants trained under this chronological protocol, with initialisation, encoder-freezing regime, batch size, and checkpoint-selection metric varied while the input channels, label construction, and 512-ping patch geometry remain fixed. The Bast\o{} Standard U-Net is selected from this sweep. This branch gives the primary temporal hold-out result within the same operating area; the corresponding scores are reported in Section~\ref{sec:segmentation-performance}.
+
+For conformal calibration and testing, the January 2025 calibration set is used only to fit conformal thresholds after model training is complete. Held-out February and June 2025 files are then used for coverage evaluation. The scored conformal cache keeps files that yield finite reference and predicted bottom depths after preprocessing and score construction; it is therefore smaller than the period-level Jan 2025 and February-June sets.
+% [UNCLEAR: Verify whether additional implementation filters beyond finite reference and predicted depths were applied to obtain the 29 Jan 2025 calibration files and 44 scored test files.]
+
+Repeated-crossing validation projects each per-ping bottom estimate from the trained model onto route arc length from Horten and groups estimates into shared spatial bins. Crossings assigned to the same bin are compared through their bottom-depth differences. No reference labels enter this label-free analysis.
+
+Transfer to an external survey applies the Bast\o{} Standard U-Net without fine-tuning to 95 public files from the NOAA Pacific hake survey SH2306, recorded from the \textit{Bell M.\ Shimada} with a five-frequency EK80. The raw files are calibrated to $S_v$ with echopype. Each file contains 214 pings, so three consecutive files are stitched into 642-ping echograms before inference rather than stretching individual files to the 512-ping model width. The 38\,kHz offline detector supplies the reference labels because the 200\,kHz channel does not reach the seabed in the deepest recordings. The experiment tests out-of-distribution behaviour and the limits of coverage guarantees calibrated on the Bast\o{} route.
+
+A post-hoc split-conformal variant recalibrates only the conformal threshold, leaving the trained U-Net fixed to separate model transfer from calibration transfer. A file-level random split uses 20 hake files for calibration and 49 for held-out evaluation. Coverage intervals are estimated by bootstrapping the held-out files. A final isolated adaptation check fine-tunes the same ResNet-34 U-Net from the Bast\o{} Standard checkpoint on hake files only, using a separate file-level hake split with 60 training files, 15 validation files, 9 calibration files, and 9 held-out test files. A scratch control uses the same architecture, split, loss, patch geometry, and evaluation code, but starts from random weights and trains only on hake. The zero-shot stitched-transect examples, the 20/49 threshold-recalibration split, and the 60/15/9/9 adaptation split are separate hake diagnostics rather than additive partitions of the 95 raw files. These adaptation experiments are reported separately from the main Bast\o{} benchmark and do not replace the standard checkpoint.
+% [UNCLEAR: Confirm the exact selection rule for the six stitched zero-shot hake echograms reported in Chapter~\ref{chap:results}; the text treats them as diagnostic transect groups drawn from the processed hake pool.]
+
+Each family is reported in a dedicated part of Chapter~\ref{chap:results}.
+
+Several supporting diagnostics are reported alongside these primary experiments. Channel perturbations, gradient attribution, Grad-CAM, and synthetic insertions test which parts of the input the trained model uses. Training curves diagnose optimisation behaviour. The patch-edge diagnostic is evaluated by column on 384 held-out validation and test patches under single-patch inference. The interior summary averages columns 128--383, and each 5\% edge summary averages the outer 25 columns. Probability calibration diagnostics characterise the sigmoid output before conformal intervals are interpreted. Qualitative hard-patch examples are selected from held-out test patches after scoring; they inspect failure modes and label irregularities rather than forming additional random evaluation sets.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth,height=0.79\textheight,keepaspectratio]{Figures/experiment_model_map/experiment_model_map.pdf}
+\caption[Experiment and model map.]{Experiment and model map. Split names follow Section~\ref{sec:data-partitioning}. The Bast\o{} Standard U-Net is the deterministic checkpoint \texttt{chunk\_arch\_sweep\_2}; an inference cache contains stored predictions from that checkpoint and is not a separate trained model. Agreement metrics use algorithmic reference labels unless the repeated-crossing branch is marked as label-free. Development scores, temporal validation, conformal coverage, and external-transfer scores answer different questions and are not numerically interchangeable.}
+\label{fig:experiment-model-map}
+\end{figure}
+\FloatBarrier
+
+\section{Data Processing}
+\label{sec:data-processing}
+
+The raw EK80 files are binary and contain multiple datagram types. We parse the RAW3 datagrams carrying the complex IQ samples (stored as complex64), the XML0 configuration blocks, and the NME0 NMEA sentences for GPS. The retained Bast\o{} recordings do not provide an MRU0 heave series for motion correction.
+
+Each raw file is converted to a calibrated $S_v$ echogram with echopype \cite{lee_interoperable_2024}, applying TVG, absorption, system gain, and beam-pattern corrections. The resulting $S_v$ is reported in dB re 1\,m$^{-1}$ and is used by all subsequent processing, training, and inference. GPS positions from the NME0 sentences are interpolated onto the ping timestamps and carried alongside the acoustic data. No heave correction is applied before label generation or patch extraction.
+
+Every echogram follows the shape convention $(N_s,N_p)$, with range samples on the first axis and pings on the second. The range array is computed from the metadata field \texttt{sample\_interval}, denoted by $\Delta t$, and the configured sound velocity, $r_i = i\Delta t c/2$; it is not read from file. The term \emph{labelled depth} therefore denotes transducer-referenced acoustic range rather than chart-referenced water depth. The ping axis stays an index through preprocessing and training; its spatial interpretation depends on the vessel trajectory and speed between ping timestamps.
+
+The network input is a three-channel image built from two frequencies (Figure~\ref{fig:input-channels}). The first two channels carry the normalised $S_v$ at 38\,kHz and 200\,kHz; the third is their difference (38\,kHz minus 200\,kHz). The difference channel was included to make frequency-dependent biological scattering easier for the network to use, since fish and plankton can respond differently at the two frequencies, and the channel-importance diagnostics test whether it adds useful information in practice. Each frequency channel is clipped to $[-80,-34]$\,dB re 1\,m$^{-1}$ and min-max scaled to $[0,1]$ before subtraction; NaN values from missing data or range padding are filled with 0. The canonical runs use these fixed bounds, while Appendix~\ref{app:jan-ablations} reports the development comparison with alternative data transformations.
+% [UNCLEAR: State how the canonical clipping bounds were selected. The development comparison reports alternatives but does not explain why these bounds define the final pipeline.]
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{Figures/input_channels/channels_jul2024_D20240711-T085655.png}
+    \caption{The three normalised input channels for a single Bast\o{} Electric crossing (D20240711-T085655). Top: 38\,kHz and 200\,kHz $S_v$. Bottom left: their difference. Bottom right: RGB composite mapping the three channels onto the red, green, and blue axes used by the model.}
+    \label{fig:input-channels}
+\end{figure}
+
+
+\section{Training Data Construction}
+
+No independently measured seabed depth is available for these recordings. The per-pixel labels are therefore generated algorithmically from the calibrated acoustic data. Two open-source traditional detectors are applied to the 38\,kHz calibrated $S_v$ echogram, their per-ping bottom estimates are averaged, the average is converted to a binary segmentation mask, and the paired echogram-mask arrays are sliced into fixed-size patches. The 200\,kHz and difference channels enter the network input, but they do not enter the reference-label generation.
+
+The Simrad EK80 software includes a bottom detector, but the public documentation describes its controls rather than a reproducible implementation \cite{simrad_ek80_reference_2025}. We therefore use numpy ports of the bottom detection methods from the open-source CRIMAC-classifiers-bottom repository \cite{crimac_classifiers_bottom}, released by NORCE under the MIT license. These implement traditional threshold-and-back-step heuristics, but they are not a clone of the commercial detector and should not be interpreted as a measurement of its full performance. The upstream package is vendored verbatim in the project repository for reference. These outputs are not externally verified seabed depths, and we refer to them throughout as the \emph{reference labels}, not ground truth.
+
+The public EK80 documentation exposes bottom-detection settings such as minimum and maximum depth limits and Bottom Backstep, but not the full implementation \cite{simrad_ek80_reference_2025}. Our offline pipeline uses threshold detection, back-step refinement, second-echo reassignment, temporal smoothing, and a leading-edge detector ported from CRIMAC with a project-specific asymmetric kernel. It does not implement the commercial EK80 detector or undocumented refinements inside the EK80 software. The operational detector may therefore differ from the open label pipeline used here. Running offline removes the real-time constraint of the onboard detector: each estimate draws on the full ping sequence, with access to both past and future pings.
+
+\subsection{Bottom Detection Algorithms}
+
+We use two complementary detectors, both operating on the two-dimensional 38\,kHz calibrated $S_v$ array (samples $\times$ pings) and a corresponding range array in metres: the simple threshold-and-back-step detector, which marks where the echo first crosses a fixed level, and an edge detector, which locates the leading edge of the bottom return. Averaging two estimates built on different cues reduces dependence on any single heuristic. The simple detector applies the fixed-threshold, back-step, and second-echo heuristics described in Section~\ref{sec:traditional_bottom_detection}, with a $-31$\,dB threshold on calibrated $S_v$, $5$\,m back-step segments taken as the element-wise maximum across three adjacent pings, and second-echo reassignment when the half-depth mean linear $s_v$ exceeds $75\%$ of the mean around the maximum. The edge detector is a port of the CRIMAC edge algorithm, modified here with an asymmetric detection kernel.
+
+\subsubsection{Edge detector}
+
+The edge detector uses a Gaussian-derivative convolution to locate the leading edge of the bottom echo. The kernel width is derived from the estimated bottom echo thickness, computed from the 10th to 90th percentile of cumulative $S_v$ around the detected bottom, floored at a physical minimum from pulse duration and beam width. The kernel is asymmetric ($\kappa = 0.95$), with stronger weight on the water-column side of the bottom echo; this asymmetry is the modification specific to this work, on top of the ported CRIMAC algorithm. Candidate peaks in the convolution output are ranked by prominence divided by peak width. The intended role is to give a second, leading-edge-based estimate for the label average; it is not treated as an independently verified depth measurement.
+
+\subsection{Averaging and Post-Processing}
+
+For each ping, the two detector estimates are averaged. A track-level pass then computes a 31-ping sliding-median reference trajectory; any point deviating more than $10$\,m from it is set to NaN and replaced by linear interpolation between the nearest valid estimates on either side. The resulting bottom line is therefore a smoothed detector product, not the raw per-ping detector output.
+
+The two component detectors are not interchangeable, and their disagreement before averaging sets a floor on reference-label uncertainty. On the first 12 validation files (all recorded on 31 January 2024), the simple and edge detectors differ by $13.1$\,m in mean bottom depth, computed per file before the average is taken. This gap measures reference construction rather than U-Net accuracy, and it is reported against the network variants in Section~\ref{sec:stat-validation}.
+\label{sec:reference-detector-diagnostic}
+
+\subsection{Mask Generation}
+
+The detected bottom depth in metres is converted to sample indices and used to generate a binary segmentation mask: every bottom-or-below pixel is labelled 1 and the water column is labelled 0. Figure~\ref{fig:label-mask} shows the label-generation sequence from detector outputs to segmentation mask.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/label_generation.png}
+    \caption{Offline training-label generation. The simple threshold detector and edge detector first produce per-ping bottom estimates; their average is then smoothed by the track-level sliding median and converted to a bottom-or-below segmentation mask.}
+    \label{fig:label-mask}
+\end{figure}
+
+\subsection{Patch Extraction}
+
+Full echograms are not used directly because each file is an arbitrarily long ping-to-ping sequence, whereas mini-batch training requires fixed-size tensors. The canonical full-data runs split each echogram into non-overlapping 512-ping windows, using training stride 512. Tail segments shorter than one full window are dropped rather than padded. Within one file, all windows share the same native range axis and maximum recorded range; across files, $N_s$ can differ, so the range axis is resampled to the 512-row target before batching. Acoustic channels are resized with linear interpolation, while masks are resized with nearest-neighbour interpolation. The ping axis already has width 512 in the canonical runs and therefore enters the model without interpolation. The patch side is a multiple of 32 to match the five U-Net pooling stages. The Jan 2024 development baseline, transfer-learning, and loss comparisons in Appendix~\ref{app:jan-ablations} used earlier 256-ping windows with overlapping extraction; the dataset-variant comparison intentionally varied that legacy geometry. These settings are confined to the development ablations.
+
+\section{Segmentation Task Formulation}
+
+The learning problem is binary semantic segmentation of an echogram patch. Let an input patch be
+$x \in \mathcal{X} \subset \mathbb{R}^{C \times H \times W}$, where $C=3$ is the number of input channels and $H \times W$ is the resized patch grid. The corresponding reference mask is
+$y \in \mathcal{Y} = \{0,1\}^{H \times W}$, where $y_{ij}=1$ denotes bottom-or-below pixels and $y_{ij}=0$ denotes the water column. The aim is to learn a mapping
+\begin{equation}
+    f_\theta : \mathcal{X} \rightarrow [0,1]^{H \times W},
+\end{equation}
+parameterised by neural-network weights $\theta$, such that $p_\theta = f_\theta(x)$ approximates the conditional probability of the bottom-or-below class at each pixel. In practice the U-Net outputs logits $z_\theta(x) \in \mathbb{R}^{H \times W}$ and probabilities are obtained by the sigmoid transform,
+\begin{equation}
+    p_{\theta,ij}(x) = \sigma(z_{\theta,ij}(x)).
+\end{equation}
+For a training set $\mathcal{D} = \{(x_n, y_n)\}_{n=1}^{N}$, model fitting is empirical risk minimisation,
+\begin{equation}
+    \hat{\theta}
+    = \arg\min_{\theta}
+    \frac{1}{N} \sum_{n=1}^{N}
+    \mathcal{L}\!\left(f_\theta(x_n), y_n\right),
+    \label{eq:segmentation-erm}
+\end{equation}
+with the loss $\mathcal{L}$ defined in the loss-function section below. At inference, the probability map is converted to a binary mask by thresholding,
+\begin{equation}
+    \hat{y}_{ij} = \mathbb{I}\{p_{\theta,ij}(x) \geq p_{\mathrm{th}}\},
+\end{equation}
+and the bottom depth in each ping is extracted as the shallowest range sample where the thresholded mask becomes positive.
+
+\section{Model Architecture}
+
+The choice of a convolutional architecture rests on the spatial structure of the data. A pixel in an echogram is not statistically independent of its neighbours: the seabed return spans several samples in depth because of the finite pulse length, and the bottom depth changes slowly from ping to ping as the vessel moves. Noisebands and biological scatterers also often persists across multiple pings. A per-pixel classifier discards this structure, whereas a convolutional network exploits it through local receptive fields and weight sharing \cite{lecun_deep_2015}. The U-Net architecture adds an encoder-decoder structure in which downsampling captures context and skip connections recover spatial detail \cite{ronneberger_unet_2015}. The directional autocorrelation analysis reported in Appendix~\ref{app:spatial-correlation} supports the use of local and multi-scale dependence within each patch rather than assigning pixels from isolated values.
+
+We use a ResNet-34 U-Net implemented with the Segmentation Models PyTorch (SMP) library \cite{iakubovskii_segmentation_2019,he_deep_2016}. The model takes the three input channels defined in Section~\ref{sec:data-processing} and produces 1 output channel of raw logits; sigmoid is applied in the loss function and during inference, not inside the model. The Jan 2024 development ablations use ImageNet-pretrained encoder weights unless the result table states otherwise. The Bast\o{} Standard U-Net is trained from random initialisation.
+
+
+\section{Transfer Learning}
+\label{sec:transfer-learning-method}
+
+The development runs test whether ImageNet transfer improves acoustic segmentation. Three freezing strategies are compared on the Jan 2024 subset.
+
+The first freezes the entire encoder so only the decoder is trainable; the pretrained encoder weights are held fixed throughout training. The second freezes only the first $N$ encoder modules ($N=3$ by default), which for the ResNet-34 encoder are the input stem (the initial convolution, its batch-norm, and the activation), leaving every residual stage trainable. The third applies no freezing.
+
+The three regimes differ less in trainable capacity than the names suggest. Freezing the input stem holds only 9{,}536 of the network's 24.4 million parameters fixed, so staged unfreezing leaves 99.96\% of the weights trainable, against 100\% for full fine-tuning and 13\% when the whole encoder is frozen. In parameter terms staged unfreezing is near-full fine-tuning, far from the frozen-encoder baseline.
+
+In the ImageNet-pretrained development runs we also use differential learning rates: $10^{-4}$ for the encoder and $10^{-3}$ for the decoder. The decoder is randomly initialised, while the encoder starts from ImageNet-trained weights. The full-data architecture sweep then tests the same ResNet-34 U-Net with and without ImageNet initialisation; the Bast\o{} Standard U-Net is the non-pretrained checkpoint selected from that sweep.
+
+
+\section{Loss Function}
+
+The loss in Equation~\ref{eq:segmentation-erm} is a 50/50 combination of binary cross-entropy and Dice loss. For a predicted probability map $p=f_\theta(x)$ and reference mask $y$, the pixel-averaged binary cross-entropy is
+\begin{equation}
+    \mathcal{L}_{\mathrm{BCE}}(p,y)
+    =
+    -\frac{1}{HW}
+    \sum_{i=1}^{H}\sum_{j=1}^{W}
+    \left[
+        y_{ij}\log p_{ij}
+        +
+        (1-y_{ij})\log(1-p_{ij})
+    \right].
+\end{equation}
+The Dice loss is
+\begin{equation}
+    \mathcal{L}_{\mathrm{Dice}}(p,y)
+    =
+    1 -
+    \frac{2\sum_{i,j} p_{ij}y_{ij} + 1}
+         {\sum_{i,j} p_{ij} + \sum_{i,j} y_{ij} + 1},
+\end{equation}
+where the added 1 is Laplace smoothing to avoid division by zero when a patch has no positive pixels. The training objective uses
+\begin{equation}
+    \mathcal{L}(p,y)
+    =
+    \frac{1}{2}\mathcal{L}_{\mathrm{BCE}}(p,y)
+    +
+    \frac{1}{2}\mathcal{L}_{\mathrm{Dice}}(p,y).
+\end{equation}
+BCE supplies the per-pixel gradient signal, while Dice scores the overlap between prediction and reference mask. The combination is used because the filled bottom-or-below representation is class-imbalanced: in most patches, bottom-or-below pixels occupy most of the image and the water column is the smaller class (Table~\ref{tab:class-balance}).
+
+
+\section{Training Configuration}
+
+Table~\ref{tab:hyperparameters} reports the Jan 2024 development configuration used for the transfer-learning, loss, and dataset-variant comparisons unless a result section states otherwise. Training uses AdamW \cite{loshchilov_decoupled_2019} with a weight decay of $10^{-4}$ and batch size 4. The learning rate is reduced by a factor of 0.5 when the validation loss plateaus for 5 epochs (ReduceLROnPlateau scheduler). Mixed precision training is used on CUDA; the best checkpoint is saved on the monitored validation metric, validation loss by default. Early stopping is used with a patience of 15 epochs.
+
+The later full-data sweep trained 57 variants and varied initialisation, freezing, batch size, and checkpoint metric. The Bast\o{} Standard U-Net is the \texttt{chunk\_arch\_sweep\_2} checkpoint from that sweep, not the Jan 2024 development run in Table~\ref{tab:hyperparameters}. It uses a ResNet-34 U-Net trained from scratch, no frozen encoder blocks, 512-ping windows with training stride 512, batch size 8, the same Dice-BCE loss, AdamW with learning rate $10^{-3}$ for all weights, weight decay $10^{-4}$, ReduceLROnPlateau scheduling, and validation-loss checkpoint selection.
+
+\begin{table}[htbp]
+\centering
+\caption{Training hyperparameters for the Jan 2024 development comparisons. The Bast\o{} Standard U-Net differs as stated in the text.}
+\label{tab:hyperparameters}
+\begin{tabular}{ll}
+\toprule
+Hyperparameter & Value \\
+\midrule
+Optimiser & AdamW \\
+Weight decay & $10^{-4}$ \\
+Batch size & 4 \\
+Encoder learning rate & $10^{-4}$ \\
+Decoder learning rate & $10^{-3}$ \\
+LR scheduler & ReduceLROnPlateau (factor 0.5, patience 5) \\
+Early stopping patience & 15 epochs \\
+Mixed precision & float16 (CUDA only) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Data Augmentations}
+
+The augmentation pipeline contains three basic transforms and four structured corruptions. The basic transforms are horizontal flip, additive Gaussian noise with standard deviation between 0.01 and 0.05, and random brightness/contrast shifts of $\pm 10\%$. Horizontal flip reverses the crossing direction and is physically valid. Vertical flip is not used because depth is directional; the surface is always at the top of the image. Table~\ref{tab:augmentations} lists the standard settings.
+
+\begin{table}[htbp]
+\centering
+\caption{Training-time data augmentations.}
+\label{tab:augmentations}
+\begin{tabular}{p{0.26\linewidth}p{0.38\linewidth}p{0.24\linewidth}}
+\toprule
+Augmentation & Setting & Probability \\
+\midrule
+Horizontal flip & -- & 0.5 \\
+Additive Gaussian noise & $\sigma \in [0.01, 0.05]$ & 0.3 \\
+Brightness/contrast shift & $\pm 10\%$ & 0.3 \\
+Channel dropout & per-channel zeroing & 0.072 \\
+Zero ping stripes & 1--5 stripes, width 1--20 pings & 0.10 \\
+Shuffle ping stripes & 1--5 stripes, width 1--20 pings & 0.05 \\
+Noise ping stripes & 1--5 stripes, width 1--20 pings & 0.05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The structured corruptions mimic acquisition faults: dropping frequency channels, and zeroing, shuffling, or noise-replacing one to five vertical ping stripes. These deny the network an intact single column and force it to place the seabed from spatial context. The effect of the augmentation settings is quantified in Section~\ref{sec:augmentation-results}. Figure~\ref{fig:augmentation-examples} shows the full set applied to one input patch.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/augmentations/augmentation_examples_feb2024_D20240201-T035002.png}
+    \caption{Training augmentations applied to one input patch. RGB composites map 38\,kHz, 200\,kHz, and their difference to red, green, and blue. Top row: original, horizontal flip, Gaussian noise, and brightness/contrast shift. Bottom row: channel dropout and the three ping-stripe corruptions.}
+    \label{fig:augmentation-examples}
+\end{figure}
+
+Within each experiment, source files are assigned to their split before patch extraction, and every patch inherits the role of its raw file and calibrated zarr store. No source file contributes patches to more than one split. Patches from the same recording share seabed geometry and acquisition conditions, so splitting at the patch level would place correlated examples in both sets. We use fixed hold-out splits because retraining the U-Net $k$ times for cross-validation is prohibitively expensive.
+
+
+\section{Inference}
+
+Inference on a full Bast\o{} echogram uses the same 512-ping window width and stride 512 as the canonical full-data training setup. This keeps the evaluation geometry matched to the model's training patches and avoids introducing extra overlapped samples at scoring time. Where a diagnostic explicitly uses single-patch or stitched-window inference, such as the patch-edge and hake-transfer analyses, that exception is stated in the corresponding results section.
+
+\subsection{From Probability Map to Bottom Estimate}
+\label{sec:inference-extraction}
+
+The probability map produced by the inference pass is converted to a bottom depth estimate in two steps. First, the map is thresholded at $p_{\mathrm{th}} = 0.5$: each pixel is assigned to the bottom-or-below class if its predicted probability is at least the threshold, and to the water-column class otherwise. Second, for each ping column the bottom depth is the range of the shallowest row where the thresholded mask is positive, computed from the sample index $i^*$ as
+\begin{equation}
+    \hat{d} = i^* \cdot \Delta t \cdot c / 2,
+\end{equation}
+where $\Delta t$ is the sample interval and $c$ is the sound velocity. A ping for which no row crosses the threshold has no predicted bottom depth. This per-ping depth estimate is the operational output. The interval-calibration methods of Section~\ref{sec:uq-validation} then convert it into a calibrated depth interval.
+
+
+\section{Evaluation Metrics}
+
+We evaluate at two levels. Supervised headline metrics are computed only on bottom-bearing examples for which the reference pipeline placed a bottom within the recorded range; files with fully empty reference masks are excluded. At the pixel level, we compute IoU, Dice coefficient, precision, and recall by comparing the thresholded prediction mask against the reference mask. At the bottom-line level, we extract the predicted bottom depth as the first row whose positive-class probability is at least the classification threshold $p_{\mathrm{th}}$ in each ping column, and the reference bottom depth as the first positive row in the reference mask. Depth comparisons require both quantities to be present. The index difference is converted to metres using the range array, and we report the mean, median, and 95th percentile \emph{depth deviation}, defined as the absolute difference in metres between the predicted and reference bottom depth. We also count the confusion matrix entries (TP, FP, FN, TN). Because the reference labels are themselves acoustic estimates, the metrics quantify agreement with the labelling procedure, not error against a verified seabed depth.
+
+The diagnostic analyses use the same extracted bottom line unless a figure states otherwise. Channel importance is tested by removing or replacing one input channel and by comparing attribution magnitudes across channels. Synthetic insertion tests feed non-acoustic inputs through the trained network to expose learned range priors. These diagnostics are interpreted as model-behaviour checks, not as performance estimates.
+
+
+\section{Prediction bands and uncertainty diagnostics}
+\label{sec:uq-validation}
+
+The per-ping bottom estimate from the inference procedure is a point estimate. Conformal prediction converts this point estimate into a calibrated depth interval. Deep ensembles test whether disagreement among independently trained models provides a useful local uncertainty signal. Both approaches treat the model's sigmoid output as an intermediate quantity, not as an uncertainty certificate. Probability calibration is evaluated over range-ping segmentation cells, whereas conformal coverage is evaluated on the extracted per-ping depth estimate.
+
+\subsection{Data Splitting}
+
+The canonical split of Chapter~\ref{chap:data} assigns files to training, validation, calibration, and test roles. The training and validation sets are used during model development. The calibration set is held out entirely and used only for conformal prediction, so the conformal threshold is not fitted on data the model has seen during training or hyperparameter selection.
+
+\subsection{Conformal Prediction}
+\label{sec:conformal-score-method}
+
+Before fitting conformal bands, the sigmoid output is characterised on held-out validation files through probability histograms, reliability diagrams, expected calibration error, and per-ping transition widths between low and high bottom-or-below probability contours. These diagnostics do not calibrate the model. They determine whether raw probabilities can be read directly as operational confidence. The $p=0.1$ to $p=0.9$ width reported as a probability diagnostic in Chapter~\ref{chap:results} is distinct from the $p=0.25$ to $p=0.75$ width used below as a conformal scale.
+
+For the supervised conformal band, the nonconformity score is the absolute depth deviation between the predicted and reference bottom, $s = |d_\text{pred} - d_\text{ref}|$ in metres, as defined in Section~\ref{sec:conformal-theory}. This symmetric score is retained because it gives a single operator-facing uncertainty number, $\pm \hat q$, rather than two directional margins. For each calibration ping the predicted depth is the shallowest row whose probability is at least $p_{\mathrm{th}}$; pings without both a predicted and reference depth do not define a score. If $s_{(1)} \leq \cdots \leq s_{(n)}$ are the sorted calibration scores and $k=\lceil (n+1)(1-\alpha)\rceil$, the finite-sample corrected threshold is $\hat q=s_{(k)}$ when $k \leq n$.
+
+At inference, each ping receives the fixed-width band
+\begin{equation}
+    [d_\text{pred} - \hat q,\, d_\text{pred} + \hat q]
+\end{equation}
+around the predicted bottom.
+
+The locally weighted variant uses the probability field to define a separate scale for each ping. Let $d_j(p)$ be the first depth in ping $j$ at which the bottom-or-below probability reaches $p$. The transition width is
+\begin{equation}
+    \sigma_j = \left|d_j(0.75)-d_j(0.25)\right|.
+\end{equation}
+Both crossings are found by scanning the full ping column from the surface. On the calibration set, the normalised nonconformity score is
+\begin{equation}
+    r_j =
+    \frac{\left|d_{\text{pred},j}-d_{\text{ref},j}\right|}
+         {\max(\sigma_j,\varepsilon)},
+    \qquad \varepsilon=0.5\,\mathrm{m}.
+\end{equation}
+The floor prevents a nearly discontinuous probability transition from producing an arbitrarily large score or a degenerate interval. If $\hat q_\mathrm{LW}$ is the finite-sample corrected quantile of the calibration scores $r_j$, the interval at a new ping is
+\begin{equation}
+    \left[
+    d_{\text{pred},j}-\hat q_\mathrm{LW}\max(\sigma_j,\varepsilon),
+    \;
+    d_{\text{pred},j}+\hat q_\mathrm{LW}\max(\sigma_j,\varepsilon)
+    \right].
+\end{equation}
+Thus, $\hat q_\mathrm{LW}$ is dimensionless, while the interval half-width is in metres. A broad $p=0.25$ to $p=0.75$ transition produces a wider interval after calibration; a sharp transition produces a narrower one. This construction is used for the scored conformal cache and the hake threshold-recalibration experiment. A conformal quantile-regression approach \citep{romano_conformalized_2019} is not used because the segmentation model does not output depth quantiles.
+
+The repeated-crossing analysis adds a label-free conformal variant. Each crossing is projected onto route arc length and reduced to a bottom-depth estimate within each spatial bin. For bins visited by multiple crossings, the nonconformity score is the absolute difference between estimates from two crossings assigned to the same bin. Calibration and held-out crossing pairs are separated before the split-conformal threshold is fitted. The constant label-free band uses one global threshold. The adaptive variant scales this threshold by $1.4826$ times the median absolute deviation of the crossing-level bin medians. This keeps the same split-conformal calibration logic but moves the uncertainty signal from the supervised label residual to route repeatability.
+
+For the hake transfer experiment, the threshold-only recalibration uses the same nonconformity scores as the supervised constant and locally weighted bands, but fits $\hat q$ on the 20-file hake calibration split defined in Section~\ref{sec:experimental-design}. Coverage is then evaluated on the 49 held-out hake files, and 95\% intervals are obtained by bootstrapping files rather than individual pings. The adaptation diagnostic also compares three calibration sources after hake fine-tuning: Bast\o{} scores alone, hake scores alone, and pooled scores. The balanced pooled variant gives the two domains equal total weight before computing the conformal quantile, whereas naive pooling weights each ping equally.
+
+\subsection{Ensemble diagnostic}
+\label{sec:ensemble-method}
+
+The deep-ensemble experiment trains five copies of the same ResNet-34 U-Net with different random seeds (1, 7, 42, 123, and 2025). The seed controls weight initialisation, data order, and augmentation sampling, while the architecture, input geometry, target size, loss, and sliding-window inference recipe are fixed. Holding everything but the seed fixed isolates whether independent optimisation under the same model class supplies an error-correlated disagreement signal. The ensemble point prediction is evaluated on the Oct 2024 validation period and on the full February-June test split. Its uncertainty diagnostic uses the full Jan 2025 calibration and February-June test split, whereas the supervised conformal exchangeability analysis in Chapter~\ref{chap:results} uses the smaller scored conformal cache shown in Figure~\ref{fig:experiment-model-map}.
+
+At inference, each member runs the same sliding-window procedure described above. The ensemble prediction is the per-pixel mean of the five probability maps, and the per-pixel standard deviation measures inter-model disagreement. High disagreement at a pixel indicates that the models have not converged to a consistent prediction there.
+
+For the ensemble diagnostic, conformal prediction intervals are calibrated on the ensemble mean, not a single model. Its probability-transition scale is also defined differently from the scored-cache construction: the transition is anchored at the predicted $p=0.5$ bottom edge, restricted to the contiguous boundary region, and floored at $0.1$\,m. This avoids allowing an unrelated probability crossing elsewhere in the water column to determine the local width. The ensemble experiment is a separate diagnostic on the full February-June split, so its thresholds and band widths are not compared numerically with the scored-cache results.
+

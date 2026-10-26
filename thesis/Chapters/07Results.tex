@@ -1,0 +1,452 @@
+\label{chap:results}
+
+The experiment families, model names, and supporting diagnostics are defined in Section~\ref{sec:experimental-design}. The results do not use one common split: development ablations use the Jan 2024 subset or the separate augmentation subset, while the canonical validation, calibration, test and repeated-crossing use the full basto data. The foreign-transfer analyses use separate held-out data by design. Unless a section names another split, model-comparison tables report Jan 2024 development-subset results. Results from the Oct 2024 temporal validation, supervised conformal cache, full February--June test split, repeated-crossing analysis, and hake experiments answer different questions and are not numerically interchangeable.
+
+
+\section{Segmentation Performance}
+\label{sec:segmentation-performance}
+
+On the canonical Oct 2024 temporal validation period, the Bast\o{} Standard U-Net (\texttt{chunk\_\allowbreak arch\_\allowbreak sweep\_\allowbreak 2}) reaches 0.9972 mean IoU and 0.57\,m mean depth deviation. This is the full-data architecture-sweep branch in Figure~\ref{fig:experiment-model-map}. The same checkpoint reaches 0.990 mean IoU and 0.516\,m mean depth deviation on the full February-June 2025 test split. It was trained without ImageNet pretraining and is the standard deterministic inference point for later single-model analyses unless another model is named. Because the ferry repeats the same route, these scores evaluate transfer across recording dates and acoustic conditions, not to unseen seabed.
+
+Evaluating all 57 full-data variants defined in Section~\ref{sec:experimental-design} on the Oct 2024 split shows that sub-metre agreement is not confined to one model. Almost every validation file exceeds 0.990 IoU. For the Bast\o{} Standard U-Net, median per-file depth deviation is 0.29\,m and 99.2\% of files fall below one metre. The 57 models rank the validation files similarly, with a mean pairwise Spearman correlation of 0.895. Figure~\ref{fig:chunk-arch-sweep-2-bottom-error-dist} shows the distribution of sub-metre model-label differences.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{Figures/bottom_error_distribution/chunk_arch_sweep_2_bottom_error_distribution_xlim10.png}
+\caption[Distribution of neural-network depth deviation from reference labels.]{Per-ping absolute bottom-depth difference between the Bast\o{} Standard U-Net prediction and the reference label on the Oct 2024 validation period. The median is 0.29\,m and the 95th percentile is 3.25\,m. The axis is truncated at 10\,m; the 0.07\% of pings with larger differences are not shown.}
+\label{fig:chunk-arch-sweep-2-bottom-error-dist}
+\end{figure}
+
+Figures~\ref{fig:grid-worst-max} and~\ref{fig:grid-worst-median} show the Oct 2024 files ranked worst by 95th-percentile and median depth deviation for the Bast\o{} Standard U-Net. The predicted line follows the reference through steep slopes, a flat central channel, and harbour approaches. Visible disagreement is confined to short ping runs and near-stationary shallow recordings. Appendix~\ref{app:prediction-grids} gives the larger galleries.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/prediction_grids_regen/prediction_grid_2x2_worst_max.png}
+\caption{The four Oct 2024 files with the highest 95th-percentile depth deviation for the Bast\o{} Standard U-Net. Each panel overlays the reference label and the predicted bottom line on the echogram, with the per-file IoU and depth deviation.}
+\label{fig:grid-worst-max}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/prediction_grids_regen/prediction_grid_2x2_worst_median.png}
+\caption{The four Oct 2024 files with the highest median depth deviation for the Bast\o{} Standard U-Net. These are the files where the disagreement is spread across the recording, not confined to a few pings.}
+\label{fig:grid-worst-median}
+\end{figure}
+
+\subsection{Generalisation Across Periods}
+\label{sec:generalisation-across-periods}
+
+The primary within-route test set extends the chronological evaluation beyond the Oct 2024 validation period. On the 135-file February--June 2025 test split, the Bast\o{} Standard U-Net reaches 0.990 mean IoU, 0.991 mean Dice, and 0.516\,m mean depth deviation against the detector-derived reference. The IoU score is lower than the Oct 2024 validation score but remains sub-metre in mean depth deviation, so the final checkpoint keeps strong agreement with the reference after the January 2025 calibration period. It does not establish geographic transfer, because the recordings still come from the same vessel, installation, and route.
+
+Selected patch overlays give a complementary visual check of cases where disagreement with the detector-derived reference label does not necessarily indicate a worse seabed estimate (Figure~\ref{fig:unet-better-steep-crossings}). These examples do not change the numerical scores, because the same reference labels define the validation target. They show where the Bast\o{} Standard U-Net gives a smoother or more visually plausible bottom line than the traditional detector product: on steep slopes it follows continuous seabed returns instead of short label excursions, and in shallow near-stationary water it rejects vertical spikes and unstable picks.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_overlay_worst/deep_crossing_eval_top40/rank0033_D20231221-T052435_c74a61096ee4_p2.png}
+\caption{December 2023 crossing with steep basin sides.}
+\label{fig:unet-better-steep-crossings-dec}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_overlay_worst/deep_crossing_eval_top40/rank0037_D20240201-T083046_3ac0738ade51_p2.png}
+\caption{February 2024 crossing with signal dropouts. Detector struggles towards end.}
+\label{fig:unet-better-steep-crossings-feb}
+\end{subfigure}
+
+\vspace{0.6em}
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_overlay_worst/val_rank1_20/rank0017_D20241007-T162128_e9eeab0d7957_p1.png}
+\caption{Very steep bottom with noisy returns. Bottom detector was likely noisy and the median smoothing provided gentler steepness than plausable.}
+\label{fig:unet-better-shallow-docked-spikes}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_overlay_worst/val_rank1_20/rank0003_D20241002-T004856_689b774638ea_p20.png}
+\caption{Docked validation patch with an unstable detector segment.}
+\label{fig:unet-better-shallow-docked-slope}
+\end{subfigure}
+\caption[Selected examples where the U-Net is smoother than the detector label.]{Selected examples where the Bast\o{} Standard U-Net prediction is smoother than the detector-derived reference label. The cyan curve is the reference label and the red curve is the U-Net prediction.}
+\label{fig:unet-better-steep-crossings}
+\end{figure}
+
+\FloatBarrier
+
+\section{Model ablations}
+
+\subsection{Encoder, loss, and dataset configuration}
+\label{sec:transfer-learning-results}
+\label{sec:loss-results}
+\label{sec:dataset-results}
+
+Three families of design choices were compared on the Jan 2024 development subset, all trained with Dice+BCE loss and the baseline dataset unless the comparison varied them. This is the development-ablation branch in Figure~\ref{fig:experiment-model-map}. The full tables are in Appendix~\ref{app:jan-ablations}.
+
+Among encoder strategies (Table~\ref{tab:transfer}), staged unfreezing gave the highest IoU (0.9815) and the tightest across-file spread (std IoU 0.023). Full fine-tuning matched its IoU (0.9812) at the lowest mean depth deviation (4.04\,m) but higher variance, and a frozen ResNet-34 trailed at 0.9781. The two leading strategies track each other so closely because staged unfreezing is near-full fine-tuning in parameter terms, as described in Section~\ref{sec:transfer-learning-method}. Staged unfreezing wins on only four of the 17 files; its mean gain comes from hard files such as D20240131-\allowbreak T193855, where IoU rises from 0.865 under the frozen encoder to 0.927. ResNet-50 did not improve on ResNet-34. ImageNet pretraining was not required for high within-route agreement, as shown by the full-data Bast\o{} Standard U-Net validation result above.
+
+Six loss configurations (Table~\ref{tab:loss}) span 1.05 percentage points in IoU. The aggressive focal loss ($\alpha_{\mathrm{F}}=0.5, \gamma_{\mathrm{F}}=3$) edged the balanced Dice+BCE baseline in IoU (0.9793 against 0.9781) and depth deviation (4.73 against 4.88\,m), while focal+Dice was worst at 0.969 IoU and 8.17\,m; these gaps fall within the file-to-file variability discussed in Section~\ref{sec:stat-validation}.
+
+Dataset extraction parameters move the score even less. Six variants (Table~\ref{tab:datasets}), each changing one parameter from the min-max normalised three-channel baseline, stay within 0.4 percentage points of it apart from shallow cropping at 0.9740 IoU. Percentile normalisation gave the best IoU (0.9790) and lowest depth deviation (4.22\,m), while widening the $S_v$ clip range and cropping shallow depths reduced IoU. The line mask reached comparable IoU but higher depth deviation, because thin-boundary errors propagate into the depth metric more directly than errors in the filled bottom-or-below mask.
+
+Across this subset the per-file picture (Table~\ref{tab:per-file}) is a high ceiling with a short tail. For the best variant, staged unfreezing at 0.9815 mean IoU and 4.19\,m mean depth deviation.
+
+
+\subsection{Augmentation}
+\label{sec:augmentation-results}
+
+Seven augmentation configurations were compared under the fixed protocol in Section~\ref{sec:experimental-design}.
+
+\begin{table}[htbp]
+\centering
+\caption{Augmentation ablation, trained on a 100-file random subset (80 training, 20 validation) with patches fixed at $512\times512$, using a frozen ResNet-34 and Dice+BCE\@. The first five rows keep the basic augmentations on; the middle four each add one structured augmentation.}
+\label{tab:augmentation}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+Configuration & Mean IoU & Mean Dice & Depth dev.\ (m) & Std IoU \\
+\midrule
+No augmentation                       & 0.9950 & 0.9975 & 1.97 & 0.0066 \\
+Basic only (flip, noise, brightness) & 0.9939 & 0.9969 & 2.49 & 0.0107 \\
+\quad + channel dropout               & 0.9964 & 0.9982 & 1.00 & 0.0025 \\
+\quad + ping dropout (zero)           & 0.9952 & 0.9976 & 1.31 & 0.0040 \\
+\quad + ping dropout (shuffle)        & 0.9962 & 0.9981 & 1.00 & 0.0032 \\
+\quad + ping dropout (noise)          & 0.9943 & 0.9971 & 2.28 & 0.0103 \\
+All augmentations                     & 0.9965 & 0.9982 & $\mathbf{0.80}$ & 0.0027 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/aug_ablation/no_source/aug_ablation_comparison.pdf}
+\caption{Augmentation ablation on the 100-file random subset. The panels show depth deviation, best validation IoU, evaluation mean IoU, and evaluation mean Dice for each augmentation configuration.}
+\label{fig:augmentation-ablation}
+\end{figure}
+
+IoU and Dice saturate above 0.99 for every configuration (Figure~\ref{fig:augmentation-ablation}), so depth deviation and across-file spread separate the variants. The full stack gives the lowest depth deviation (0.80\,m) and a low IoU spread (std IoU 0.0027), compared with 2.49\,m and 0.0107 for the basic-only baseline. Channel dropout gives the tightest spread (std IoU 0.0025). Channel dropout and ping-stripe shuffling each recover most of the depth gain on their own; ping-stripe noise barely changes the baseline, and zeroing falls between. No augmentation scores 1.97\,m, below the basic-only baseline, so the geometric and photometric transforms alone do not improve this subset. One validation file, D20250118-T095329, has a 95th-percentile depth deviation above 118\,m in every configuration and inflates the absolute means without changing the ranking.
+
+
+\subsection{Ablation significance checks}
+\label{sec:stat-validation}
+
+The Jan 2024 ablation tables rank variants by mean IoU and depth deviation, but the gaps are small against the file-to-file spread recorded in the std IoU columns. The variant means sit well inside that spread, so the final model is chosen on across-file IoU spread and uncertainty diagnostics rather than a single mean accuracy number.
+
+The two traditional detectors that generate the reference disagree more than most network variants. The simple and edge detectors differ by $13.1$\,m in mean bottom depth before averaging (Section~\ref{sec:reference-detector-diagnostic}), which is larger than the spread among the network variants in the same development tables. Against the averaged reference, the U-Net remains within the inter-detector spread across most pings.
+
+
+After the model-selection results, the next diagnostics ask how the trained model reaches these scores. Channel perturbations and attributions test input dependence, and convergence curves inspect optimisation. The cost of placing the live ping at the window boundary is quantified separately in Appendix~\ref{app:edge-degradation}.
+
+\section{Channel Importance}
+\label{sec:channel-importance}
+
+Single-channel and keep-only-one ablations show that the 38\,kHz channel dominates. Zeroing or shuffling it drops mean IoU from 0.996 to 0.689--0.706, while a model restricted to 38\,kHz alone still reaches 0.989 IoU. Keeping only 200\,kHz reaches 0.683 and keeping only the frequency-difference channel reaches 0.675, against a 0.674 floor from an all-zero input. The same ranking appears when the frequency slots are swapped: the content corresponding to 38\,kHz drives the largest degradation.
+
+The reference masks are generated from 38\,kHz $S_v$, and the 38\,kHz channel dominates the perturbation results. The difference channel contributes little: zeroing it, replacing it with its per-patch mean, or substituting it from an unrelated patch leaves IoU, Dice, and bottom-line error within file-level noise (Figure~\ref{fig:channel-ablation}); zeroing changes IoU by about $4\times10^{-5}$. Gradient attribution gives the same ordering. The 38\,kHz channel has the largest share of both mean absolute input gradient (60.5\%) and integrated gradient (67.2\%), while the difference channel has the smallest shares (16.5\% and 7.6\%) (Figure~\ref{fig:channel-attribution}).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/channel_importance/chunk_arch_sweep_2/01_ablation_iou_dice_err.pdf}
+\caption{Per-channel ablation. IoU, Dice, and bottom-line error (log scale) when one channel is zeroed, replaced with its per-patch mean, or replaced from another patch.}
+\label{fig:channel-ablation}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/channel_importance/chunk_arch_sweep_2/04_attribution_bars.pdf}
+\caption{Per-channel attribution magnitudes across test patches, by mean absolute input gradient (left) and mean absolute integrated gradient (right).}
+\label{fig:channel-attribution}
+\end{figure}
+
+The last-decoder Grad-CAM map gives a spatial check on the same output. In the example patch, activation concentrates along and immediately below the predicted bottom line, while open water above the detector label has near-zero activation (Figure~\ref{fig:gradcam-last-decoder}). The pattern is consistent with a filled bottom-or-below mask based on the seabed transition, not water-column texture. The result remains qualitative because Grad-CAM depends on the chosen target and layer.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/gradcam_unet/chunk_arch_sweep_2_v5_report/03_patch_last_decoder_square.png}
+\caption{Patch-level last-decoder Grad-CAM for the Bast\o{} Standard U-Net. The cyan curve marks the detector label and the dashed red curve marks the U-Net prediction. The activation is concentrated near the bottom boundary and in the filled bottom-or-below region, with little activation in open water above the seabed.}
+\label{fig:gradcam-last-decoder}
+\end{figure}
+
+Synthetic insertion tests ask how much of the prediction remains when the input lacks coherent acoustic structure. With Gaussian-noise input, the Bast\o{} Standard U-Net still assigns high bottom-or-below probability below a shallow transition band (Figure~\ref{fig:synthetic-gaussian-insertion}). The result diagnoses a potentially learned range-dependent prior.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/synthetic_insertions/gaussian_noise_no_gradcam.png}
+\caption[Synthetic Gaussian-noise insertion test]{Synthetic Gaussian-noise insertion test for the Bast\o{} Standard U-Net. In (a), the RGB composite contains random noise in the three input channels rather than coherent acoustic structure, yet the probability map stays high at larger range and low near the surface, indicating a learned range-dependent prior in this out-of-distribution setting; the band is the thresholded bottom detection shown without a conformal interval.}
+\label{fig:synthetic-gaussian-insertion}
+\end{figure}
+
+
+\section{Convergence}
+\label{sec:convergence}
+
+Across runs, validation IoU and Dice sit above the training curves, while validation loss and bottom-row mean absolute error (MAE) sit below. Training metrics are computed on augmented batches, whereas validation metrics use unaugmented patches. Figure~\ref{fig:convergence-loss-comparison} shows the Bast\o{} Standard U-Net checkpoint; its validation loss curve does not show sustained divergence from the training curve.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.80\textwidth]{Figures/convergence/standard_unet_training_loss.png}
+\caption[Loss curves for the Bast\o{} Standard U-Net.]{Training and validation loss curves for the Bast\o{} Standard U-Net. The dotted line and marker show the epoch with the lowest validation loss.}
+\label{fig:convergence-loss-comparison}
+\end{figure}
+
+The standard U-Net validation loss reaches its minimum at epoch~15 and remains close to the training curve through the rest of the run. Early stopping selects the epoch-15 checkpoint.
+
+
+\section{Patch-level behavior on a hard case}
+\label{sec:hard-patch-stability}
+
+This patch-level comparison is a qualitative diagnostic, not a significance test. Figure~\ref{fig:patch-prob-stable-spike} shows the typical behavior of the Bast\o{} Standard U-Net on a single held-out hard case, a February 2025 patch hand-selected from the hardest scored candidates. The U-Net probability field keeps a continuous high-confidence bottom boundary, and the extracted prediction follows the reference bottom line with high overlap and a bottom-line MAE near one sample.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_prob_eval/chunk_arch_sweep_2_rgb_hard/D20250201-T052118_b495de4eb2c1_p1_eval.png}
+\caption[Patch-level U-Net behavior on a held-out hard patch.]{Patch-level comparison on held-out test patch \texttt{D20250201-T052118\_b495de4eb2c1\_p1}, a case with steep bottom transitions and ping dropout. The prediction follows the reference bottom line with high overlap and a bottom-line MAE near one sample. Left: RGB composite of the three normalised input channels with the traditional detector reference label and the U-Net bottom prediction. Right: U-Net bottom-or-below probability field.}
+\label{fig:patch-prob-stable-spike}
+\end{figure}
+
+
+\section{Uncertainty diagnostics and prediction bands}
+\label{sec:uncertainty-results}
+
+These results do not constitute a full uncertainty decomposition for acoustic depth estimation. They address a narrower question: whether the Bast\o{} Standard U-Net supplies probability and interval diagnostics that remain meaningful after bottom-line extraction. The probability, scored conformal, ensemble, and hake-recalibration diagnostics use separate entries in Figure~\ref{fig:experiment-model-map}.
+
+\subsection{Calibration}
+
+The probability output was characterised with the Bast\o{} Standard U-Net on a 24-file diagnostic subset of the held-out October 2024 validation period, spanning approximately $438{,}000$ ping columns after preprocessing. The global bottom-or-below probability distribution is sharply bimodal: $84.4\%$ of range-ping cells have $p > 0.99$ and $14.5\%$ have $p < 0.01$, leaving $0.49\%$ in the ambiguous band $0.1 < p < 0.9$ (Figure~\ref{fig:prob-distribution}).
+% [UNCLEAR: Verify how the 24 October 2024 files were selected from the 378-file validation period and confirm the approximately 438,000-column count against the calibration-generation source.]
+
+The expected calibration error is $0.0007$, while the reliability curve departs from the diagonal in the non-empty intermediate bins (Figure~\ref{fig:reliability}). It is mostly underconfident and crosses into overconfidence in the highest-probability range. Ambiguous cells are spatially concentrated at the seabed boundary, with median per-ping transition width $0.72$\,m between the $p = 0.1$ and $p = 0.9$ contours, plus a thinner near-surface ring-down band. This $p=0.1$ to $p=0.9$ summary describes the probability field; the locally weighted conformal score instead uses the $p=0.25$ to $p=0.75$ width defined in Section~\ref{sec:uq-validation}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{Figures/regen_2026/calibration_stacked.pdf}
+\caption[Calibration of the Bast\o{} Standard U-Net.]{Calibration of the Bast\o{} Standard U-Net on the held-out October 2024 files. Top: reliability diagram, where the dashed line indicates perfect calibration and the expected calibration error is $0.0007$; the curve is mostly underconfident but crosses into overconfidence at the highest probabilities. Bottom: the global bottom-or-below probability distribution is sharply bimodal: $84.4\%$ of range-ping cells have $p > 0.99$ and $14.5\%$ have $p < 0.01$, leaving $0.49\%$ in the ambiguous band $0.1 < p < 0.9$.}
+\label{fig:reliability}
+\label{fig:prob-distribution}
+\end{figure}
+
+
+\subsection{Conformal Prediction}
+
+The threshold is fitted on 29 valid January 2025 calibration files ($80{,}180$ pings) and applied to 30 February 2025 files plus all 14 June 2025 files ($161{,}773$ pings). A valid scored-cache file yields finite reference and predicted bottom depths after preprocessing and score construction. These files are the scored conformal cache, not the full February-June test split. The full split contains 135 files and is used only where stated, such as the ensemble evaluation.
+% [UNCLEAR: Verify whether the scored-cache validity criterion included implementation filters beyond finite reference and predicted bottom depths.]
+
+The metre-coordinate constant-width and locally weighted scores follow the supervised construction in Section~\ref{sec:conformal-score-method}. The patch-scale bands generated in sample coordinates with a bottom-anchored transition use a different construction and are not used to support the coverage results reported here.
+
+\subsection{Patch-scale band examples}
+\label{sec:patch-conformal-examples}
+
+The patch-scale bands are drawn in sample coordinates on individual held-out test patches, with the locally weighted band scaled by the bottom-anchored probability transition and the constant-width band fixed at the calibrated sample offset. They show the band construction directly on the echogram and are separate from the metre-coordinate coverage cache of Section~\ref{sec:conformal-exchangeability-results}, so the per-patch miss counts quoted below are not the marginal coverage rates reported there.
+
+On a well-resolved shallow patch (Figure~\ref{fig:patch-conformal-clean}), both bands hug the predicted bottom line so tightly that they are barely visible on the plot. The prediction and the reference label agree here, which is the behavior the band is meant to show on an easy case. The reference label stays inside the bands across almost the whole patch, with 44 of 512 pings outside the constant band and 82 outside the narrower locally weighted band.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_conformal_failures/shallow_D20250624-T181715_612819374b0d_p40_conformal.png}
+\caption[Patch-scale conformal bands on a well-resolved shallow patch.]{Patch-scale conformal bands on held-out test patch \texttt{D20250624-T181715\_612819374b0d\_p40}. Left: 38\,kHz $S_v$ with the classical reference label, the U-Net prediction, and the locally weighted and constant-width bands. Right: the U-Net bottom-or-below probability field with the same overlays.}
+\label{fig:patch-conformal-clean}
+\end{figure}
+
+Two near-flat shallow patches expose the limits of the patch-scale score (Figure~\ref{fig:patch-conformal-flat}). In (a), the classical reference drops in two vertical spikes that the U-Net prediction ignores, so the prediction is smoother than the label it is scored against. In (b), the bottom is almost flat and the bands are correspondingly thin. The bottom-line MAE is only 1.5 samples, yet 218 of 512 reference pings fall outside the local band, because a sub-sample band leaves no room for the small residual jitter of an easy bottom. Low depth deviation and a high patch-scale miss count are not contradictory.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_conformal_failures/shallow_D20250212-T231442_bc815218b2e3_p0_conformal.png}
+\caption[Reference-label spikes ignored by the prediction.]{Reference-label spikes ignored by the prediction (patch \texttt{D20250212-T231442\_bc815218b2e3\_p0}).}
+\label{fig:patch-conformal-flat-spike}
+\end{subfigure}
+
+\vspace{0.6em}
+\begin{subfigure}{\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_conformal_failures/shallow_D20250213-T234009_0a3affcc0ee4_p0_conformal.png}
+\caption[Thin band on a flat bottom with many local misses.]{Thin band on a flat bottom with many local misses (patch \texttt{D20250213-T234009\_0a3affcc0ee4\_p0}).}
+\label{fig:patch-conformal-flat-thin}
+\end{subfigure}
+\caption[Patch-scale bands on near-flat shallow patches.]{Patch-scale conformal bands on two near-flat shallow patches. In (a) the classical reference label spikes downward while the U-Net prediction stays on the true bottom. In (b) the bands are sub-sample thin, so a small bottom-line MAE still leaves many reference pings outside the local band.}
+\label{fig:patch-conformal-flat}
+\end{figure}
+
+The harder patches show where the model and the band part company (Figure~\ref{fig:patch-conformal-hard}). In the deep patch (a) the reference label is over-smoothed into straight segments that are unlikely to follow the true seabed. The bottom backscatter is weak, so the seabed is hard to confirm visually, but the U-Net prediction is the more plausible of the two. Where the backscatter drops, the conformal bands widen, which is the intended behavior. The 365 of 512 reference pings left outside the constant band here trace back to the faulty label rather than to a prediction error. The shallow patch (b) behaves the same way: the central basin is ambiguous and again appears mislabelled, while the U-Net gives a more plausible bottom and the bands widen over the difficult region. The adaptive locally weighted band still captures the reference on all but 53 pings, whereas the constant band misses 339. The adaptive band spends width where the model is locally uncertain and recovers coverage that the fixed-width band loses.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_conformal_failures/deep_D20250626-T084615_237cb3335035_p44_conformal.png}
+\caption[Deep patch with noisy returns and an unlikely label.]{Deep patch with noisy returns, a visually ambiguous bottom, and an over-smoothed reference label (patch \texttt{D20250626-T084615\_237cb3335035\_p44}).}
+\label{fig:patch-conformal-hard-deep}
+\end{subfigure}
+
+\vspace{0.6em}
+\begin{subfigure}{\textwidth}
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_conformal_failures/shallow_D20250626-T084615_237cb3335035_p34_conformal.png}
+\caption[Adaptive band widening over a central disagreement.]{Adaptive band widening over a central disagreement (patch \texttt{D20250626-T084615\_237cb3335035\_p34}).}
+\label{fig:patch-conformal-hard-shallow}
+\end{subfigure}
+\caption[Patch-scale bands on harder patches.]{Patch-scale conformal bands on two harder patches. In (a) the prediction leaves the reference through the descending limb and the constant band misses most of the patch. In (b) the locally weighted band widens over the central disagreement and keeps the reference inside, whereas the constant band does not.}
+\label{fig:patch-conformal-hard}
+\end{figure}
+
+The worst-ranked overlay examples (Figure~\ref{fig:patch-conformal-wide-failures}) give a more pessimistic check on point accuracy, and at the same time illustrate the band widening in difficult areas. These four patches were selected for large model-reference disagreement, not as a random sample. The wide purple bands are visually consistent with the local conditions: vertical dropouts remove columns of signal, near-surface or mid-water bursts obscure the return, and some patches contain noisy or weak seabed structure. The bottom-left patch appears to carry no backscatter from the bottom at all. In each case the band widens over the difficult region and stays small, often near-invisible, elsewhere. The band does not make the point prediction correct. It marks that the local probability transition has become too broad for a narrow depth interval to be credible.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/patch_overlay_worst/deep_eval_top40_conformal_grid/conformal_wide_failures_grid.png}
+\caption[Wide conformal bands on selected failure patches.]{Selected high-disagreement patch overlays with locally weighted $90\%$ conformal bands. The examples confirm visually that the adaptive band widens under poor signal, dropped pings, bubble-like bursts, and noisy returns. These are failure-case examples handpicked from the lowest 10 coverage patches, not additional random validation samples.}
+\label{fig:patch-conformal-wide-failures}
+\end{figure}
+
+\subsection{Exchangeability of the calibration and test scores}
+\label{sec:conformal-exchangeability-results}
+
+Figure~\ref{fig:exch-scores} compares calibration and test score distributions. The broad shapes match, but the two-sample Kolmogorov-Smirnov distances are $0.086$ for the constant-width score and $0.112$ for the locally weighted score. A within-calibration split gives a no-shift distance near $0.005$, so the calibration-to-test shift is real. Its direction is conservative: held-out scores shift lower without developing a heavier right tail.
+
+At $\alpha = 0.10$, the calibrated thresholds are $\hat q = 1.05$\,m for the constant-width band and $\hat q = 1.12$ for the locally weighted band. On the scored held-out test files, the bands cover the reference bottom on $92.6\%$ and $93.9\%$ of pings, respectively (Figure~\ref{fig:exch-coverage}). These empirical rates are conservative for the pooled scored cache, but they do not prove exchangeability because the calibration and test score distributions differ.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/conformal/exchangeability/calib_vs_test/score_distributions.pdf}
+\caption[Calibration versus test nonconformity scores]{Nonconformity-score densities for the scored calibration files (January 2025) and scored held-out test files (February and June 2025), for the constant-width score (left) and the locally-weighted score (right). The annotated Kolmogorov-Smirnov distance is shown in each panel; the constant-width axis is clipped at the 95th percentile.}
+\label{fig:exch-scores}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/conformal/exchangeability/calib_vs_test/coverage_calibration.pdf}
+\caption[Coverage calibration on the held-out test set]{Empirical against nominal coverage for the constant-width band (left) and the locally-weighted band (right), with the threshold fitted on the calibration period and evaluated on the calibration period and the pooled test periods. The shaded band marks a $\pm 5$ percentage-point envelope around the diagonal; the marker gives the test coverage at the $90\%$ operating point.}
+\label{fig:exch-coverage}
+\end{figure}
+
+Small departures from the diagonal are expected because the corrected conformal quantile gives finite-sample marginal coverage, not exact empirical calibration at every plotted nominal level.
+
+Pooling the test pings hides the small number of independent calibration blocks. The pooled $92.6\%$ coverage splits into $95.6\%$ on February 2025 and $89.8\%$ on June 2025, so the two held-out periods do not behave identically. Figure~\ref{fig:exch-filelevel} focuses on the file-level diagnostic. Across the 44 scored test files, realised coverage for the constant-width $90\%$ band has standard deviation $0.074$, ranging from full coverage down to one file at $74.5\%$. The unweighted file mean is $93.8\%$, higher than the ping-pooled rate because files contribute different numbers of pings. Leave-one-file-out refits over the 29 calibration files give a $10.2\%$ coefficient of variation for $\hat q$. The threshold therefore behaves more like it was set by 29 recordings than by $80{,}180$ pings.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{Figures/conformal_exchangeability_v2.png}
+\caption[File-level coverage for the constant-width conformal band]{Realised coverage of each scored held-out test file for the constant-width $90\%$ conformal band, with the nominal level shown as a dashed line. The dotted line gives the unweighted mean over files. The inset reports the leave-one-file-out coefficient of variation of $\hat q$, the per-file coverage standard deviation, and the number of scored test files.}
+\label{fig:exch-filelevel}
+\end{figure}
+
+\subsection{Ensemble diagnostic}
+\label{sec:ensemble-results}
+
+The deep ensemble of Section~\ref{sec:ensemble-method} uses five copies of the same ResNet-34 U-Net, differing only in random initialisation. It does not improve point accuracy by averaging. On the 378-file October 2024 validation period it reaches mean IoU $0.997$, mean Dice $0.999$, and mean depth deviation $0.574$\,m. On the February-June test split, the ensemble mean IoU matches the best single member to within $2\times10^{-4}$, and the accuracy-versus-size curve is flat from the first member onward.
+% [UNCLEAR: Verify the October ensemble values 0.997, 0.999, and 0.574 m against the original machine-readable ensemble output; no such summary is retained in this repository.]
+
+The disagreement diagnostic does not provide a useful local scale. With the conformal threshold fitted on the January 2025 calibration period and evaluated on the full 135-file February-June test split, inter-member disagreement tracks realised depth deviation at Spearman correlation $0.20$. The bottom-anchored probability-transition width defined in Section~\ref{sec:ensemble-method} performs better at $0.40$. Scaling the conformal band by member disagreement does not tighten it: against the constant-width baseline (mean width $3.82$\,m, coverage $0.964$), the disagreement-weighted band is wider at matched coverage, while the bottom-anchored transition width gives mean width $2.33$\,m at coverage $0.956$. This experiment uses a different split, point predictor, transition definition, and scale floor from the scored conformal cache, so these widths and thresholds are not numerical refinements of the $\hat q=1.05$\,m and $\hat q_\mathrm{LW}=1.12$ results above. The members are near-copies, with mean pairwise probability disagreement $1.2\times10^{-3}$ and per-ping depth-deviation correlation $0.72$.
+
+\section{Label-free validation from repeated crossings}
+\label{sec:repeated-crossings}
+
+The label-free validation cache contains 1{,}051 model-prediction one-way transits over the same Horten-Moss seabed. Figure~\ref{fig:crossings-arclength} provides route-level context from the separate detector-label consistency cache described in Section~\ref{sec:label-consistency}. Its median profile traces the route bathymetry, while the percentile bands show the largest spread in the deep central channel and adjacent slope, where passes sometimes split between two depth returns.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/crossings_arclength/crossings_arclength.pdf}
+\caption{Detector-label bottom-depth profiles for 1{,}051 one-way transits, binned onto a shared Horten-Moss arc-length axis. The solid line is the median profile; the shaded bands are the $25$--$75$ and $10$--$90$ percentile ranges across crossings. This contextual figure uses the detector-label consistency cache, not the model-prediction pairs used to calibrate the label-free bands.}
+\label{fig:crossings-arclength}
+\end{figure}
+
+The constant label-free band gives $90.2\%$ held-out pairwise coverage at the $90\%$ level, with half-width $7.59$\,m.
+
+For the adaptive label-free band, coverage stays at $90.2\%$, but median half-width falls to $3.59$\,m, a $52.7\%$ reduction, and mean half-width falls to $6.04$\,m. The 10th percentile half-width is $1.49$\,m on stable route sections; the 90th percentile is $12.89$\,m in high-disagreement bins. Figure~\ref{fig:labelless-adaptive} shows the redistribution from repeatable route sections to empirically unstable ones.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/conformal/labelless_adaptive/band_width_vs_arclength.pdf}
+\caption{Constant and adaptive label-free conformal bands calibrated from repeated crossings. The adaptive band keeps the same held-out pairwise coverage at the $90\%$ operating point, but redistributes half-width along the Horten-Moss route according to repeated-crossing disagreement.}
+\label{fig:labelless-adaptive}
+\end{figure}
+
+
+\section{Transfer to an external survey}
+\label{sec:transfer-survey}
+
+The external-survey protocol in Section~\ref{sec:experimental-design} tests transfer beyond the repeated Bast\o{} route. Figure~\ref{fig:experiment-model-map} separates the zero-shot transfer, threshold-only recalibration, and hake adaptation diagnostics.
+
+The labelled seabed lies around 360--700\,m, while the 200\,kHz channel records only to 300\,m, so only 38\,kHz carries seabed information at these depths (Figure~\ref{fig:hake-channels}). Scores report agreement with the 38\,kHz algorithmic detector, not accuracy.
+
+Agreement is moderate and depth-dependent. Across six zero-shot stitched echograms drawn from the processed hake pool, IoU ranges from 0.61 to 0.84, with mean depth deviation 2.5--13.0\,m on the shelf and 24.2\,m on the deepest slope transect. These six zero-shot stitched echograms are not the 20/49 recalibration split or the separate 60/15/9/9 adaptation split. Native-window geometry accounts for part of the result: the three shelf stitched echograms comprise nine raw shelf files, and stitched 642-ping echograms give mean IoU 0.772 against 0.713 for those same files stretched individually from their 214-ping width to the model window. In deep water, the probability maps place the seabed deeper than the detector line but also mark dense pelagic scattering layers as bottom; the extracted first-edge line can then follow the shallower layer for runs of pings (Figure~\ref{fig:hake-transfer}).
+% [UNCLEAR: Verify the exact rule used to select the six stitched zero-shot hake echograms.]
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/hake_channels/hake_channels_38_200.pdf}
+\caption[NOAA hake transfer input channels.]{Calibrated $S_v$ for the 38\,kHz and 200\,kHz channels on a NOAA hake slope transect. The seabed near 560\,m appears at 38\,kHz but falls beyond the 200\,kHz recording range (300\,m, dashed line), so the 200\,kHz channel holds no seabed return.}
+\label{fig:hake-channels}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/hake_transfer/hake_scattering_layer_failure.png}
+\caption[Deepest hake slope transect evaluation.]{Out-of-distribution prediction on the deepest stitched hake slope transect (\texttt{Hake-D20230804-T204958}, three stitched files), with seabed near 670\,m. Left: 38\,kHz calibrated $S_v$ with the algorithmic reference label (cyan) and the U-Net bottom line (red). Right: U-Net bottom-or-below probability. The range axis is cropped to roughly 540--700\,m rather than starting at the surface, so the seabed gradient appears steeper than its true slope (see \ref{fig:hake-channels} for true slope).}
+\label{fig:hake-transfer}
+\end{figure}
+
+The uncertainty estimates also change under the survey shift. In the within-route conformal cache, the Bast\o{}-fitted constant and locally weighted bands covered the held-out Bast\o{} reference at 92.6\% and 93.9\%, respectively. Applying Bast\o{}-calibrated thresholds unchanged to hake echograms gives 20.4\% and 30.5\% coverage against the hake reference (Table~\ref{tab:hake-recalibration}). The Bast\o{} thresholds in that table come from a separate Bast\o{} calibration fit for this transfer experiment, so they are larger than the $1.05$\,m scored-cache value of Section~\ref{sec:conformal-exchangeability-results} and are not directly comparable. The fixed-weight recalibration follows Section~\ref{sec:uq-validation}; all reported coverage remains relative to the 38\,kHz algorithmic hake detector.
+
+\begin{table}[htbp]
+\centering
+\caption[Hake conformal recalibration]{Hake conformal coverage before and after threshold-only in-situ recalibration. ``Bast\o{}'' uses the original Bast\o{} calibration threshold unchanged. ``Hake recalibrated'' refits only $\hat q$ on 20 hake calibration files and evaluates on 49 held-out hake files. Intervals are file-bootstrap 95\% intervals over the held-out hake files.}
+\label{tab:hake-recalibration}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{l l r r r r}
+\toprule
+Band & Calibration source & $\hat q$ & Test coverage & 95\% interval & Median width \\
+\midrule
+Constant & Bast\o{} & 2.10\,m & 20.4\% & 13.7--27.6\% & 4.2\,m \\
+Constant & Hake recalibrated & 21.13\,m & 89.5\% & 81.7--95.4\% & 42.3\,m \\
+Locally weighted & Bast\o{} & 1.36 & 30.5\% & 22.0--38.6\% & 1.4\,m \\
+Locally weighted & Hake recalibrated & 17.35 & 83.2\% & 76.5--89.3\% & 17.5\,m \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+After hake recalibration, constant-width coverage is 89.5\%, while locally weighted coverage is 83.2\%. For the constant-width band, $\hat q$ increases from 2.10\,m under Bast\o{} calibration to 21.13\,m under hake calibration, giving a 42.3\,m median full width. Across repeated file-level splits with 10, 20, and 30 hake calibration files, mean held-out constant-width coverage is 88.8\%, 89.4\%, and 88.6\%, respectively.
+
+A second, isolated adaptation check changed the U-Net weights rather than only the conformal threshold. The Bast\o{} Standard checkpoint was fine-tuned on the hake training split described in Chapter~\ref{chap:method}, with the original checkpoint kept unchanged. A scratch control trained the same ResNet-34 U-Net architecture on the hake split only, without Bast\o{} initialisation. Both trained variants increased held-out hake agreement (Table~\ref{tab:hake-finetune}). On the Bast\o{} test split, mean IoU was 0.989 after checkpoint fine-tuning and 0.171 after hake-only scratch training, compared with 0.990 for the Bast\o{} Standard U-Net.
+
+\begin{table}[htbp]
+\centering
+\caption[Hake adaptation and Hake-only training result]{Effect of Hake adaptation. Hake results use three adaptation stitched test groups, each made from three raw files. Bast\o{} results use the 135-file February--June test split, with depth deviation finite for 134 files. The Hake-only scratch control used the same architecture and split but no Bast\o{} checkpoint initialisation.}
+\label{tab:hake-finetune}
+\small
+\begin{tabular}{l l r r r}
+\toprule
+Domain & Model & Mean IoU & Mean Dice & Mean depth deviation \\
+\midrule
+Hake & Bast\o{} Standard & 0.433 & 0.550 & 30.11\,m \\
+Hake & Hake fine-tuned & 0.683 & 0.716 & 12.69\,m \\
+Hake & Hake-only scratch & 0.714 & 0.757 & 3.78\,m \\
+Bast\o{} & Bast\o{} Standard & 0.990 & 0.991 & 0.516\,m \\
+Bast\o{} & Hake fine-tuned & 0.989 & 0.991 & 0.727\,m \\
+Bast\o{} & Hake-only scratch & 0.171 & 0.248 & 133.53\,m \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figures/hake_finetune_adaptation/training_mode_comparison.png}
+\caption[Comparison of Hake adaptation and Hake-only training]{Comparison of the Bast\o{} checkpoint, the Hake fine-tuned checkpoint, and the Hake-only scratch model on the held-out hake adaptation groups and the Bast\o{} test split.}
+\label{fig:hake-training-mode-comparison}
+\end{figure}
+
+With the original model, a Bast\o{}-calibrated constant-width band covered 7.9\% of the held-out hake pings in the adaptation split. After hake fine-tuning, the same calibration source gave 89.8\% coverage (Figure~\ref{fig:hake-finetune-conformal}). Hake-source recalibration after checkpoint fine-tuning gave 81.9\% constant-width coverage. The unbalanced pooled calibration cache produced a result close to Bast\o{} calibration and contained more Bast\o{} than hake pings. A balanced pooled constant-width diagnostic gave 89.7\% hake coverage and 87.7\% Bast\o{} coverage.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{Figures/hake_finetune_adaptation/constant_conformal_focus.png}
+\caption[Constant-width conformal coverage after hake fine-tuning]{Constant-width conformal coverage diagnostics after hake fine-tuning. The dashed line marks the 90\% target. Coverage improves on hake after model adaptation, but calibration choices still trade hake validity against Bast\o{} validity. Orange is finetuned and blue is original.}
+\label{fig:hake-finetune-conformal}
+\end{figure}

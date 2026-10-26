@@ -1,0 +1,194 @@
+\documentclass[a4paper, 12pt, openany]{book} %chose the paper size and font size. Openany ensures that chapters and similar may begin at any page, not only odd pages. For the introductory pages and appendices we want openany, but for chapter pages in the main content we want chapters to begin only on odd pages (right hand side). The book class ensures that the margins are automatically adjusted such that left hand pages are slightly moved to the left and vice versa at the right, which makes the thesis very readable and good looking when printed in bound book format.
+\usepackage[utf8]{inputenc} %to manage special characters
+\usepackage[T1]{fontenc} %to manage special characters
+\usepackage{fancyhdr} %to customize the headers
+\usepackage[lmargin=38mm, rmargin=25mm, tmargin=25mm, bmargin=30mm]{geometry} %sets the margins for the pages
+\setlength{\emergencystretch}{2em} %give TeX limited extra stretch before reporting overfull lines
+\setcounter{tocdepth}{2} %table of contents number depth for subsections (2 = x.x.x)
+\setcounter{secnumdepth}{4} %numbering depth for headers for subsections in the text(4 = x.x.x.x)
+\usepackage{url} %to include urls
+\usepackage{xurl} %auto-break long URLs at slashes
+\usepackage{listings} %include this if you want to include code in the thesis
+\usepackage{amsmath,amssymb} %mathematical package
+\usepackage{siunitx} %includes SI-units
+\usepackage[bf]{caption} %makes float captions bold
+\usepackage{array, booktabs} %to make better tables
+\usepackage{makecell} %to allow line breaks inside table cells
+\usepackage{graphicx} %to include graphics
+\usepackage{float} %to include floats
+\usepackage{wrapfig} %to wrap figures with text
+\usepackage{pdflscape} %to rotate wide figures onto landscape pages
+\usepackage[export]{adjustbox} %to adjust floats
+% Relax float placement so figures settle near their references instead of
+% drifting onto dedicated float pages at the end of a section.
+\setcounter{topnumber}{3}            %allow up to 3 floats at the top of a page
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}           %and up to 4 floats on a single page
+\renewcommand{\topfraction}{0.85}     %a top float may use up to 85% of the page
+\renewcommand{\bottomfraction}{0.7}
+\renewcommand{\textfraction}{0.1}     %require only 10% text on a mixed page
+\renewcommand{\floatpagefraction}{0.7}%a float page must be at least 70% full
+\usepackage{chngcntr} %control numbering for tables, figures etc. such as below
+\counterwithin{figure}{chapter} %reset figures at each chapter: 1.1, 1.2, ...
+\counterwithin{table}{chapter} %reset tables at each chapter: 1.1, 1.2, ...
+\renewcommand{\thefigure}{\thechapter.\arabic{figure}}
+\renewcommand{\thetable}{\thechapter.\arabic{table}}
+\usepackage{xcolor} %edit e.g. text colours
+\usepackage{subcaption}
+
+% Biblatex
+\usepackage[backend = biber,
+            style = numeric,
+            date = long,     % Long: 24th Mar. 1997 | Short: 24/03/1997
+            sorting = none,
+            maxcitenames = 3,   % max names to include before et. al.
+            natbib = true,   % enable \citep and \citet commands
+            ]{biblatex} %customize the look of your citations and bibliography
+\addbibresource{references.bib}
+\setcounter{biburlnumpenalty}{9000}
+\setcounter{biburlucpenalty}{9000}
+\setcounter{biburllcpenalty}{9000}
+\AtBeginBibliography{\sloppy}
+
+\usepackage{comment} %to be able to comment out sections in the .tex files
+\usepackage{afterpage} %to customize page commands such as below
+\usepackage{placeins} %to keep floats from drifting past barriers
+\newcommand\myemptypage{
+    \null
+    \thispagestyle{empty}
+    \addtocounter{page}{-1}
+    \newpage
+    } %sets new page command to insert an empty page without adding to the page counter or having a page number
+
+\makeatletter
+\def\@makechapterhead#1{%
+  \vspace*{12pt}%
+  {\parindent \z@ \raggedright \normalfont
+    \ifnum \c@secnumdepth >\m@ne
+      \large\bfseries \@chapapp\space \thechapter
+      \par\nobreak
+      \vskip 8pt
+    \fi
+    \Huge \bfseries #1\par\nobreak
+    \vskip 28pt
+  }}
+\def\@makeschapterhead#1{%
+  \vspace*{12pt}%
+  {\parindent \z@ \raggedright \normalfont
+    \Huge \bfseries #1\par\nobreak
+    \vskip 28pt
+  }}
+\makeatother
+
+
+
+
+\begin{document}
+
+% The pre-chapters
+\chapter*{Abstract} %pre-chapters should not be numbered, hence the "*"
+\pagenumbering{roman} %introductory pages should be roman
+\setcounter{page}{1}
+\addcontentsline{toc}{chapter}{\protect\numberline{}Abstract} %add the chapter to the table of contents, this is not automatically added when creating unnumbered chapters (*). Add it in a chapter style, and keep all chapters on the same numberline indent regardless of number or not on the chapter
+\input{Chapters/00Abstract} %insert the chapter text from the files
+
+\cleardoublepage %start the Norwegian summary on a right-hand page
+\chapter*{Sammendrag}
+\addcontentsline{toc}{chapter}{\protect\numberline{}Sammendrag}
+\input{Chapters/00Sammendrag}
+
+\cleardoublepage %keep the preface on a right-hand page as well
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{\protect\numberline{}Preface} 
+\input{Chapters/01Preface}
+
+\tableofcontents
+\addcontentsline{toc}{chapter}{\protect\numberline{}Contents}
+
+%add to table of contents list of figures and tables, and insert list of figures and tables
+\addcontentsline{toc}{chapter}{\protect\numberline{}\listfigurename}
+\listoffigures
+\addcontentsline{toc}{chapter}{\protect\numberline{}\listtablename}
+\listoftables
+
+\newpage
+\myemptypage
+%add an empty non-counted page by the command below in order to get the first chapter on the left hand side, if needed (check your page number so that the first chapter is on an odd page)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Customize the layout of the main content of your thesis
+
+\pagestyle{fancy} %set customized page style for header
+\fancyhf{} %clear header and footer fields
+\renewcommand{\headrulewidth}{0pt} %set to no rule
+\fancyhead[LE, RO]{\thepage} %set the page number at left for even, right for odd pages
+\fancyhead[RE, LO]{\leftmark} %set the chapter name at right for even, left for odd pages
+%it is possible to design the header with the chapter as you wish, e.g. only the chapter or only the name, all lowercase instead etc.
+%you could also design the footer if you wish, for example:
+%\fancyfoot[LE, RO]{\thepage}
+\setlength{\headheight}{14.49998pt} %set the header height
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%main content 
+
+\pagenumbering{arabic}
+\chapter{Introduction}
+\input{Chapters/02Introduction}
+\cleardoublepage
+%the cleardoublepage command ensures that the next text page is on the right-hand side (odd page) and produces a blank page if necessary to achieve that, as all chapters should begin on the right hand side
+
+\chapter{Background}
+\label{chap:background}
+\input{Chapters/03Background}
+\cleardoublepage
+
+\chapter{Data}
+\input{Chapters/04Data}
+\cleardoublepage
+
+\chapter{Theory}
+\input{Chapters/05Theory}
+\cleardoublepage
+
+
+\chapter{Methods}
+\input{Chapters/06Method}
+\cleardoublepage
+
+
+\chapter{Results}
+\input{Chapters/07Results}
+\cleardoublepage
+
+
+\chapter{Discussion}
+\input{Chapters/08Discussion}
+\cleardoublepage
+
+
+\chapter{Conclusions}
+\input{Chapters/09Conclusion}
+\cleardoublepage
+
+
+\addcontentsline{toc}{chapter}{\protect\numberline{}References}
+\printbibliography[title={References}] %you may change the title in the toc here if you want
+\cleardoublepage
+
+
+\chapter*{Appendices}
+\fancyhf{} %clear the header, it should be empty for the appendices
+\renewcommand{\headrulewidth}{0pt} %no rule
+\fancyfoot[C]{\thepage} %set the page numbers in the center of the footer instead 
+
+%it is possible to set a different page numbering style for the appendix, but I personally just continued with the same page numbering as the main content as I find that more tidy
+%\pagenumbering{roman}
+%\setcounter{page}{1}
+\addcontentsline{toc}{chapter}{\protect\numberline{}Appendices:}
+\appendix
+\input{Chapters/10Appendix}
+
+
+\end{document}

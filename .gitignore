@@ -1,0 +1,45 @@
+# OS
+.DS_Store
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Data, caches and model weights (never committed)
+*.raw
+*.nc
+*.zarr/
+*.npz
+*.npy
+*.h5
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+outputs/
+
+# SLURM logs
+*.err
+*.out
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.run.xml
+*.synctex.gz
+*.toc
+*.pdf
+*.dvi

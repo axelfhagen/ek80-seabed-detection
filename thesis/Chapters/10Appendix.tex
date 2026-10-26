@@ -1,0 +1,243 @@
+
+
+\chapter{GitHub repository}
+\label{app:github-repository}
+
+The repository can be cloned with \texttt{git clone} \url{https://github.com/axelfhagen/Master.git}. It contains the LaTeX source, figures, code, and supporting material used for this thesis, so the published version can be reproduced and inspected in one place.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{Spatial correlation in echograms}
+\label{app:spatial-correlation}
+
+Spatial dependence in the echograms is quantified here, and its extent supports the architectural argument of Chapter~\ref{chap:method}. We treat each normalised echogram as a realisation of a second-order stationary random field, an approximation given the non-stationarity between the water column and the seabed, and estimate directional second-order structure along the depth and ping axes separately by the method of moments. For a lag $h$ along one axis, the autocorrelation is $\rho(h) = C(h)/C(0)$ with $C(h) = \mathbb{E}[Z_x Z_{x+h}]$ on the mean-removed field $Z$. The estimates are averaged over the orthogonal axis and then over a sample of crossings spanning the full recording period, at both 38\,kHz and 200\,kHz.
+
+Figure~\ref{fig:spatial-correlation} shows the result. The autocorrelation starts at unity and decays without a drop at the first lag, the signature of a spatially dependent field with no appreciable nugget. Correlation lengths, summarised in Table~\ref{tab:spatial-correlation}, are read both at the $1/e$ level and from a fitted exponential model $\rho(h)=e^{-h/\ell}$.
+
+Read at the $1/e$ level, the depth correlation length is 3.2\,m at 38\,kHz and 12.8\,m at 200\,kHz. The two curves differ in shape: the 200\,kHz autocorrelation decays monotonically, whereas the 38\,kHz curve oscillates and crosses zero, so its first crossing of the $1/e$ line understates the decay and the exponential fit raises it to 4.9\,m against 10.7\,m at 200\,kHz. Both estimators place the depth scale of the higher-frequency channel above that of the lower, which likely reflects the stronger and more vertically sustained volume backscatter at 200\,kHz.
+
+Along track the correlation extends over several hundred pings at both frequencies, by far the larger of the two scales, and reflects the slow change of bottom depth between consecutive pings as the vessel moves; at a median ping interval of half a second it corresponds to several minutes of travel. The $1/e$ and fitted lengths put 38\,kHz somewhat above 200\,kHz, at 704 against 594 pings. A classifier that treats pixels independently ignores dependence on this scale. The fixed 512-ping patch does not cover the longest estimated along-track correlation lengths, but the U-Net still uses neighbourhood information over much larger regions than a pointwise classifier through convolution and pooling.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/spatial_correlation/v2/autocorr_only.pdf}
+    \caption[Echogram directional autocorrelation]{Directional autocorrelation of the normalised echograms along the depth axis (left) and ping axis (right), at 38\,kHz and 200\,kHz. Curves are the mean over the sampled crossings and the shaded bands, labelled in the legend, are $\pm$ one standard deviation across crossings. The dashed line marks the $1/e$ level used to define the correlation length.}
+    \label{fig:spatial-correlation}
+\end{figure}
+
+\input{Tables/spatial_correlation.tex}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{Time-of-day coverage and docked recordings}
+\label{app:time-of-day}
+
+Recording times and label quality in the docked segments bear on the training-set discussion of Section~\ref{sec:weaknesses}. The acoustic system was left running through the night, so the archive includes stationary segments alongside the operational crossings. Figure~\ref{fig:files-per-hour} gives the number of files by hour of day. Daytime, taken as 06:30 to 22:30, holds the crossings; the late-night and early-morning hours collect the moored recordings.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Figures/time_of_day/files_per_hour.png}
+    \caption[File count by hour of day]{Number of recorded files grouped by hour of day. Daytime service hours are 06:30--22:30.}
+    \label{fig:files-per-hour}
+\end{figure}
+
+Figure~\ref{fig:h00-grid} shows a random selection of echograms that begin in the midnight hour, with the reference bottom label overlaid in red. The seabed return is flat and the label tracks it cleanly; that stability motivated keeping these segments.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/time_of_day/h00_grid.png}
+    \caption[Midnight-hour echograms with bottom labels]{Random sample of echograms starting in the 00:00 hour, with the reference bottom label in red.}
+    \label{fig:h00-grid}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{Prediction-grid galleries}
+\label{app:prediction-grids}
+
+These galleries extend the two four-panel grids of Section~\ref{sec:segmentation-performance} to nine panels each, for the Bast\o{} Standard U-Net on the Oct 2024 held-out period. Each panel overlays the reference label and the predicted bottom line on the echogram, annotated with the per-file IoU and depth deviation. The random sample shows typical performance. The two ranked galleries show the files where the model deviates most from the reference, by 95th-percentile and by median per-ping depth deviation.
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/prediction_grids_regen/prediction_grid_3x3_random.png}
+    \caption[Prediction grid: random sample.]{Random sample of nine Oct 2024 validation files. The predicted bottom line follows the reference across the depth range of the route, from shallow harbour approaches to the deep central channel. In the top-right and bottom-centre panels the reference label jumps toward the surface where the detector locks onto the second echo, while the U-Net tracks the true seabed return without following it.}
+    \label{fig:grid-random-9}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/prediction_grids_regen/prediction_grid_3x3_worst_max.png}
+    \caption[Prediction grid: highest 95th-percentile deviation.]{The nine Oct 2024 files with the highest 95th-percentile per-ping depth deviation. The deviation is set by short runs of mistracked pings, not a constant offset, consistent with the per-file depth-deviation tail of Section~\ref{sec:segmentation-performance}.}
+    \label{fig:grid-worst-max-9}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/prediction_grids_regen/prediction_grid_3x3_worst_median.png}
+    \caption[Prediction grid: highest median deviation.]{The nine Oct 2024 files with the highest median per-ping depth deviation, where the disagreement is spread across the recording. These include the near-stationary shallow recordings where the disagreement is largest.}
+    \label{fig:grid-worst-median-9}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{Patch-edge effects for live use}
+\label{app:edge-degradation}
+
+The patch-edge protocol in Section~\ref{sec:experimental-design} compares columns with symmetric context against the live-deployment edge, where the newest ping has no future context.
+
+The degradation is measurable but mostly boundary-confined (Figure~\ref{fig:edge-degradation}). Mean per-column IoU is 0.9829 over the interior region and 0.9780 over the rightmost 5\%. The rightmost column falls to 0.9596. Bottom-line error follows the same pattern, rising from an interior mean of 13.5 rows to 17.1 rows over the rightmost 5\% and 32.4 rows at the final column. The left edge is worse on average than the right edge, so the effect is a general patch-edge artefact, amplified at the live-deployment column.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{Figures/edge_degradation/edge_degradation.pdf}
+\caption[Per-column accuracy across the patch width.]{Per-column segmentation IoU (top) and mean bottom-line error in range rows (bottom) across the patch width, averaged over held-out validation and test patches under single-patch inference. The horizontal axis runs from the oldest ping at the left edge to the most recent ping at the right edge; the dotted red line marks the most recent ping, the live-deployment column. The dashed line gives the interior mean over columns 128--383 for reference.}
+\label{fig:edge-degradation}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{Jan 2024 development-subset ablation tables}
+\label{app:jan-ablations}
+
+These tables support the Jan 2024 development ablations of Section~\ref{sec:segmentation-performance} and the configuration comparison of Section~\ref{sec:transfer-learning-results}. Every run uses the 89-file Jan 2024 subset with an 80/20 file-level split and is scored on the 17 validation files from the same recording period, so the numbers measure agreement under nearly fixed acoustic conditions rather than temporal generalisation.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-file evaluation metrics for the best Jan 2024 development-subset model, sorted by IoU. Dev.\ columns: M = mean, Md = median, P95 = 95th percentile.}
+\label{tab:per-file}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccc}
+\toprule
+File & IoU & Dice & Precision & Recall & Dev.\ M (m) & Dev.\ Md (m) & Dev.\ P95 (m) \\
+\midrule
+D20240131-T193855 & 0.9273 & 0.9623 & 0.9662 & 0.9584 & 18.77 & 13.65 & 49.16 \\
+D20240131-T211740 & 0.9352 & 0.9665 & 0.9382 & 0.9966 & 11.75 &  0.95 & 92.29 \\
+D20240131-T185951 & 0.9497 & 0.9742 & 0.9627 & 0.9859 & 13.26 &  3.82 & 54.77 \\
+D20240131-T133422 & 0.9677 & 0.9836 & 0.9708 & 0.9967 &  7.23 &  0.48 & 42.19 \\
+D20240131-T171231 & 0.9708 & 0.9852 & 0.9981 & 0.9725 &  6.37 &  0.29 & 53.65 \\
+D20240131-T144444 & 0.9761 & 0.9879 & 0.9766 & 0.9995 &  3.82 &  5.15 &  5.54 \\
+D20240131-T174609 & 0.9907 & 0.9953 & 0.9987 & 0.9920 &  2.49 &  1.24 &  7.06 \\
+D20240131-T130023 & 0.9952 & 0.9976 & 0.9974 & 0.9978 &  1.59 &  0.48 &  2.10 \\
+D20240201-T092437 & 0.9954 & 0.9977 & 0.9969 & 0.9985 &  1.08 &  0.48 &  4.96 \\
+D20240131-T153356 & 0.9956 & 0.9978 & 0.9963 & 0.9993 &  0.93 &  0.19 &  4.96 \\
+D20240201-T083046 & 0.9967 & 0.9983 & 0.9987 & 0.9979 &  0.64 &  0.38 &  1.15 \\
+D20240201-T091419 & 0.9967 & 0.9984 & 0.9989 & 0.9978 &  0.46 &  0.38 &  1.05 \\
+D20240131-T105410 & 0.9969 & 0.9985 & 0.9984 & 0.9985 &  0.75 &  0.29 &  3.72 \\
+D20240131-T221321 & 0.9970 & 0.9985 & 0.9988 & 0.9982 &  0.57 &  0.38 &  1.61 \\
+D20240201-T045747 & 0.9976 & 0.9988 & 0.9993 & 0.9983 &  0.55 &  0.38 &  1.53 \\
+D20240131-T200058 & 0.9980 & 0.9990 & 0.9988 & 0.9993 &  0.52 &  0.19 &  4.77 \\
+D20240131-T092044 & 0.9981 & 0.9990 & 0.9998 & 0.9982 &  0.43 &  0.38 &  0.86 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Transfer learning comparison on the Jan 2024 development subset. All models use ResNet-34 except where noted.}
+\label{tab:transfer}
+\small
+\begin{tabular}{llcccc}
+\toprule
+Strategy & Encoder & Mean IoU & Mean Dice & \makecell{Depth dev.\\(m)} & Std IoU \\
+\midrule
+Encoder frozen    & ResNet-34 & 0.9781 & 0.9886 & 5.49 & 0.034 \\
+Staged unfreezing & ResNet-34 & 0.9815 & 0.9905 & 4.19 & 0.023 \\
+Full fine-tuning  & ResNet-34 & 0.9812 & 0.9903 & 4.04 & 0.029 \\
+Encoder frozen    & ResNet-50 & 0.9771 & 0.9882 & 5.53 & 0.033 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Loss function comparison on the Jan 2024 development subset. All models use frozen ResNet-34 encoder on the baseline dataset.}
+\label{tab:loss}
+\begin{tabular}{lccc}
+\toprule
+Loss & Mean IoU & Mean Dice & Depth dev.\ (m) \\
+\midrule
+Dice + BCE ($w_\text{BCE}=0.3$)           & 0.9787 & 0.9889 & 4.85 \\
+Dice + BCE ($w_\text{BCE}=0.5$, baseline)  & 0.9781 & 0.9886 & 4.88 \\
+Dice + BCE ($w_\text{BCE}=0.7$)           & 0.9765 & 0.9876 & 5.12 \\
+Focal ($\alpha_{\mathrm{F}}=0.25, \gamma_{\mathrm{F}}=2$)            & 0.9759 & 0.9875 & 6.29 \\
+Focal ($\alpha_{\mathrm{F}}=0.5, \gamma_{\mathrm{F}}=3$)             & 0.9793 & 0.9893 & 4.73 \\
+Focal + Dice                               & 0.9688 & 0.9837 & 8.17 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Dataset variant ablation, trained on the Jan-2024 subset for computational reasons. Baseline: min-max $[0,1]$ normalisation, 3-channel input, ``below'' mask mode. Each variant changes one parameter.}
+\label{tab:datasets}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccc}
+\toprule
+Variant & Change from baseline & Mean IoU & Mean Dice & \makecell{Depth\\dev.\ (m)} \\
+\midrule
+Baseline           & N/A                                  & 0.9781 & 0.9886 & 4.88 \\
+Preserve aspect    & target 1024$\times$256               & 0.9780 & 0.9886 & 4.93 \\
+Symmetric norm     & channels scaled to $[-1, 1]$         & 0.9779 & 0.9885 & 4.68 \\
+Wide $S_v$ range   & clip to $[-90, -25]$\,dB             & 0.9754 & 0.9871 & 6.99 \\
+Percentile norm    & per-file 2nd/98th percentile scaling  & 0.9790 & 0.9892 & 4.22 \\
+Shallow crop       & depth limited to 1500 samples         & 0.9740 & 0.9862 & 5.65 \\
+Line mask          & mask mode ``line'' (3-pixel boundary) & 0.9748 & 0.9868 & 5.95 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{Accessing the Bast\o{} Electric dataset}
+\label{app:data-access}
+
+The raw EK80 recordings are not redistributed with this thesis. They are held on the University of Oslo Educloud Research platform under project ec291 and remain in the archive associated with the Frisk Oslofjord project. Access was arranged through dScience at the University of Oslo, with Svenja Christiansen as the contact for the project; permission to use the recordings is granted through Frisk Oslofjord rather than by dScience alone, so a request should state the intended use and reference the project. The steps below reproduce the route used to retrieve the data.
+
+The storage is not exposed as a direct download endpoint. Files are reached through a virtual desktop, staged for export inside the virtual machine, and then pulled to the local machine with the \texttt{tacl} transfer client. Three things are needed: the Omnissa Horizon client for the remote desktop, Educloud Research credentials for ec291 (a username of the form \texttt{ec-<username>}, a password, and an OTP second factor), and a local Python installation with \texttt{pip} for \texttt{tacl}.
+
+The raw files live on the virtual machine in cruise folders below this directory:
+\begin{center}
+\path{/projects/ec291/Data_raw/EK80/}
+\end{center}
+To export a cruise, connect to the Educloud Research server with the Horizon client, select the Linux virtual machine for ec291, and from a terminal on the machine copy the wanted folders into the export staging area:
+
+\begin{verbatim}
+cp -r /projects/ec291/Data_raw/EK80/D202409 \
+  /projects/ec291/system/file-export/
+\end{verbatim}
+
+Only files placed in the following staging directory are reachable from outside the virtual machine:
+\begin{center}
+\path{/projects/ec291/system/file-export/}
+\end{center}
+On the local machine, install the transfer client and pull the staged folder, which is written to the current working directory:
+
+\begin{verbatim}
+pip install tacl
+tacl ec291 --download-sync D202409
+\end{verbatim}
+
+The EK80 raw files are large and transfers can take a while; once a folder has downloaded, the staged copy under \texttt{file-export/} can be removed to free space. The working set used in this thesis was assembled by exporting and downloading cruises in this way and grouping the retrieved files into the nine recording periods of Table~\ref{tab:surveys}. Conversion from raw files to calibrated zarr stores, and the remaining preprocessing, is described in Chapter~\ref{chap:method}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

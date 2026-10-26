@@ -1,0 +1,15 @@
+pandas
+numpy
+zarr
+xarray
+matplotlib
+scipy
+Pillow
+contextily
+torch
+torchvision
+segmentation-models-pytorch
+albumentations
+tqdm
+numba
+echopype

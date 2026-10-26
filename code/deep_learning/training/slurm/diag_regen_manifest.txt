@@ -1,0 +1,2 @@
+/cluster/work/axelfh/Master/code/checkpoints/exp_20260513_100101_arch_sweep_4
+/cluster/work/axelfh/Master/code/checkpoints/exp_20260513_222509_arch_sweep_9

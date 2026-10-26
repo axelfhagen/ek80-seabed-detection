@@ -1,0 +1,139 @@
+\label{chap:theory}
+
+The theory has two parts: deep learning and validation. The first defines the U-Net segmentation model, the loss terms, and the transfer-learning variants tested against random initialisation. The second defines probability calibration, conformal prediction, and ensemble disagreement as uncertainty diagnostics used in Chapter~\ref{chap:method}.
+
+\section{Deep Learning}
+Deep learning trains neural networks with multiple layers of learned representations, where each successive layer transforms the output of the previous one into a slightly more abstract feature \cite{lecun_deep_2015}.
+
+\subsection{Fundamentals of Neural Networks}
+
+A neural network maps an input $x$ to a prediction $f_\theta(x)$ through layers of affine transformations and non-linear activations. Training requires a scalar loss function $\mathcal{L}(f_\theta(x), y)$ that measures discrepancy between model predictions and the training target $y$. The parameters $\theta$ are updated iteratively by gradient descent or one of its stochastic variants, with the learning rate $\eta$ controlling the step size \cite{lecun_deep_2015},
+\begin{equation}
+    \theta \leftarrow \theta - \eta \, \nabla_\theta \mathcal{L}.
+\end{equation}
+Backpropagation computes the gradient $\nabla_\theta \mathcal{L}$ by applying the chain rule from the output layer back through the network. For mini-batches, the per-example gradients are summed or averaged before the update. In convolutional layers the same principle applies with shared spatial filters rather than dense weight matrices.
+
+Overfitting occurs when a model fits the training data well but generalises poorly to unseen data, and often appears as a growing gap between training and validation loss \cite{lecun_deep_2015}. Common mitigations include early stopping, weight decay \cite{loshchilov_decoupled_2019}, data augmentation, and transfer learning.
+
+\subsubsection{Binary Cross-Entropy}
+
+Binary cross-entropy (BCE) is a standard per-pixel classification loss,
+\begin{equation}
+    \mathcal{L}_\text{BCE}(p, y) = -\frac{1}{N}\sum_{i=1}^{N} \left[ y_i \log p_i + (1 - y_i) \log(1 - p_i) \right],
+\end{equation}
+where $p_i \in (0,1)$ is the predicted positive-class probability at pixel $i$, $y_i \in \{0,1\}$ is the reference label, and $N$ is the number of pixels in the patch. BCE is the negative log-likelihood of the Bernoulli model and supplies a pixel-wise training signal.
+
+\subsubsection{Dice Loss and Class Imbalance}
+
+In this work the positive class is not a thin seabed line. The ``below'' mask labels every bottom-or-below pixel as class 1, while the water column above it is class 0. As shown in Table~\ref{tab:class-balance}, the bottom-or-below class occupies roughly 83--89\% of pixels across recording periods. BCE applied to this representation is dominated by the broad bottom-or-below interior, so boundary errors and errors in the smaller water-column class contribute less to the batch loss. Dice-based losses were introduced for segmentation settings with strong foreground-background imbalance \cite{milletari_vnet_2016,sudre_generalised_2017}.
+
+The Dice coefficient measures the overlap between the predicted mask $\hat{Y}$ and the reference mask $Y$,
+\begin{equation}
+    \text{Dice} = \frac{2 \sum_{i} \hat{Y}_i Y_i}{\sum_{i} \hat{Y}_i + \sum_{i} Y_i}.
+\end{equation}
+Unlike pixel accuracy or BCE averaged over all pixels, Dice ignores true negatives and scores the overlap of the positive region itself. Its value here is therefore as an overlap term, not as a guarantee that boundary errors or the minority water-column class receive equal weight. With filled bottom-or-below masks, a coarse area prediction can still produce a high Dice when the boundary is displaced.
+
+\textcite{milletari_vnet_2016} introduced a Dice-based loss for deep segmentation, using a soft overlap objective to handle strong foreground-background imbalance. The implementation used here follows the soft-Dice variant in Chapter~\ref{chap:method}. The combined loss is
+\begin{equation}
+    \mathcal{L} = 0.5 \cdot \mathcal{L}_\text{BCE} + 0.5 \cdot \mathcal{L}_\text{Dice}.
+\end{equation}
+BCE penalises each misclassified pixel individually, while Dice targets positive-region overlap \cite{sudre_generalised_2017}. In the filled-mask setting, the Dice term reduces the influence of true negatives but does not by itself remove the dominance of the broad positive interior.
+
+\subsubsection{Focal Loss}
+
+\textcite{lin_focal_2017} proposed focal loss to address class imbalance from the opposite direction: it reshapes the per-pixel BCE term so that easy examples contribute less to the gradient. Let $p_{t,i} = p_i$ when $y_i = 1$ and $p_{t,i} = 1 - p_i$ otherwise, so that $p_{t,i}$ is the probability the model assigns to the true class at pixel $i$. Define the class-dependent weight $\alpha_{t,i} = \alpha_\text{F}$ for positive pixels and $\alpha_{t,i} = 1-\alpha_\text{F}$ for negative pixels. The focal loss is
+\begin{equation}
+    \mathcal{L}_\text{F}(p, y) = -\frac{1}{N}\sum_{i=1}^{N}\alpha_{t,i} \, (1 - p_{t,i})^{\gamma_\text{F}} \log p_{t,i},
+\end{equation}
+where the class weight $\alpha_\text{F}$ scales the contribution of positive pixels relative to negative ones, and the focusing parameter $\gamma_\text{F}$ controls how strongly confident pixels are down-weighted. Setting $\gamma_\text{F}=0$ reduces the expression to weighted BCE\@. The focal-loss variants tested in this work are reported in Section~\ref{sec:loss-results}.
+
+\subsubsection{Intersection over Union}
+
+The intersection over union (IoU), or Jaccard index, scores overlap as the ratio of intersection to union,
+\begin{equation}
+    \text{IoU} = \frac{\sum_i \hat{Y}_i Y_i}{\sum_i \hat{Y}_i + \sum_i Y_i - \sum_i \hat{Y}_i Y_i} = \frac{\text{TP}}{\text{TP} + \text{FP} + \text{FN}},
+\end{equation}
+where TP, FP, and FN count true positives, false positives, and false negatives across the mask. For the same pooled confusion counts, IoU and Dice are linked by $\text{IoU} = \text{Dice}/(2 - \text{Dice})$, although the equivalence need not hold after averaging the metrics separately over files or patches. Results in Chapter~\ref{chap:results} report both, with IoU as the primary figure.
+
+\subsection{Convolutional Neural Networks}
+Convolutional neural networks learn spatial filters that slide across the input image and at each position compute their dot product with the local patch \cite{lecun_deep_2015}. Weight sharing across spatial positions makes the network translation-equivariant and far more parameter-efficient than fully connected layers for image data.
+
+\subsection{Semantic Segmentation}
+\label{sec:semantic-segmentation}
+
+Semantic segmentation assigns a class label to every pixel of an input image. The output is a mask with the same spatial dimensions as the input \cite{long_fully_2015}. In this work the task is binary: each pixel is classified as either water column (class 0) or bottom-or-below (class 1). 
+This gives a seabed depth estimate in sample units, which the range array converts to metres.
+We use segmentation rather than direct depth regression so that the model preserves the spatial structure of the echogram and returns a probability field around the boundary.
+
+\subsection{U-Net Architecture}
+The U-Net of \textcite{ronneberger_unet_2015} is an encoder-decoder architecture with skip connections. The encoder progressively downsamples the input to extract features at multiple spatial scales. The decoder upsamples back to the original resolution through upsampling blocks, and at each level concatenates the upsampled features with the corresponding encoder features via a skip connection. The original U-Net used transpose convolutions for upsampling. The implementation used here follows the segmentation-models-pytorch ResNet U-Net design described in Chapter~\ref{chap:method}. The skip connections pass higher-resolution encoder features to the decoder. Figure~\ref{fig:unet_architecture} shows the ResNet-34 U-Net used here.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/legend5.pdf}
+    \caption{U-Net architecture used in this project, with a ResNet-34 encoder and a symmetric decoder. Each horizontal arrow represents a skip connection that concatenates encoder feature maps with decoder feature maps at the same spatial resolution. The final $1\times1$ convolution produces one logit per pixel; applying a sigmoid during inference gives the bottom-or-below probability mask.}
+    \label{fig:unet_architecture}
+\end{figure}
+
+\subsection{Residual Networks (ResNet)}
+
+Residual networks \cite{he_deep_2016} use identity shortcuts that add a block input $x$ to a learned residual transformation $\mathcal{F}(x)$, giving $y=\mathcal{F}(x)+x$. This reparameterisation makes deep convolutional networks easier to optimise.
+
+In its classification form, ResNet-34 \cite{he_deep_2016} contains 34 weight layers organised into four stages with channel dimensions of 64, 128, 256, and 512, using basic blocks of two $3 \times 3$ convolutional layers and a skip connection. The convolutional body is used as the encoder backbone of the U-Net in this work. ResNet-34 was selected as a moderate-capacity encoder for the available acoustic dataset, with larger and smaller alternatives treated empirically in Chapter~\ref{chap:results}.
+
+\subsection{Transfer Learning}
+Transfer learning reuses parameters from a model pretrained on a large dataset to initialise a model for a different task \cite{yosinski_how_2014}. The pretrained layers can be frozen (no weight updates during training) or fine-tuned with a small learning rate. When the source features transfer, the downstream task can require less training data and overfit less readily because the network starts from a fitted feature representation.
+
+Testing ImageNet-pretrained weights on acoustic echograms is empirical rather than assumed. Low-level convolutional features such as edges, textures, and gradients can transfer across visual domains \cite{yosinski_how_2014}, but ImageNet features are not universally useful \cite{kornblith_better_2019}.
+
+\subsection{Gradient-Based Attribution}
+\label{sec:attribution-theory}
+
+Attribution methods provide diagnostic views of how a network output depends locally or path-wise on the input, but they should not be read as complete explanations of the decision. In this work they are used as sanity checks: do the highlighted regions coincide with plausible acoustic evidence for the predicted bottom, or do they point to unrelated artefacts? Input gradients \cite{simonyan_deep_2014} measure local sensitivity, while integrated gradients \cite{sundararajan_axiomatic_2017} accumulate gradients along a path from a baseline to the observed input. Section~\ref{sec:channel-importance} reduces both to one magnitude per channel by averaging absolute attributions over pixels and test patches.
+
+Grad-CAM \cite{selvaraju_gradcam_2017} attributes at the spatial-feature-map level. It combines feature maps from a chosen convolutional layer using gradient-derived weights and upsamples the resulting map to the input size. For semantic segmentation, a scalar target must first be chosen from the spatial probability map. Applied here, Grad-CAM is read as a qualitative check of where the U-Net found evidence for the predicted bottom.
+
+
+% ======================
+
+
+\section{Validation of Methods}
+
+\subsection{Calibration of Probabilistic Models}
+
+A probabilistic binary classifier assigns each input an estimated probability of belonging to the positive class, here the bottom-or-below class, rather than a hard label. Such a classifier is calibrated if its predicted positive-class probability matches the observed positive frequency: among pixels assigned probability near $p$ of belonging to the bottom-or-below class, the fraction labelled bottom-or-below should be near $p$ \cite{guo_calibration_2017}. In the related confidence-calibration view, a model that reports 90\% confidence on every prediction but is correct 70\% of the time is overconfident.
+
+Calibration is commonly visualised with a reliability diagram: the predicted probabilities are binned into intervals and the mean predicted probability in each bin is plotted against the observed positive fraction. Under perfect calibration the population reliability curve lies on the diagonal. The reliability of the bins is summarised by the Expected Calibration Error \cite{naeini_obtaining_2015}, here written for positive-class probability calibration,
+\begin{equation}
+    \mathrm{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \mathrm{freq}(B_m) - \mathrm{prob}(B_m) \right|,
+\end{equation}
+where $B_m$ is bin $m$, $n$ is the total number of samples, $\mathrm{freq}(B_m)$ is the observed positive fraction in the bin, and $\mathrm{prob}(B_m)$ is the mean predicted positive-class probability. Chapter~\ref{chap:results} uses this diagnostic for the raw probability output; the depth intervals are instead constructed with conformal prediction, whose coverage guarantee does not require calibrated model probabilities \cite{angelopoulos_gentle_2023}.
+
+\subsection{Conformal Prediction}
+\label{sec:conformal-theory}
+
+Conformal prediction \cite{shafer_tutorial_2008,angelopoulos_gentle_2023} constructs prediction sets or intervals with a finite-sample marginal coverage guarantee. Given a calibration set $\{(x_1, y_1), \ldots, (x_n, y_n)\}$ and a new test point $x_{n+1}$, a conformal prediction interval at coverage level $1 - \alpha$ satisfies
+\begin{equation}
+    P\!\left(y_{n+1} \in \hat{C}(x_{n+1})\right) \geq 1 - \alpha
+\end{equation}
+when the calibration and test examples are exchangeable \cite{shafer_tutorial_2008}. The probability is marginal over the random draw of the calibration set and test point; it is not a conditional guarantee for every fixed calibration set, every file, or every subpopulation.
+
+For split conformal prediction \cite{lei_distributionfree_2018}, the model is fit once, the calibration set is held out, and a nonconformity score is computed for each calibration example. The constant-width baseline in this thesis uses the absolute depth deviation in metres between the predicted bottom and the symmetric reference label, $s_i=|f(x_i)-y_i|$. If $s_{(1)} \leq \cdots \leq s_{(n)}$ are the sorted calibration scores and $k=\lceil (n+1)(1-\alpha) \rceil$, the conformal threshold is $\hat q=s_{(k)}$ when $k \leq n$; if $k>n$, the finite-sample construction gives the trivial infinite interval. The prediction interval for a new point is then $\hat{C}(x_{n+1})=[f(x_{n+1})-\hat q,\,f(x_{n+1})+\hat q]$. The locally weighted variant retains the same split-conformal quantile construction but normalises each depth deviation by a per-ping scale before calibration and restores that scale when forming the interval; Section~\ref{sec:uq-validation} gives the implemented definition.
+
+The U-Net is a per-pixel binary classifier, but the uncertainty target is the extracted seabed depth. The conformal layer therefore uses the regression form of conformal prediction: the response is the reference depth at a ping, the point predictor is the extracted bottom line, and the score is the depth residual. A per-pixel conformal segmentation set would answer a different question. If pixels were treated as prediction targets under an appropriate exchangeability assumption, the set would attach a subset of $\{0,1\}$ to each pixel and cover the pixel class marginally. It would not state how far the extracted bottom line may lie from the reference depth. The guarantee here concerns the derived depth, which is the quantity used by the operational workflow.
+
+The absolute residual gives a symmetric interval around the point estimate. A signed residual could instead calibrate separate lower and upper quantiles and produce an asymmetric band, but that would report two directional margins rather than one half-width in metres. This thesis uses the symmetric score because the reported uncertainty is meant to be a direct depth tolerance, $\hat d \pm \hat q$, and because directional bias is handled as a diagnostic issue in the residual and file-level coverage analyses rather than folded into the interval definition.
+
+The main assumption to check is whether the calibration and test pings, or more realistically the files from which they are drawn, can be treated as exchangeable. Consecutive pings are strongly correlated, so treating every ping as an independent source of information overstates the amount of calibration evidence. Distribution shift between calibration and test can also bias coverage \cite{barber_conformal_2023,tibshirani_conformal_2019}. Chapter~\ref{chap:results} therefore reports calibration-to-test score shifts, pooled coverage, and file-level coverage variation.
+
+\subsection{Deep Ensembles}
+
+\textcite{lakshminarayanan_simple_2017} introduced deep ensembles as an empirical estimator of predictive uncertainty: $M$ models are trained independently from different random initialisations, and their scalar predictions are averaged at test time. For member predictions $u_m$, the ensemble mean $\bar{u} = \tfrac{1}{M} \sum_m u_m$ is the point prediction, and the finite-member spread
+\begin{equation}
+    \sigma^2_{\mathrm{ens}} = \frac{1}{M} \sum_m (u_m - \bar{u})^2
+\end{equation}
+quantifies model disagreement. This is the empirical spread of the ensemble members around their mean, not an unbiased sample-variance estimate.
+
+High ensemble spread flags potentially unreliable predictions, but low spread is no guarantee of correctness since all members could err in the same way. In this thesis the ensemble spread is therefore treated as a candidate diagnostic to be tested against realised depth error, not as a guarantee of reliable uncertainty on its own.
+
+The diversity arises because each model is initialised differently and trained on reshuffled data, so the members can converge to different solutions \cite{lakshminarayanan_simple_2017}. Where all members make the same error, the spread stays small even though the prediction is wrong. Conformal prediction is therefore the primary calibrated uncertainty method in this thesis, while ensemble disagreement is evaluated only as a diagnostic signal.
