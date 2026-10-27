@@ -13,7 +13,6 @@ Revisions / new plots based on feedback:
 Reads cached Figures/bathymetry/bathymetry_data.csv.
 """
 
-import sys
 from pathlib import Path
 
 import matplotlib
@@ -237,9 +236,9 @@ def plot_bathymetry_3d(df):
     fig = plt.figure(figsize=(14, 10))
     ax = fig.add_subplot(111, projection='3d')
 
-    surf = ax.plot_surface(LON, LAT, Z, cmap=cmap, vmin=-250, vmax=0,
-                            linewidth=0, antialiased=True,
-                            rstride=1, cstride=1, shade=True)
+    ax.plot_surface(LON, LAT, Z, cmap=cmap, vmin=-250, vmax=0,
+                    linewidth=0, antialiased=True,
+                    rstride=1, cstride=1, shade=True)
 
     ax.view_init(elev=35, azim=-60)
     ax.set_xlabel('Longitude')
@@ -413,7 +412,7 @@ def plot_tidal_signal(df):
 
     ax1.errorbar(bin_centers, hod_mean, yerr=hod_se,
                  fmt='o', color='steelblue', markersize=4, capsize=2,
-                 label=f'Hourly mean ± SE  (bins of 0.5 h)')
+                 label='Hourly mean ± SE  (bins of 0.5 h)')
     if fit_ok:
         ax1.plot(t_fine, fit, '-', color='crimson', linewidth=2,
                  label=(f'M2 + S2 fit (M2 = {m2_amp_cm:.1f} cm @ 12.42 h, '

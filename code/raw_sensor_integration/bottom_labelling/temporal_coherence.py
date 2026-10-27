@@ -8,11 +8,10 @@ amplitude stability at each depth, we build a stability map that
 highlights the bottom.
 """
 
-from typing import Optional
 
 import numpy as np
 
-from .dp import _apply_pseudo_tvg, detect_bottom_dp
+from .dp import detect_bottom_dp
 
 
 def compute_temporal_stability(power_db: np.ndarray,

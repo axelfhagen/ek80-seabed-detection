@@ -14,7 +14,6 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -25,8 +24,9 @@ sys.path.insert(0, str(PROJECT_ROOT / 'code'))
 
 from raw_sensor_integration.raw_parser import read_raw_file
 from raw_sensor_integration.gps_parser import parse_nme0_datagrams, parse_gps_sentences
+from project_paths import DATA_ROOT
 
-RAW_DIR = Path('/cluster/work/axelfh/test_raw_2')
+RAW_DIR = DATA_ROOT / 'test_raw_2'
 OUTPUT_DIR = PROJECT_ROOT / 'Figures' / 'test_raw_2_gps'
 CSV_CACHE = OUTPUT_DIR / 'test_raw_2_gps.csv'
 

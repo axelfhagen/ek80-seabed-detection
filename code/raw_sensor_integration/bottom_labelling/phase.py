@@ -6,7 +6,6 @@ map: the seafloor reflects coherently while scatterers and noise produce
 random phase.
 """
 
-from typing import Optional
 
 import numpy as np
 import scipy.ndimage as ndi

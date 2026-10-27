@@ -15,21 +15,21 @@ from pathlib import Path
 from collections import defaultdict
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from raw_sensor_integration import raw_parser, ping_parser
+from raw_sensor_integration import ping_parser
+from project_paths import REPO_ROOT, DATA_ROOT
 
 warnings.filterwarnings('ignore')
 
-BASE = Path('/cluster/work/axelfh')
-OUT_DIR = BASE / 'Master' / 'Datasets' / 'extra_raw_echograms'
+OUT_DIR = REPO_ROOT / 'Datasets' / 'extra_raw_echograms'
 STITCH_DIR = OUT_DIR / 'stitched'
 STITCH_DIR.mkdir(parents=True, exist_ok=True)
 
 DATASETS = {
-    'EK80_4': BASE / 'Master' / 'Datasets' / 'extra_raw_files' / 'TransferNow-RawFilesEK80_4',
-    'EK80_6': BASE / 'extra_raw' / 'TransferNow-RawFilesEK80_6',
-    'EK80_3_testrec': BASE / 'Master' / 'Datasets' / 'extra_raw_files' / 'TransferNow-RawFilesEK80_3' / 'TestRecRaw',
-    'EK80_3_calibration': BASE / 'Master' / 'Datasets' / 'extra_raw_files' / 'TransferNow-RawFilesEK80_3' / 'C1C2CalibrationRaw',
-    'split_single': BASE / 'Master' / 'Datasets' / 'extra_raw_files' / '2025-02-05 Split as Single - original files pcap sim not averaged',
+    'EK80_4': REPO_ROOT / 'Datasets' / 'extra_raw_files' / 'TransferNow-RawFilesEK80_4',
+    'EK80_6': DATA_ROOT / 'extra_raw' / 'TransferNow-RawFilesEK80_6',
+    'EK80_3_testrec': REPO_ROOT / 'Datasets' / 'extra_raw_files' / 'TransferNow-RawFilesEK80_3' / 'TestRecRaw',
+    'EK80_3_calibration': REPO_ROOT / 'Datasets' / 'extra_raw_files' / 'TransferNow-RawFilesEK80_3' / 'C1C2CalibrationRaw',
+    'split_single': REPO_ROOT / 'Datasets' / 'extra_raw_files' / '2025-02-05 Split as Single - original files pcap sim not averaged',
 }
 
 

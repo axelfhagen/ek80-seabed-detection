@@ -14,13 +14,11 @@ Advanced bathymetry v3 — fixes the worst of v2:
 Reads cached Figures/bathymetry/bathymetry_data.csv.
 """
 
-import sys
 from pathlib import Path
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.colors import LightSource
 from matplotlib.ticker import FixedLocator
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 import numpy as np
@@ -376,8 +374,7 @@ def plot_tidal_signal(df):
 
     # Find top 3 peaks above the median
     threshold = ls.max() * 0.5
-    peak_mask = ls > threshold
-    print(f'  spectral peaks > 50% of max:')
+    print('  spectral peaks > 50% of max:')
     # simple local-max finder
     for i in range(1, len(ls) - 1):
         if ls[i] > threshold and ls[i] > ls[i - 1] and ls[i] > ls[i + 1]:

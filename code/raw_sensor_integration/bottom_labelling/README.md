@@ -32,7 +32,7 @@ the offline pipeline) are original additions for this thesis.
 | --- | --- | --- |
 | `detectors.py` | Ported from CRIMAC | simple / edge / gradient per-ping detectors |
 | `utilities.py` | Original (constants from CRIMAC) | range/heave/mask helpers |
-| `ensemble.py` | Original | median voting + temporal post-processing |
+| `ensemble.py` | Original | median voting, temporal post-processing, `detect_bottom_ensemble_pipeline` |
 | `dp.py` | Original | pseudo-TVG + dynamic-programming smoothing + snake refinement |
 | `phase.py` | Original | circular phase variance from complex samples |
 | `matched_filter.py` | Original | synthetic pulse cross-correlation |
@@ -42,7 +42,11 @@ the offline pipeline) are original additions for this thesis.
 | `wavelet.py` | Original | continuous wavelet transform detector |
 | `changepoint.py` | Original | statistical change-point detector |
 | `multifreq.py` | Original | cross-frequency fusion |
-| `pipeline.py` | Original | offline orchestration of all detectors |
+
+`notebooks/` contains the method comparison (21), detection verification (22)
+and a mask quality analysis variant (19). They run from that directory with
+`sys.path.insert(0, '../../..')`. The other bottom-detection notebooks
+(05, 12, 16, 18) are in `../notebooks/`.
 
 ## License
 

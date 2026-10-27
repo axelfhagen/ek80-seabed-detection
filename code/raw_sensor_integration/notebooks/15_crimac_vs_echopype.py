@@ -6,6 +6,7 @@ CRIMAC Docker container, then compares Sv values per frequency to determine
 whether echopype can replace the Docker pipeline.
 """
 
+import argparse
 import sys
 sys.path.insert(0, '../..')
 
@@ -15,9 +16,19 @@ import numpy as np
 import xarray as xr
 
 # ── Paths ──────────────────────────────────────────────────────────────────
-RAW_FILE = Path('/Users/axelhagen/Downloads/D20210507-T154515.raw')
-CRIMAC_ZARR = Path('/Users/axelhagen/Downloads/crimac_output/test.zarr')
-ECHOPYPE_ZARR = Path('/Users/axelhagen/Downloads/echopype_output/D20210507-T154515.zarr')
+_DOWNLOADS = Path.home() / 'Downloads'
+_parser = argparse.ArgumentParser(description=__doc__)
+_parser.add_argument('--raw-file', type=Path,
+                     default=_DOWNLOADS / 'D20210507-T154515.raw')
+_parser.add_argument('--crimac-zarr', type=Path,
+                     default=_DOWNLOADS / 'crimac_output' / 'test.zarr')
+_parser.add_argument('--echopype-zarr', type=Path,
+                     default=_DOWNLOADS / 'echopype_output' / 'D20210507-T154515.zarr')
+_args, _ = _parser.parse_known_args()  # tolerate Jupyter kernel flags
+
+RAW_FILE = _args.raw_file
+CRIMAC_ZARR = _args.crimac_zarr
+ECHOPYPE_ZARR = _args.echopype_zarr
 
 ECHOPYPE_ZARR.parent.mkdir(parents=True, exist_ok=True)
 
@@ -41,13 +52,13 @@ print('=' * 70)
 ds_crimac = xr.open_zarr(str(CRIMAC_ZARR), consolidated=False)
 ds_echopype = xr.open_zarr(str(ECHOPYPE_ZARR), consolidated=False)
 
-print(f'\nCRIMAC zarr:')
+print('\nCRIMAC zarr:')
 print(f'  Dimensions: {dict(ds_crimac.sizes)}')
 print(f'  Frequencies: {ds_crimac.frequency.values} Hz')
 print(f'  Pings: {ds_crimac.sizes["ping_time"]}')
 print(f'  Range samples: {ds_crimac.sizes["range"]}')
 
-print(f'\nechopype zarr:')
+print('\nechopype zarr:')
 print(f'  Dimensions: {dict(ds_echopype.sizes)}')
 if 'frequency_nominal' in ds_echopype:
     print(f'  Frequencies: {ds_echopype.frequency_nominal.values} Hz')
@@ -74,11 +85,11 @@ else:
     ep_freqs = np.array([float(ch.split('_')[-1]) for ch in ds_echopype.channel.values])
 
 # Print channel info for debugging
-print(f'\nCRIMAC channels:')
+print('\nCRIMAC channels:')
 for ci, f in enumerate(crimac_freqs):
     ch_id = str(ds_crimac.channel_id.values[ci]) if 'channel_id' in ds_crimac else '?'
     print(f'  [{ci}] {f/1000:.1f} kHz — {ch_id}')
-print(f'\nechopype channels:')
+print('\nechopype channels:')
 for ci in range(len(ep_freqs)):
     ch = str(ds_echopype.channel.values[ci])
     print(f'  [{ci}] {ep_freqs[ci]/1000:.1f} kHz — {ch}')
@@ -179,7 +190,7 @@ print('=' * 70)
 t_crimac = ds_crimac.ping_time.values[:n_common_pings]
 t_ep = ds_echopype.ping_time.values[:n_common_pings]
 time_diff_ms = np.abs((t_crimac - t_ep).astype('timedelta64[ms]').astype(float))
-print(f'\nTimestamps:')
+print('\nTimestamps:')
 print(f'  Max difference: {time_diff_ms.max():.1f} ms')
 print(f'  Mean difference: {time_diff_ms.mean():.1f} ms')
 
@@ -188,20 +199,20 @@ if 'heave' in ds_crimac and 'heave' in ds_echopype:
     h_c = ds_crimac.heave.values[:n_common_pings]
     h_e = ds_echopype.heave.values[:n_common_pings]
     h_diff = np.abs(h_c - h_e)
-    print(f'\nHeave:')
+    print('\nHeave:')
     print(f'  CRIMAC range: [{h_c.min():.4f}, {h_c.max():.4f}] m')
     print(f'  echopype range: [{h_e.min():.4f}, {h_e.max():.4f}] m')
     print(f'  Max difference: {h_diff.max():.4f} m')
 elif 'heave' in ds_crimac:
     print(f'\nHeave: only in CRIMAC (range: [{ds_crimac.heave.min().values:.4f}, {ds_crimac.heave.max().values:.4f}] m)')
 elif 'heave' in ds_echopype:
-    print(f'\nHeave: only in echopype')
+    print('\nHeave: only in echopype')
 else:
-    print(f'\nHeave: not in either zarr')
+    print('\nHeave: not in either zarr')
 
 # Range grid
 r_crimac = ds_crimac.range.values
-print(f'\nRange grid:')
+print('\nRange grid:')
 print(f'  CRIMAC: {len(r_crimac)} samples, 0–{r_crimac[-1]:.1f} m, step={np.diff(r_crimac[:5]).mean():.4f} m')
 ep_range_key = 'range' if 'range' in ds_echopype.dims else 'range_sample'
 print(f'  echopype: {ds_echopype.sizes[ep_range_key]} samples')
@@ -215,7 +226,7 @@ from raw_sensor_integration.data_loader import load_zarr
 
 # Load CRIMAC zarr through the unified loader
 data_crimac = load_zarr(CRIMAC_ZARR, frequency=38000)
-print(f'\nCRIMAC via load_zarr():')
+print('\nCRIMAC via load_zarr():')
 print(f'  sv_db shape: {data_crimac.sv_db.shape} (n_range, n_pings)')
 print(f'  calibrated: {data_crimac.calibrated}')
 print(f'  frequency: {data_crimac.frequency_hz} Hz')
@@ -223,7 +234,7 @@ print(f'  Sv range: [{np.nanmin(data_crimac.sv_db):.1f}, {np.nanmax(data_crimac.
 
 # Load echopype zarr through the unified loader
 data_ep = load_zarr(ECHOPYPE_ZARR, frequency=38000)
-print(f'\nechopype via load_zarr():')
+print('\nechopype via load_zarr():')
 print(f'  sv_db shape: {data_ep.sv_db.shape} (n_range, n_pings)')
 print(f'  calibrated: {data_ep.calibrated}')
 print(f'  frequency: {data_ep.frequency_hz} Hz')
@@ -251,35 +262,35 @@ if results:
 
     if primary:
         p = primary[0]
-        print(f'\n  PRIMARY (38 kHz):')
+        print('\n  PRIMARY (38 kHz):')
         print(f'    Median diff:  {p["median_diff"]:+.3f} dB')
         print(f'    MAD:          {p["mad"]:.3f} dB')
         print(f'    Within 1 dB:  {p["pct_within_1db"]:.1f}%')
         if abs(p['median_diff']) < 0.5 and p['pct_within_1db'] > 95:
-            print(f'    → PASS: echopype matches CRIMAC on 38 kHz')
+            print('    → PASS: echopype matches CRIMAC on 38 kHz')
         else:
-            print(f'    → FAIL on primary frequency')
+            print('    → FAIL on primary frequency')
 
     if secondary:
-        print(f'\n  SECONDARY FREQUENCIES (broadband):')
+        print('\n  SECONDARY FREQUENCIES (broadband):')
         for s in secondary:
             status = 'PASS' if abs(s['median_diff']) < 1.0 and s['pct_within_1db'] > 90 else 'OFFSET'
             print(f'    {s["freq_khz"]:.1f} kHz: median {s["median_diff"]:+.1f} dB, '
                   f'{s["pct_within_1db"]:.0f}% within 1 dB — {status}')
 
-        print(f'\n  Secondary freq offsets are due to different broadband (FM chirp)')
-        print(f'  calibration between pyEcholab (CRIMAC) and echopype. The sonar')
-        print(f'  equation for broadband involves matched filtering, chirp')
-        print(f'  compression, and bandwidth normalization — implementations differ.')
+        print('\n  Secondary freq offsets are due to different broadband (FM chirp)')
+        print('  calibration between pyEcholab (CRIMAC) and echopype. The sonar')
+        print('  equation for broadband involves matched filtering, chirp')
+        print('  compression, and bandwidth normalization — implementations differ.')
 
-    print(f'\n  BOTTOM LINE:')
+    print('\n  BOTTOM LINE:')
     if primary and abs(primary[0]['median_diff']) < 0.5:
-        print(f'  For single-frequency training (38 kHz): echopype is equivalent.')
-        print(f'  For multi-frequency training: secondary freqs have systematic')
-        print(f'  offsets. Both pipelines are internally consistent — just don\'t')
-        print(f'  mix CRIMAC and echopype zarrs in the same training set.')
+        print('  For single-frequency training (38 kHz): echopype is equivalent.')
+        print('  For multi-frequency training: secondary freqs have systematic')
+        print('  offsets. Both pipelines are internally consistent — just don\'t')
+        print('  mix CRIMAC and echopype zarrs in the same training set.')
     else:
-        print(f'  Primary frequency comparison failed — investigate further.')
+        print('  Primary frequency comparison failed — investigate further.')
 else:
     print('\n  No frequency comparisons completed — check frequency matching above.')
 

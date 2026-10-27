@@ -8,12 +8,11 @@ sharp correlation peak at the bottom — sharper than the raw echo because
 the matched filter is optimal in the maximum-SNR sense.
 """
 
-from typing import Optional
 
 import numpy as np
 import scipy.signal as sig
 
-from .dp import _apply_pseudo_tvg, detect_bottom_dp
+from .dp import _apply_pseudo_tvg
 
 
 def _build_reference_pulse(pulse_duration: float,
@@ -136,7 +135,6 @@ def detect_bottom_matched_filter(
 
     # TVG correction
     corrected = _apply_pseudo_tvg(power_db, range_array)
-    noise_floor = float(np.nanpercentile(corrected[min_index:, :], 10))
 
     bottom_range_m = np.full(n_pings, np.nan)
 

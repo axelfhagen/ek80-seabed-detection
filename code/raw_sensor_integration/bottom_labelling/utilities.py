@@ -6,9 +6,8 @@ Moved from bottom_detection.py during the bottom_labelling submodule restructure
 
 import csv
 import struct
-import warnings
 from datetime import datetime
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple
 
 import numpy as np
 

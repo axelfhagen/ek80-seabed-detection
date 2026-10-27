@@ -7,7 +7,7 @@ often frequency-dependent. Agreement across frequencies is strong evidence
 of a true bottom echo.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 

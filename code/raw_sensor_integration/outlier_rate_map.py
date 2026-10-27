@@ -14,7 +14,6 @@ Two detection-quality maps that separate detector noise from real terrain:
                              noise.
 """
 
-import sys
 from pathlib import Path
 
 import matplotlib
@@ -93,7 +92,7 @@ def plot_outlier_rate(df):
     n_cells = (~np.isnan(rate_grid)).sum()
     overall = df['is_outlier'].mean()
     print(f'  cells: {n_cells:,}  overall outlier rate: {overall*100:.2f}%')
-    print(f'  per-cell outlier-rate stats:')
+    print('  per-cell outlier-rate stats:')
     print(f'    median: {np.nanmedian(rate_grid)*100:.2f}%')
     print(f'    p95:    {np.nanquantile(rate_grid, 0.95)*100:.2f}%')
     print(f'    p99:    {np.nanquantile(rate_grid, 0.99)*100:.2f}%')
@@ -184,7 +183,7 @@ def plot_slope_residual_sigma(df):
 
     n_cells = (~np.isnan(sigma_grid)).sum()
     print(f'  cells: {n_cells:,}')
-    print(f'  slope-residual σ stats:')
+    print('  slope-residual σ stats:')
     print(f'    median: {np.nanmedian(sigma_grid):.2f} m')
     print(f'    p90:    {np.nanquantile(sigma_grid, 0.90):.2f} m')
     print(f'    p95:    {np.nanquantile(sigma_grid, 0.95):.2f} m')

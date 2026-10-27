@@ -16,7 +16,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 python - <<'PY'
@@ -24,8 +25,7 @@ import sys; sys.path.insert(0, 'code')
 from pathlib import Path
 from deep_learning.training.config import PipelineConfig
 from deep_learning.echo_dataset import ensure_cached
-
-ROOT = Path('/cluster/work/axelfh/Master')
+from project_paths import REPO_ROOT as ROOT
 CACHE_DIR = ROOT / 'Datasets/patch_cache'
 ZARR_DIR = ROOT / 'Datasets/echopype_zarr'
 STEMS = ['D20250624-T181715', 'D20250625-T015027', 'D20250625-T070947',

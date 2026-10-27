@@ -315,7 +315,6 @@ def get_file_summary(path: str) -> Dict[str, Any]:
     - ping_count: Number of RAW3 datagrams
     - channels: List of channel summaries with range info
     """
-    data = raw_parser.read_raw_file(path)
     file_info = raw_parser.get_file_info(path)
 
     # Get channel settings

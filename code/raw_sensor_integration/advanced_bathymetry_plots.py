@@ -21,7 +21,6 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'code'))
 
-from raw_sensor_integration.gps_parser import haversine_m  # noqa: E402
 
 CSV = PROJECT_ROOT / 'Figures' / 'bathymetry' / 'bathymetry_data.csv'
 OUT = PROJECT_ROOT / 'Figures' / 'bathymetry' / 'advanced'

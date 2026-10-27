@@ -4,7 +4,6 @@ Ping extraction and parsing for Simrad EK80 .raw files.
 
 import struct
 import numpy as np
-from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from . import raw_parser
@@ -193,7 +192,7 @@ def extract_pings(path: str, channel_filter: Optional[str] = None,
             if max_pings and len(pings) >= max_pings:
                 break
 
-        except Exception as e:
+        except Exception:
             # Skip malformed datagrams
             continue
 

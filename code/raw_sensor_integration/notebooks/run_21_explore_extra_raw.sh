@@ -12,7 +12,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 NOTEBOOK_DIR="${PROJECT}/code/raw_sensor_integration/notebooks"
 LOG_DIR="${NOTEBOOK_DIR}/logs"
 

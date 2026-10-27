@@ -2,7 +2,6 @@
 Core parsing functions for Simrad .raw files.
 """
 
-import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
