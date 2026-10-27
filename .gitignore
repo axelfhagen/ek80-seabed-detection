@@ -43,3 +43,6 @@ outputs/
 *.toc
 *.pdf
 *.dvi
+
+# Tool caches
+.matplotlib/
