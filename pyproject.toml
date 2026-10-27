@@ -7,7 +7,6 @@ requires-python = ">=3.11"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["code"]
-addopts = "-q"
 filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.ruff]
