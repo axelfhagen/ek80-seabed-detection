@@ -30,12 +30,12 @@ class DatasetSpec:
     max_range_samples: Optional[int] = None
     vmin: float = -80.0
     vmax: float = -34.0
-    norm_method: str = 'minmax'
+    norm_method: str = "minmax"
     clip_percentile: Optional[tuple[float, float]] = None
     single_freq: bool = False
-    mask_mode: str = 'below'
+    mask_mode: str = "below"
     line_thickness: int = 3
-    crop_mode: str = 'full'
+    crop_mode: str = "full"
     crop_padding: int = 64
     # Training-time recommendations (advisory; not forced by --dataset)
     recommended_target_size: tuple[int, int] = (512, 512)
@@ -52,7 +52,6 @@ DATASET_SPECS: list[DatasetSpec] = [
             "Resized to 512x512 at training time."
         ),
     ),
-
     # ── 1. Wide patches ───────────────────────────────────────────────
     DatasetSpec(
         name="01_wide_patches",
@@ -64,7 +63,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         patch_width=512,
         stride=128,
     ),
-
     # ── 2. Narrow patches, large target ───────────────────────────────
     DatasetSpec(
         name="02_narrow_patches",
@@ -77,7 +75,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         stride=64,
         recommended_target_size=(1024, 1024),
     ),
-
     # ── 3. Aspect-ratio-preserving resize ─────────────────────────────
     DatasetSpec(
         name="03_preserve_aspect",
@@ -88,7 +85,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         recommended_target_size=(1024, 256),
     ),
-
     # ── 4. Height-only resample ───────────────────────────────────────
     DatasetSpec(
         name="04_height_only_resample",
@@ -100,7 +96,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         recommended_target_size=(512, 256),
     ),
-
     # ── 5. Symmetric normalisation ────────────────────────────────────
     DatasetSpec(
         name="05_symmetric_norm",
@@ -109,9 +104,8 @@ DATASET_SPECS: list[DatasetSpec] = [
             "Pretrained ImageNet encoders were trained on mean-subtracted "
             "data, so centered input may transfer better."
         ),
-        norm_method='symmetric',
+        norm_method="symmetric",
     ),
-
     # ── 6. Wider Sv range ─────────────────────────────────────────────
     DatasetSpec(
         name="06_wide_sv_range",
@@ -124,7 +118,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         vmin=-90.0,
         vmax=-25.0,
     ),
-
     # ── 7. Percentile normalisation ───────────────────────────────────
     DatasetSpec(
         name="07_percentile_norm",
@@ -136,7 +129,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         clip_percentile=(2, 98),
     ),
-
     # ── 8. Dense overlap ──────────────────────────────────────────────
     DatasetSpec(
         name="08_dense_overlap",
@@ -147,7 +139,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         stride=32,
     ),
-
     # ── 9. No overlap ────────────────────────────────────────────────
     DatasetSpec(
         name="09_no_overlap",
@@ -158,7 +149,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         stride=256,
     ),
-
     # ── 10. Shallow crop ──────────────────────────────────────────────
     DatasetSpec(
         name="10_shallow_crop",
@@ -169,7 +159,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         max_range_samples=1500,
     ),
-
     # ── 11. Line mask ────────────────────────────────────────────────
     DatasetSpec(
         name="11_line_mask",
@@ -179,10 +168,9 @@ DATASET_SPECS: list[DatasetSpec] = [
             "Frames the task as boundary detection rather than region "
             "segmentation — may produce sharper depth estimates."
         ),
-        mask_mode='line',
+        mask_mode="line",
         line_thickness=3,
     ),
-
     # ── 12. Single frequency ─────────────────────────────────────────
     DatasetSpec(
         name="12_single_freq_38k",
@@ -194,7 +182,6 @@ DATASET_SPECS: list[DatasetSpec] = [
         single_freq=True,
         recommended_in_channels=1,
     ),
-
     # ── 13. Bottom-crop, stride 128 ─────────────────────────────────
     DatasetSpec(
         name="13_bottom_crop_s128",
@@ -206,10 +193,9 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         patch_width=256,
         stride=128,
-        crop_mode='bottom',
+        crop_mode="bottom",
         crop_padding=64,
     ),
-
     # ── 14. Bottom-crop, stride 256 (no overlap) ────────────────────
     DatasetSpec(
         name="14_bottom_crop_s256",
@@ -220,10 +206,9 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         patch_width=256,
         stride=256,
-        crop_mode='bottom',
+        crop_mode="bottom",
         crop_padding=64,
     ),
-
     # ── 15. Bottom-crop, stride 64 (dense) ──────────────────────────
     DatasetSpec(
         name="15_bottom_crop_s64",
@@ -234,7 +219,7 @@ DATASET_SPECS: list[DatasetSpec] = [
         ),
         patch_width=256,
         stride=64,
-        crop_mode='bottom',
+        crop_mode="bottom",
         crop_padding=64,
     ),
 ]
@@ -260,13 +245,12 @@ def resolve_dataset(name_or_index) -> DatasetSpec:
             return DATASET_SPECS[idx]
 
     for spec in DATASET_SPECS:
-        stripped = spec.name.split('_', 1)[1] if '_' in spec.name else spec.name
+        stripped = spec.name.split("_", 1)[1] if "_" in spec.name else spec.name
         if key == stripped:
             return spec
 
     available = ", ".join(s.name for s in DATASET_SPECS)
-    raise KeyError(
-        f"Unknown dataset preset {key!r}. Available presets: {available}")
+    raise KeyError(f"Unknown dataset preset {key!r}. Available presets: {available}")
 
 
 def format_dataset_list() -> str:
@@ -274,6 +258,6 @@ def format_dataset_list() -> str:
     lines = [f"{'idx':>3}  {'name':<24} description"]
     lines.append("-" * 78)
     for i, spec in enumerate(DATASET_SPECS):
-        first = spec.description.split('. ')[0]
+        first = spec.description.split(". ")[0]
         lines.append(f"{i:>3}  {spec.name:<24} {first}")
     return "\n".join(lines)

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -90,8 +91,7 @@ def extract_patch(sv_channels, gt_mask):
 
     img_hwc = np.transpose(img, (1, 2, 0))
     img_r = cv2.resize(img_hwc, (TARGET, TARGET), interpolation=cv2.INTER_LINEAR)
-    msk_r = cv2.resize(msk.astype(np.uint8), (TARGET, TARGET),
-                       interpolation=cv2.INTER_NEAREST)
+    msk_r = cv2.resize(msk.astype(np.uint8), (TARGET, TARGET), interpolation=cv2.INTER_NEAREST)
     return img_r.astype(np.float32), msk_r.astype(np.uint8)
 
 
@@ -116,9 +116,10 @@ def build_augmentations():
         ("Original", None),
         ("Horizontal flip", alb(A.HorizontalFlip(p=1.0))),
         ("Gaussian noise", alb(A.GaussNoise(std_range=(0.04, 0.05), p=1.0))),
-        ("Brightness / contrast",
-         alb(A.RandomBrightnessContrast(brightness_limit=0.2,
-                                        contrast_limit=0.2, p=1.0))),
+        (
+            "Brightness / contrast",
+            alb(A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=1.0)),
+        ),
         ("Channel dropout", lambda image: cd(image=image)),
         ("Ping dropout (zero)", lambda image: pz(image=image)),
         ("Ping dropout (shuffle)", lambda image: ps(image=image)),
@@ -129,7 +130,11 @@ def build_augmentations():
 def render_file(label, zarr_path, augs):
     print(f"[{label}] loading {zarr_path.name}")
     sv_channels, gt_mask, _, _ = load_file_data(
-        zarr_path, FREQ1, FREQ2, vmin=VMIN, vmax=VMAX,
+        zarr_path,
+        FREQ1,
+        FREQ2,
+        vmin=VMIN,
+        vmax=VMAX,
     )
     img, _ = extract_patch(sv_channels, gt_mask)
 

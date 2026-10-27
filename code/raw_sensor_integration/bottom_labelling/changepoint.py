@@ -42,9 +42,7 @@ def _cusum_statistic(column: np.ndarray, min_index: int) -> np.ndarray:
     return result
 
 
-def _likelihood_ratio(column: np.ndarray,
-                      min_index: int,
-                      half_window: int) -> np.ndarray:
+def _likelihood_ratio(column: np.ndarray, min_index: int, half_window: int) -> np.ndarray:
     """
     Sliding-window log-likelihood ratio for a Gaussian mean shift.
 
@@ -62,8 +60,8 @@ def _likelihood_ratio(column: np.ndarray,
         return result
 
     for k in range(start, end):
-        above = column[k - half_window:k]
-        below = column[k:k + half_window]
+        above = column[k - half_window : k]
+        below = column[k : k + half_window]
 
         var_above = np.var(above) + 1e-12
         var_below = np.var(below) + 1e-12
@@ -73,8 +71,9 @@ def _likelihood_ratio(column: np.ndarray,
         # Log-likelihood ratio: positive when the two-distribution
         # model explains the data better
         n_total = len(pooled)
-        lr = (n_total / 2.0) * np.log(var_pooled) \
-            - (half_window / 2.0) * (np.log(var_above) + np.log(var_below))
+        lr = (n_total / 2.0) * np.log(var_pooled) - (half_window / 2.0) * (
+            np.log(var_above) + np.log(var_below)
+        )
         result[k] = max(lr, 0.0)
 
     return result
@@ -84,7 +83,7 @@ def detect_bottom_changepoint(
     power_db: np.ndarray,
     range_array: np.ndarray,
     minimum_range: float = 5.0,
-    method: str = 'cusum',
+    method: str = "cusum",
     half_window: int = 30,
     prominence_threshold: float = 0.5,
     smoothing_window: int = 21,
@@ -135,7 +134,7 @@ def detect_bottom_changepoint(
     for j in range(n_pings):
         col = normed[:, j]
 
-        if method == 'likelihood':
+        if method == "likelihood":
             stat = _likelihood_ratio(col, min_index, half_window)
         else:
             stat = _cusum_statistic(col, min_index)

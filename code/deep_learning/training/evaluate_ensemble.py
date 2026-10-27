@@ -40,26 +40,32 @@ DEFAULT_RESULTS_CSV = Path(__file__).resolve().parent / "ensemble_results.csv"
 
 
 def parse_args():
-    p = argparse.ArgumentParser(
-        description="Evaluate a deep ensemble on validation zarr files")
+    p = argparse.ArgumentParser(description="Evaluate a deep ensemble on validation zarr files")
 
     # Checkpoints
     ckpt = p.add_mutually_exclusive_group(required=True)
-    ckpt.add_argument("--checkpoints", nargs="+", type=Path,
-                      help="Paths to .pth checkpoint files")
-    ckpt.add_argument("--checkpoint-dir", type=Path,
-                      help="Directory to glob for member_*/unet_*_best.pth "
-                           "(or **/unet_*_best.pth)")
+    ckpt.add_argument("--checkpoints", nargs="+", type=Path, help="Paths to .pth checkpoint files")
+    ckpt.add_argument(
+        "--checkpoint-dir",
+        type=Path,
+        help="Directory to glob for member_*/unet_*_best.pth (or **/unet_*_best.pth)",
+    )
 
     # Data
-    p.add_argument("--zarr-dir", type=Path, default=None,
-                   help="Directory to glob for *.zarr stores "
-                        "(not needed with --split survey)")
-    p.add_argument("--zarr-paths", nargs="+", type=Path, default=[],
-                   help="Additional zarr paths")
-    p.add_argument("--split", type=str, default="survey",
-                   choices=["random", "survey"],
-                   help="How to determine validation files")
+    p.add_argument(
+        "--zarr-dir",
+        type=Path,
+        default=None,
+        help="Directory to glob for *.zarr stores (not needed with --split survey)",
+    )
+    p.add_argument("--zarr-paths", nargs="+", type=Path, default=[], help="Additional zarr paths")
+    p.add_argument(
+        "--split",
+        type=str,
+        default="survey",
+        choices=["random", "survey"],
+        help="How to determine validation files",
+    )
 
     # Inference
     p.add_argument("--patch-width", type=int, default=256)
@@ -73,11 +79,16 @@ def parse_args():
     p.add_argument("--val-fraction", type=float, default=0.2)
 
     # Output
-    p.add_argument("--output-dir", type=Path, default=None,
-                   help="Where to save plots + metrics JSON "
-                        "(default: auto-generated under code/ensemble_results/)")
-    p.add_argument("--results-csv", type=Path, default=DEFAULT_RESULTS_CSV,
-                   help="Ensemble results CSV path")
+    p.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Where to save plots + metrics JSON "
+        "(default: auto-generated under code/ensemble_results/)",
+    )
+    p.add_argument(
+        "--results-csv", type=Path, default=DEFAULT_RESULTS_CSV, help="Ensemble results CSV path"
+    )
 
     return p.parse_args()
 
@@ -89,17 +100,17 @@ def resolve_checkpoints(args) -> list[Path]:
         paths = sorted(args.checkpoint_dir.glob("**/unet_*_best.pth"))
     paths = [p for p in paths if p.is_file()]
     if len(paths) < 2:
-        raise SystemExit(
-            f"ERROR: Found {len(paths)} checkpoint(s), need at least 2.")
+        raise SystemExit(f"ERROR: Found {len(paths)} checkpoint(s), need at least 2.")
     return paths
 
 
 def resolve_val_paths(args):
-    if args.split == 'survey':
+    if args.split == "survey":
         from deep_learning.training.survey_groups import get_split_files
+
         split_files = get_split_files()
-        all_zarr = split_files['train'] + split_files['val']
-        return all_zarr, split_files['val']
+        all_zarr = split_files["train"] + split_files["val"]
+        return all_zarr, split_files["val"]
 
     zarr_paths = sorted(args.zarr_dir.glob("*.zarr")) if args.zarr_dir else []
     zarr_paths += [Path(p) for p in args.zarr_paths]
@@ -125,8 +136,7 @@ def main():
 
     # Load models
     print("\n=== Loading Ensemble ===")
-    models, model_cfg = load_ensemble(
-        ckpt_paths, device="cuda", in_channels=args.in_channels)
+    models, model_cfg = load_ensemble(ckpt_paths, device="cuda", in_channels=args.in_channels)
 
     freq1_hz = model_cfg.get("freq1_hz", 38_000)
     freq2_hz = model_cfg.get("freq2_hz", 200_000)
@@ -135,6 +145,7 @@ def main():
     vmax = model_cfg.get("vmax", -34.0)
 
     import torch
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Resolve validation files
@@ -154,13 +165,19 @@ def main():
     # Evaluate
     print("\n=== Ensemble Evaluation ===")
     all_metrics, summary, uncertainty_info = ensemble_evaluate_files(
-        models, val_paths,
-        freq1_hz=freq1_hz, freq2_hz=freq2_hz,
-        target_size=target_size, device=device,
-        output_dir=output_dir, threshold=args.threshold,
-        patch_width=args.patch_width, stride=args.stride,
+        models,
+        val_paths,
+        freq1_hz=freq1_hz,
+        freq2_hz=freq2_hz,
+        target_size=target_size,
+        device=device,
+        output_dir=output_dir,
+        threshold=args.threshold,
+        patch_width=args.patch_width,
+        stride=args.stride,
         max_range_m=args.max_range_m,
-        vmin=vmin, vmax=vmax,
+        vmin=vmin,
+        vmax=vmax,
     )
 
     print_summary(all_metrics, summary)
@@ -171,11 +188,13 @@ def main():
     per_member = []
     for cp in ckpt_paths:
         ckpt = torch.load(cp, map_location="cpu", weights_only=False)
-        per_member.append({
-            "checkpoint": str(cp),
-            "val_iou": ckpt.get("val_iou"),
-            "epoch": ckpt.get("epoch"),
-        })
+        per_member.append(
+            {
+                "checkpoint": str(cp),
+                "val_iou": ckpt.get("val_iou"),
+                "epoch": ckpt.get("epoch"),
+            }
+        )
 
     metrics_json = {
         "n_members": len(models),

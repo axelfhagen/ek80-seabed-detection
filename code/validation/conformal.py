@@ -30,7 +30,8 @@ import numpy as np
 
 try:
     from data_visualization.thesis_style import (
-        REFERENCE_BOTTOM_COLOR, UNET_PREDICTION_COLOR,
+        REFERENCE_BOTTOM_COLOR,
+        UNET_PREDICTION_COLOR,
     )
 except ImportError:  # pragma: no cover - keeps standalone imports usable.
     REFERENCE_BOTTOM_COLOR = "#00ccff"
@@ -40,6 +41,7 @@ except ImportError:  # pragma: no cover - keeps standalone imports usable.
 # ---------------------------------------------------------------------------
 # Core conformal quantile
 # ---------------------------------------------------------------------------
+
 
 def conformal_quantile(scores, alpha=0.1):
     """Compute the conformal calibration threshold.
@@ -104,6 +106,7 @@ def conformal_quantile_two_sided(scores, alpha=0.1):
 # Per-ping bottom depth conformal prediction
 # ---------------------------------------------------------------------------
 
+
 def calibrate_depth(pred_depths, gt_depths):
     """Compute per-ping nonconformity scores for bottom depth.
 
@@ -162,7 +165,7 @@ def evaluate_coverage(pred_depths, gt_depths, q_hat):
     valid = np.isfinite(pred) & np.isfinite(gt) & (pred > 0) & (gt > 0)
 
     if not valid.any():
-        return float('nan'), 2 * q_hat, 0
+        return float("nan"), 2 * q_hat, 0
 
     errors = np.abs(pred[valid] - gt[valid])
     covered = errors <= q_hat
@@ -193,6 +196,7 @@ def coverage_curve(scores, alphas=None):
 # ---------------------------------------------------------------------------
 # Profile-based conformal prediction (adaptive bands)
 # ---------------------------------------------------------------------------
+
 
 def _gt_bottom_indices(gt_mask):
     """Return per-ping GT bottom row indices from a binary mask.
@@ -385,15 +389,19 @@ def evaluate_profile_coverage(prob_maps, gt_masks, range_arrays, q_hat):
         covered = (all_gt_depths >= all_upper) & (all_gt_depths <= all_lower)
         depth_cov = float(covered.mean())
     else:
-        depth_cov = float('nan')
+        depth_cov = float("nan")
 
     return {
-        'depth_coverage': depth_cov,
-        'detection_coverage': n_detection_correct / n_total if n_total else float('nan'),
-        'mean_band_width_m': float(np.nanmean(all_band_widths)) if len(all_band_widths) else float('nan'),
-        'median_band_width_m': float(np.nanmedian(all_band_widths)) if len(all_band_widths) else float('nan'),
-        'n_depth_pings': len(all_gt_depths),
-        'n_total_pings': n_total,
+        "depth_coverage": depth_cov,
+        "detection_coverage": n_detection_correct / n_total if n_total else float("nan"),
+        "mean_band_width_m": float(np.nanmean(all_band_widths))
+        if len(all_band_widths)
+        else float("nan"),
+        "median_band_width_m": float(np.nanmedian(all_band_widths))
+        if len(all_band_widths)
+        else float("nan"),
+        "n_depth_pings": len(all_gt_depths),
+        "n_total_pings": n_total,
     }
 
 
@@ -401,9 +409,10 @@ def evaluate_profile_coverage(prob_maps, gt_masks, range_arrays, q_hat):
 # Locally-weighted conformal prediction (adaptive bands)
 # ---------------------------------------------------------------------------
 
-def compute_transition_width(prob_map, range_array,
-                             lower_t=0.25, upper_t=0.75,
-                             mode='global', mid_t=0.5):
+
+def compute_transition_width(
+    prob_map, range_array, lower_t=0.25, upper_t=0.75, mode="global", mid_t=0.5
+):
     """Per-ping probability transition width in metres.
 
     For each ping the transition width is the depth span between the
@@ -433,14 +442,14 @@ def compute_transition_width(prob_map, range_array,
              NaN where no bottom is detected.
     """
     from validation.uncertainty import bottom_uncertainty_band
-    _, _, widths = bottom_uncertainty_band(prob_map, range_array,
-                                           lower_t=lower_t, upper_t=upper_t,
-                                           mode=mode, mid_t=mid_t)
+
+    _, _, widths = bottom_uncertainty_band(
+        prob_map, range_array, lower_t=lower_t, upper_t=upper_t, mode=mode, mid_t=mid_t
+    )
     return widths
 
 
-def calibrate_locally_weighted(pred_depths, gt_depths, uncertainties,
-                               epsilon=0.5):
+def calibrate_locally_weighted(pred_depths, gt_depths, uncertainties, epsilon=0.5):
     """Normalised nonconformity scores: |pred − gt| / max(σ, ε).
 
     Parameters
@@ -457,15 +466,13 @@ def calibrate_locally_weighted(pred_depths, gt_depths, uncertainties,
     pred = np.asarray(pred_depths, dtype=np.float64)
     gt = np.asarray(gt_depths, dtype=np.float64)
     sigma = np.asarray(uncertainties, dtype=np.float64)
-    valid = (np.isfinite(pred) & np.isfinite(gt) & np.isfinite(sigma)
-             & (pred > 0) & (gt > 0))
+    valid = np.isfinite(pred) & np.isfinite(gt) & np.isfinite(sigma) & (pred > 0) & (gt > 0)
     errors = np.abs(pred[valid] - gt[valid])
     denom = np.maximum(sigma[valid], epsilon)
     return errors / denom
 
 
-def predict_locally_weighted_band(pred_depths, uncertainties, q_hat,
-                                  epsilon=0.5):
+def predict_locally_weighted_band(pred_depths, uncertainties, q_hat, epsilon=0.5):
     """Adaptive conformal band: pred ± q_hat · max(σ, ε).
 
     Parameters
@@ -489,8 +496,7 @@ def predict_locally_weighted_band(pred_depths, uncertainties, q_hat,
     return upper, lower, 2.0 * half
 
 
-def plot_sigma_vs_error(pred_depths, gt_depths, uncertainties,
-                        epsilon=0.5, save_path=None):
+def plot_sigma_vs_error(pred_depths, gt_depths, uncertainties, epsilon=0.5, save_path=None):
     """Diagnostic scatter: σ vs |error| to verify locally-weighted assumption.
 
     If the scatter shows a clear positive trend the locally-weighted
@@ -507,35 +513,40 @@ def plot_sigma_vs_error(pred_depths, gt_depths, uncertainties,
     pred = np.asarray(pred_depths, dtype=np.float64)
     gt = np.asarray(gt_depths, dtype=np.float64)
     sigma = np.asarray(uncertainties, dtype=np.float64)
-    valid = (np.isfinite(pred) & np.isfinite(gt) & np.isfinite(sigma)
-             & (pred > 0) & (gt > 0))
+    valid = np.isfinite(pred) & np.isfinite(gt) & np.isfinite(sigma) & (pred > 0) & (gt > 0)
     errors = np.abs(pred[valid] - gt[valid])
     sig = np.maximum(sigma[valid], epsilon)
 
     fig, ax = plt.subplots(figsize=(6, 5), dpi=150)
-    ax.scatter(sig, errors, s=3, alpha=0.3, edgecolors='none')
-    ax.set_xlabel('σ (transition width, m)')
-    ax.set_ylabel('Depth deviation (m)')
-    ax.set_title('Uncertainty vs. Depth Deviation')
+    ax.scatter(sig, errors, s=3, alpha=0.3, edgecolors="none")
+    ax.set_xlabel("σ (transition width, m)")
+    ax.set_ylabel("Depth deviation (m)")
+    ax.set_title("Uncertainty vs. Depth Deviation")
 
     # Rank correlation annotation
     from scipy.stats import spearmanr
+
     rho, pval = spearmanr(sig, errors)
-    ax.annotate(f'Spearman ρ = {rho:.3f} (p = {pval:.2e})',
-                xy=(0.05, 0.95), xycoords='axes fraction',
-                fontsize=10, verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    ax.annotate(
+        f"Spearman ρ = {rho:.3f} (p = {pval:.2e})",
+        xy=(0.05, 0.95),
+        xycoords="axes fraction",
+        fontsize=10,
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+    )
 
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     if save_path is not None:
-        fig.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
+        fig.savefig(save_path, dpi=300, bbox_inches="tight", facecolor="white")
     return fig
 
 
 # ---------------------------------------------------------------------------
 # Signed / asymmetric conformal prediction (no absolute value)
 # ---------------------------------------------------------------------------
+
 
 def calibrate_depth_signed(pred_depths, gt_depths):
     """Signed depth residuals: gt - pred (deeper truth -> positive).
@@ -578,8 +589,7 @@ def predict_depth_band_signed(pred_depths, q_lo, q_hi):
     return pred + q_lo, pred + q_hi
 
 
-def calibrate_locally_weighted_signed(pred_depths, gt_depths, uncertainties,
-                                      epsilon=0.5):
+def calibrate_locally_weighted_signed(pred_depths, gt_depths, uncertainties, epsilon=0.5):
     """Signed, locally-normalised residuals: (gt - pred) / max(sigma, eps).
 
     Combines the asymmetric (signed) and adaptive (locally-weighted)
@@ -600,14 +610,12 @@ def calibrate_locally_weighted_signed(pred_depths, gt_depths, uncertainties,
     pred = np.asarray(pred_depths, dtype=np.float64)
     gt = np.asarray(gt_depths, dtype=np.float64)
     sigma = np.asarray(uncertainties, dtype=np.float64)
-    valid = (np.isfinite(pred) & np.isfinite(gt) & np.isfinite(sigma)
-             & (pred > 0) & (gt > 0))
+    valid = np.isfinite(pred) & np.isfinite(gt) & np.isfinite(sigma) & (pred > 0) & (gt > 0)
     denom = np.maximum(sigma[valid], epsilon)
     return (gt[valid] - pred[valid]) / denom
 
 
-def predict_locally_weighted_band_signed(pred_depths, uncertainties,
-                                         q_lo, q_hi, epsilon=0.5):
+def predict_locally_weighted_band_signed(pred_depths, uncertainties, q_lo, q_hi, epsilon=0.5):
     """Asymmetric adaptive band: [pred + q_lo*sigma, pred + q_hi*sigma].
 
     Parameters
@@ -634,6 +642,7 @@ def predict_locally_weighted_band_signed(pred_depths, uncertainties,
 # ---------------------------------------------------------------------------
 # Conformalized Quantile Regression (CQR)
 # ---------------------------------------------------------------------------
+
 
 def calibrate_cqr(lo_depths, hi_depths, gt_depths):
     """CQR nonconformity scores from probability-profile quantile edges.
@@ -664,7 +673,7 @@ def calibrate_cqr(lo_depths, hi_depths, gt_depths):
     lo = np.asarray(lo_depths, dtype=np.float64)
     hi = np.asarray(hi_depths, dtype=np.float64)
     gt = np.asarray(gt_depths, dtype=np.float64)
-    valid = (np.isfinite(lo) & np.isfinite(hi) & np.isfinite(gt) & (gt > 0))
+    valid = np.isfinite(lo) & np.isfinite(hi) & np.isfinite(gt) & (gt > 0)
     return np.maximum(lo[valid] - gt[valid], gt[valid] - hi[valid])
 
 
@@ -693,6 +702,7 @@ def predict_cqr_band(lo_depths, hi_depths, q_hat):
 # ---------------------------------------------------------------------------
 # Per-pixel conformal prediction
 # ---------------------------------------------------------------------------
+
 
 def calibrate_pixel(pred_probs, gt_masks):
     """Compute per-pixel nonconformity scores: 1 - p(true class).
@@ -743,6 +753,7 @@ def predict_pixel_set(prob_map, q_hat):
 # Helpers: extract depths from probability maps
 # ---------------------------------------------------------------------------
 
+
 def extract_bottom_depths(prob_map, range_array, threshold=0.5):
     """Extract per-ping bottom depth in metres from a probability map.
 
@@ -771,8 +782,10 @@ def extract_bottom_depths(prob_map, range_array, threshold=0.5):
 # Visualization
 # ---------------------------------------------------------------------------
 
-def plot_conformal_band(sv_channel, range_array, pred_depths, gt_depths,
-                        q_hat, alpha=0.1, save_path=None, title=None):
+
+def plot_conformal_band(
+    sv_channel, range_array, pred_depths, gt_depths, q_hat, alpha=0.1, save_path=None, title=None
+):
     """Plot an echogram with predicted bottom line and conformal band.
 
     Parameters
@@ -800,46 +813,60 @@ def plot_conformal_band(sv_channel, range_array, pred_depths, gt_depths,
 
     fig, ax = plt.subplots(figsize=(14, 5), dpi=150)
 
-    ax.imshow(sv_channel, aspect='auto', cmap='viridis', vmin=0, vmax=1,
-              origin='upper', extent=extent)
+    ax.imshow(
+        sv_channel, aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper", extent=extent
+    )
 
     valid_gt = np.isfinite(gt_depths) & (gt_depths > 0)
     valid_pred = np.isfinite(pred_depths) & (pred_depths > 0)
 
-    ax.fill_between(ping_axis[valid_pred], upper[valid_pred], lower[valid_pred],
-                    alpha=0.35, color='#ff7f0e',
-                    label=f'{(1-alpha)*100:.0f}% conformal band (±{q_hat:.2f} m)')
-    ax.plot(ping_axis[valid_pred], pred_depths[valid_pred],
-            color=UNET_PREDICTION_COLOR, linewidth=1.2,
-            label='U-Net prediction')
-    ax.plot(ping_axis[valid_gt], gt_depths[valid_gt],
-            color=REFERENCE_BOTTOM_COLOR, linewidth=1.0, linestyle='--',
-            alpha=0.95,
-            label='Reference label')
+    ax.fill_between(
+        ping_axis[valid_pred],
+        upper[valid_pred],
+        lower[valid_pred],
+        alpha=0.35,
+        color="#ff7f0e",
+        label=f"{(1 - alpha) * 100:.0f}% conformal band (±{q_hat:.2f} m)",
+    )
+    ax.plot(
+        ping_axis[valid_pred],
+        pred_depths[valid_pred],
+        color=UNET_PREDICTION_COLOR,
+        linewidth=1.2,
+        label="U-Net prediction",
+    )
+    ax.plot(
+        ping_axis[valid_gt],
+        gt_depths[valid_gt],
+        color=REFERENCE_BOTTOM_COLOR,
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.95,
+        label="Reference label",
+    )
 
-    ax.set_xlabel('Ping')
-    ax.set_ylabel('Depth (m)')
+    ax.set_xlabel("Ping")
+    ax.set_ylabel("Depth (m)")
     ax.set_xlim(0, n_pings)
     ax.set_ylim(range_array[-1], range_array[0])
-    ax.legend(loc='lower right', fontsize=9, framealpha=0.9)
+    ax.legend(loc="lower right", fontsize=9, framealpha=0.9)
 
     if title is None:
         valid_both = valid_pred & valid_gt
         errors = np.abs(pred_depths[valid_both] - gt_depths[valid_both])
-        cov = float((errors <= q_hat).mean()) if valid_both.any() else float('nan')
-        title = (f'Conformal Prediction Band '
-                 f'(α={alpha}, q̂={q_hat:.2f} m, '
-                 f'coverage={cov:.1%})')
+        cov = float((errors <= q_hat).mean()) if valid_both.any() else float("nan")
+        title = f"Conformal Prediction Band (α={alpha}, q̂={q_hat:.2f} m, coverage={cov:.1%})"
     ax.set_title(title, fontsize=12)
 
     plt.tight_layout()
     if save_path is not None:
-        fig.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
+        fig.savefig(save_path, dpi=300, bbox_inches="tight", facecolor="white")
     return fig
 
 
-def plot_coverage_curve(calib_scores, test_pred_depths, test_gt_depths,
-                        alphas=None, save_path=None):
+def plot_coverage_curve(
+    calib_scores, test_pred_depths, test_gt_depths, alphas=None, save_path=None
+):
     """Plot empirical coverage vs. nominal coverage (1-alpha).
 
     A well-calibrated conformal predictor should track the diagonal.
@@ -875,20 +902,26 @@ def plot_coverage_curve(calib_scores, test_pred_depths, test_gt_depths,
         empirical[i] = np.mean(coverages) if coverages else np.nan
 
     fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
-    ax.plot([0.5, 1.0], [0.5, 1.0], 'k--', linewidth=1.5, alpha=0.5,
-            label='Ideal')
-    ax.plot(nominal, empirical, 'o-', color='#1f77b4', markersize=4,
-            linewidth=1.5, label='Empirical coverage')
-    ax.set_xlabel('Nominal coverage (1 − α)')
-    ax.set_ylabel('Empirical coverage')
-    ax.set_title('Conformal Coverage Calibration')
+    ax.plot([0.5, 1.0], [0.5, 1.0], "k--", linewidth=1.5, alpha=0.5, label="Ideal")
+    ax.plot(
+        nominal,
+        empirical,
+        "o-",
+        color="#1f77b4",
+        markersize=4,
+        linewidth=1.5,
+        label="Empirical coverage",
+    )
+    ax.set_xlabel("Nominal coverage (1 − α)")
+    ax.set_ylabel("Empirical coverage")
+    ax.set_title("Conformal Coverage Calibration")
     ax.set_xlim(0.48, 1.02)
     ax.set_ylim(0.48, 1.02)
-    ax.set_aspect('equal')
-    ax.legend(loc='lower right')
+    ax.set_aspect("equal")
+    ax.legend(loc="lower right")
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
     if save_path is not None:
-        fig.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
+        fig.savefig(save_path, dpi=300, bbox_inches="tight", facecolor="white")
     return fig

@@ -1,4 +1,5 @@
 """Characterization tests for loss functions and depth decoding in unet_model."""
+
 import math
 
 import pytest
@@ -44,6 +45,7 @@ def peak_logits(H, rows):
 
 # --- DiceBCE -----------------------------------------------------------------
 
+
 def test_dice_bce_is_near_zero_for_perfect_prediction():
     t = below_mask(8, [3, 4, 5])
     assert DiceBCELoss()(ideal_logits(t), t).item() == pytest.approx(0.0, abs=1e-6)
@@ -63,6 +65,7 @@ def test_dice_bce_pure_dice_on_all_wrong_prediction_uses_laplace_smoothing():
 
 
 # --- Focal / FocalDice / Tversky ---------------------------------------------
+
 
 def test_focal_at_zero_logits_is_alpha_times_quarter_times_ln2():
     # p_t = 0.5 -> weight alpha * 0.5**2 = 0.0625
@@ -90,8 +93,9 @@ def test_tversky_is_near_zero_for_perfect_prediction():
 
 # --- GeoSeg ------------------------------------------------------------------
 
+
 def test_geo_seg_is_near_zero_for_perfect_prediction():
-    t = below_mask(8, [2, 3, 4, 5])   # linear slope -> zero curvature
+    t = below_mask(8, [2, 3, 4, 5])  # linear slope -> zero curvature
     assert GeoSegLoss()(ideal_logits(t), t).item() == pytest.approx(0.0, abs=1e-5)
 
 
@@ -115,6 +119,7 @@ def test_geo_seg_curvature_term_penalises_single_ping_spike():
 
 # --- regression decoding -----------------------------------------------------
 
+
 def test_soft_argmax_depth_returns_peak_row_per_ping():
     d = soft_argmax_depth(peak_logits(10, [1, 4, 9]))
     assert d.shape == (1, 3)
@@ -122,7 +127,7 @@ def test_soft_argmax_depth_returns_peak_row_per_ping():
 
 
 def test_soft_argmax_depth_of_flat_logits_is_middle_row():
-    d = soft_argmax_depth(torch.zeros(1, 1, 5, 2))     # mean of 0..4
+    d = soft_argmax_depth(torch.zeros(1, 1, 5, 2))  # mean of 0..4
     torch.testing.assert_close(d, torch.full((1, 2), 2.0))
 
 
@@ -134,7 +139,7 @@ def test_target_depth_below_mode_counts_water_rows():
 def test_target_depth_line_mode_is_mean_row_of_the_line():
     m = torch.zeros(1, 8, 1)
     m[0, 2:4, 0] = 1
-    torch.testing.assert_close(target_depth_from_mask(m, 'line'), torch.tensor([[2.5]]))
+    torch.testing.assert_close(target_depth_from_mask(m, "line"), torch.tensor([[2.5]]))
 
 
 def test_regression_loss_is_zero_when_peak_sits_on_true_bottom():
@@ -146,15 +151,23 @@ def test_regression_loss_is_zero_when_peak_sits_on_true_bottom():
 def test_regression_loss_two_row_offset_is_huber_quadratic_branch():
     t = below_mask(10, [3, 3, 3])
     loss = RegressionLoss(smooth_weight=0.0, huber_delta=5.0)(peak_logits(10, [5, 5, 5]), t)
-    assert loss.item() == pytest.approx(0.5 * 2 ** 2, abs=1e-4)
+    assert loss.item() == pytest.approx(0.5 * 2**2, abs=1e-4)
 
 
 # --- build_loss / early stopping ---------------------------------------------
 
-@pytest.mark.parametrize("name, cls", [
-    ("dice_bce", DiceBCELoss), ("focal", FocalLoss), ("focal_dice", FocalDiceLoss),
-    ("tversky", TverskyLoss), ("geo_seg", GeoSegLoss), ("regression", RegressionLoss),
-])
+
+@pytest.mark.parametrize(
+    "name, cls",
+    [
+        ("dice_bce", DiceBCELoss),
+        ("focal", FocalLoss),
+        ("focal_dice", FocalDiceLoss),
+        ("tversky", TverskyLoss),
+        ("geo_seg", GeoSegLoss),
+        ("regression", RegressionLoss),
+    ],
+)
 def test_build_loss_maps_each_loss_type_to_its_class(name, cls):
     assert type(build_loss(name)) is cls
 

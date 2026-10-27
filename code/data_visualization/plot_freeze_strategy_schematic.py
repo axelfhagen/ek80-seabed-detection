@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
@@ -59,8 +60,11 @@ def trainable_fractions():
     """Return {strategy_name: trainable_pct} from the real ResNet-34 U-Net."""
     try:
         from deep_learning.unet_model import (
-            create_unet, freeze_encoder, freeze_encoder_stages,
-            get_trainable_param_count)
+            create_unet,
+            freeze_encoder,
+            freeze_encoder_stages,
+            get_trainable_param_count,
+        )
     except Exception as exc:  # pragma: no cover
         print(f"[warn] model import failed ({exc}); skipping param counts")
         return {}
@@ -84,9 +88,9 @@ def main():
     pct = trainable_fractions()
 
     n = len(BLOCKS)
-    bw, bh = 2.4, 0.82          # block width/height
-    gap = 0.34                  # vertical gap between blocks
-    col_dx = 5.2                # horizontal spacing of strategy columns
+    bw, bh = 2.4, 0.82  # block width/height
+    gap = 0.34  # vertical gap between blocks
+    col_dx = 5.2  # horizontal spacing of strategy columns
     y0 = 0.0
 
     fig, ax = plt.subplots(figsize=(15, 9))
@@ -112,29 +116,49 @@ def main():
                 fc, hatch, ec = FROZEN_FC, "////", "0.55"
 
             box = FancyBboxPatch(
-                (cx - bw / 2, y - bh / 2), bw, bh,
+                (cx - bw / 2, y - bh / 2),
+                bw,
+                bh,
                 boxstyle="round,pad=0.02,rounding_size=0.12",
-                linewidth=1.4, edgecolor=ec, facecolor=fc, hatch=hatch,
-                mutation_aspect=0.5, zorder=2)
+                linewidth=1.4,
+                edgecolor=ec,
+                facecolor=fc,
+                hatch=hatch,
+                mutation_aspect=0.5,
+                zorder=2,
+            )
             ax.add_patch(box)
             tc = "white" if (trainable and role in ("enc", "dec")) else "0.15"
-            ax.text(cx, y, label, ha="center", va="center",
-                    fontsize=12.5, color=tc, zorder=3)
+            ax.text(cx, y, label, ha="center", va="center", fontsize=12.5, color=tc, zorder=3)
 
             # Arrow to the next block down.
             if i < n - 1:
-                ax.add_patch(FancyArrowPatch(
-                    (cx, y - bh / 2), (cx, ys[i + 1] + bh / 2),
-                    arrowstyle="-|>", mutation_scale=14,
-                    color="0.45", lw=1.4, zorder=1))
+                ax.add_patch(
+                    FancyArrowPatch(
+                        (cx, y - bh / 2),
+                        (cx, ys[i + 1] + bh / 2),
+                        arrowstyle="-|>",
+                        mutation_scale=14,
+                        color="0.45",
+                        lw=1.4,
+                        zorder=1,
+                    )
+                )
 
         title = strat
         if strat in pct:
             p = pct[strat]
             ptxt = f"{p:.2f}%" if 99 < p < 100 else f"{p:.0f}%"
             title += f"\n({ptxt} of weights trained)"
-        ax.text(cx, ys[0] + bh / 2 + 0.55, title, ha="center", va="bottom",
-                fontsize=15, fontweight="bold")
+        ax.text(
+            cx,
+            ys[0] + bh / 2 + 0.55,
+            title,
+            ha="center",
+            va="bottom",
+            fontsize=15,
+            fontweight="bold",
+        )
 
     # Legend.
     handles = [
@@ -142,10 +166,15 @@ def main():
         plt.Rectangle((0, 0), 1, 1, fc=DEC_COLOR, ec="0.2"),
         plt.Rectangle((0, 0), 1, 1, fc=FROZEN_FC, ec="0.55", hatch="////"),
     ]
-    ax.legend(handles,
-              ["Trainable encoder", "Trainable decoder / head", "Frozen"],
-              loc="lower center", bbox_to_anchor=(0.5, -0.04),
-              ncol=3, fontsize=14, frameon=False)
+    ax.legend(
+        handles,
+        ["Trainable encoder", "Trainable decoder / head", "Frozen"],
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.04),
+        ncol=3,
+        fontsize=14,
+        frameon=False,
+    )
 
     ax.set_xlim(-bw, (len(STRATEGIES) - 1) * col_dx + bw)
     ax.set_ylim(y0 - bh, ys[0] + bh / 2 + 1.4)

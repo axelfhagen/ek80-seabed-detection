@@ -14,6 +14,7 @@ the true deep bottom (motivating the ensemble + outlier rejection).
 
 Output: Figures/single_ping_detection/single_ping_detection.pdf
 """
+
 from __future__ import annotations
 
 import sys
@@ -23,6 +24,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -33,7 +35,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from raw_sensor_integration.preprocessing import load_sv_from_zarr
 from raw_sensor_integration.bottom_labelling import (
-    detect_bottom_simple, detect_bottom_edge, detect_bottom_gradient,
+    detect_bottom_simple,
+    detect_bottom_edge,
+    detect_bottom_gradient,
     post_process_bottom,
 )
 from data_visualization.thesis_style import apply_thesis_style, savefig
@@ -42,11 +46,11 @@ ZARR = PROJECT_ROOT / "Datasets" / "echopype_zarr" / "D20241006-T215959.zarr"
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "single_ping_detection"
 
 FREQ = 38_000
-PULSE_DURATION = 0.001024     # s, from the channel config
-THRESHOLD_DB = -31.0          # fixed calibrated Sv threshold used for labels
+PULSE_DURATION = 0.001024  # s, from the channel config
+THRESHOLD_DB = -31.0  # fixed calibrated Sv threshold used for labels
 MIN_RANGE_M = 10.0
 ECHO_VMIN, ECHO_VMAX = -80.0, -34.0
-DISPLAY_MAX_RANGE = 235.0     # crop the echogram below the deepest bottom
+DISPLAY_MAX_RANGE = 235.0  # crop the echogram below the deepest bottom
 
 # Four hand-picked pings, ordered by ping index so the echogram markers and the
 # profile row read left-to-right together. 505 is the detector-disagreement
@@ -74,12 +78,18 @@ def run_detectors(sv, rng):
     heave = np.zeros(n)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        simple = detect_bottom_simple(sv, rng, heave, PULSE_DURATION,
-                                      minimum_range=MIN_RANGE_M,
-                                      threshold_log_sv=THRESHOLD_DB)
-        edge = detect_bottom_edge(sv, rng, heave, PULSE_DURATION,
-                                  frequency_hz=FREQ, minimum_range=MIN_RANGE_M,
-                                  threshold_log_sv=THRESHOLD_DB)
+        simple = detect_bottom_simple(
+            sv, rng, heave, PULSE_DURATION, minimum_range=MIN_RANGE_M, threshold_log_sv=THRESHOLD_DB
+        )
+        edge = detect_bottom_edge(
+            sv,
+            rng,
+            heave,
+            PULSE_DURATION,
+            frequency_hz=FREQ,
+            minimum_range=MIN_RANGE_M,
+            threshold_log_sv=THRESHOLD_DB,
+        )
         grad = detect_bottom_gradient(sv, rng, minimum_range=MIN_RANGE_M)
     return simple, edge, grad
 
@@ -98,16 +108,31 @@ def plot_echogram(ax, sv, rng, bottom, step):
     crop = min(crop, n_range)
     img = np.where(np.isfinite(sv[:crop]), sv[:crop], np.nan)
     extent = [0, n_pings, rng[crop - 1], rng[0]]
-    ax.imshow(img, aspect="auto", cmap="viridis", vmin=ECHO_VMIN, vmax=ECHO_VMAX,
-              origin="upper", extent=extent, interpolation="nearest")
+    ax.imshow(
+        img,
+        aspect="auto",
+        cmap="viridis",
+        vmin=ECHO_VMIN,
+        vmax=ECHO_VMAX,
+        origin="upper",
+        extent=extent,
+        interpolation="nearest",
+    )
     ax.plot(np.arange(n_pings), bottom, color=C_BOTTOM, lw=1.6, alpha=0.9)
     for label, p in zip("abcd", PINGS):
         ax.axvline(p, color="white", ls="--", lw=1.6, alpha=0.85)
-        ax.text(p, 0.93, f"({label})", transform=ax.get_xaxis_transform(),
-                ha="center", va="top", fontsize=15, fontweight="bold",
-                color="white",
-                bbox=dict(boxstyle="round,pad=0.15", fc="black", ec="none",
-                          alpha=0.55))
+        ax.text(
+            p,
+            0.93,
+            f"({label})",
+            transform=ax.get_xaxis_transform(),
+            ha="center",
+            va="top",
+            fontsize=15,
+            fontweight="bold",
+            color="white",
+            bbox=dict(boxstyle="round,pad=0.15", fc="black", ec="none", alpha=0.55),
+        )
     ax.set_xlabel("Ping (along-track)")
     ax.set_ylabel("Range (m)")
     ax.set_ylim(DISPLAY_MAX_RANGE, 0)
@@ -142,8 +167,16 @@ def plot_profile(ax, label, sv, rng, step, p, simple, edge, grad):
     mark(edge[p], C_EDGE, lw=1.8)
     mark(grad[p], C_GRAD, lw=1.8)
     if np.isfinite(pk):
-        ax.plot([float(np.nanmax(visible))], [pk], marker="o", ms=9,
-                mfc=C_PEAK, mec="white", mew=1.2, zorder=6)
+        ax.plot(
+            [float(np.nanmax(visible))],
+            [pk],
+            marker="o",
+            ms=9,
+            mfc=C_PEAK,
+            mec="white",
+            mew=1.2,
+            zorder=6,
+        )
 
     ax.set_xlim(xlo, xhi)
     ax.set_ylim(ymax, 0)
@@ -162,8 +195,7 @@ def main():
     bottom, _ = post_process_bottom(simple, max_deviation_m=10.0, window=31)
 
     fig = plt.figure(figsize=(15, 11))
-    gs = GridSpec(2, 4, height_ratios=[1.05, 1.0], hspace=0.32, wspace=0.42,
-                  figure=fig)
+    gs = GridSpec(2, 4, height_ratios=[1.05, 1.0], hspace=0.32, wspace=0.42, figure=fig)
 
     ax_echo = fig.add_subplot(gs[0, :])
     plot_echogram(ax_echo, sv, rng, bottom, step)
@@ -175,15 +207,29 @@ def main():
     handles = [
         Line2D([0], [0], color="#37474f", lw=2, label=r"$S_v$ profile"),
         Line2D([0], [0], color=C_THRESH, ls=":", lw=2, label=f"threshold {THRESHOLD_DB:.0f} dB"),
-        Line2D([0], [0], marker="o", color="none", mfc=C_PEAK, mec="white",
-               ms=9, label="peak (strongest scatterer)"),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="none",
+            mfc=C_PEAK,
+            mec="white",
+            ms=9,
+            label="peak (strongest scatterer)",
+        ),
         Line2D([0], [0], color=C_SIMPLE, lw=2.5, label="simple (leading edge)"),
         Line2D([0], [0], color=C_EDGE, lw=2, label="edge"),
         Line2D([0], [0], color=C_GRAD, lw=2, label="gradient"),
         Line2D([0], [0], color=C_BOTTOM, lw=2, label="post-processed bottom"),
     ]
-    fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False,
-               fontsize=14, bbox_to_anchor=(0.5, -0.02))
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=4,
+        frameon=False,
+        fontsize=14,
+        bbox_to_anchor=(0.5, -0.02),
+    )
 
     fig.suptitle("Classical bottom detection on individual EK80 pings", y=0.98)
 

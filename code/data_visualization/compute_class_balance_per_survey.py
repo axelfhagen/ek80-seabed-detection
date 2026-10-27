@@ -37,14 +37,14 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 SURVEYS = [
-    ("Dec 2023",      date(2023, 12, 20), date(2023, 12, 21)),
-    ("Jan 2024",      date(2024,  1, 31), date(2024,  2,  1)),
-    ("Apr 2024",      date(2024,  4,  8),  date(2024,  4, 21)),
-    ("Jul 2024",      date(2024,  7,  1),  date(2024,  7, 16)),
-    ("Sep--Oct 2024", date(2024,  9, 14), date(2024, 10, 25)),
-    ("Jan 2025",      date(2025,  1, 14), date(2025,  1, 23)),
-    ("Feb 2025",      date(2025,  2,  1),  date(2025,  2, 14)),
-    ("Jun 2025",      date(2025,  6, 24), date(2025,  6, 26)),
+    ("Dec 2023", date(2023, 12, 20), date(2023, 12, 21)),
+    ("Jan 2024", date(2024, 1, 31), date(2024, 2, 1)),
+    ("Apr 2024", date(2024, 4, 8), date(2024, 4, 21)),
+    ("Jul 2024", date(2024, 7, 1), date(2024, 7, 16)),
+    ("Sep--Oct 2024", date(2024, 9, 14), date(2024, 10, 25)),
+    ("Jan 2025", date(2025, 1, 14), date(2025, 1, 23)),
+    ("Feb 2025", date(2025, 2, 1), date(2025, 2, 14)),
+    ("Jun 2025", date(2025, 6, 24), date(2025, 6, 26)),
 ]
 
 
@@ -82,7 +82,9 @@ def bottom_fraction(zarr_path: Path) -> tuple[int, int] | None:
     heave = data.heave if data.heave is not None else np.zeros(n_pings)
     try:
         bottom_range, _, _ = detect_bottom_ensemble_pipeline(
-            sv, data.range_array, heave=heave,
+            sv,
+            data.range_array,
+            heave=heave,
             pulse_duration=data.pulse_duration,
             frequency_hz=data.frequency_hz,
             transducer_draft=data.transducer_draft or 0.0,
@@ -99,8 +101,9 @@ def bottom_fraction(zarr_path: Path) -> tuple[int, int] | None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--per-survey", type=int, default=15,
-                        help="zarr files to sample per survey (default 15)")
+    parser.add_argument(
+        "--per-survey", type=int, default=15, help="zarr files to sample per survey (default 15)"
+    )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 

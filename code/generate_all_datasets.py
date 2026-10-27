@@ -38,14 +38,13 @@ FREQ1 = 38_000
 FREQ2 = 200_000
 
 
-def generate_variant(variant: DatasetSpec, zarr_paths: list[Path],
-                     output_root: Path):
+def generate_variant(variant: DatasetSpec, zarr_paths: list[Path], output_root: Path):
     """Extract and cache patches for a single dataset variant."""
     cache_dir = output_root / variant.name
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     params = asdict(variant)
-    with open(cache_dir / "params.json", 'w') as f:
+    with open(cache_dir / "params.json", "w") as f:
         json.dump(params, f, indent=2)
 
     total_patches = 0
@@ -81,7 +80,7 @@ def generate_variant(variant: DatasetSpec, zarr_paths: list[Path],
         "n_zarr_files": len(zarr_paths),
         "extraction_time_sec": round(elapsed, 1),
     }
-    with open(cache_dir / "summary.json", 'w') as f:
+    with open(cache_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
     print(f"  {variant.name}: {total_patches} patches in {elapsed:.1f}s")
@@ -90,8 +89,13 @@ def generate_variant(variant: DatasetSpec, zarr_paths: list[Path],
 
 def main():
     parser = argparse.ArgumentParser(description="Generate patch dataset variants")
-    parser.add_argument("--only", nargs="+", type=int, default=None,
-                        help="Only generate these variant numbers (0-indexed)")
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Only generate these variant numbers (0-indexed)",
+    )
     parser.add_argument("--zarr-dir", type=Path, default=ZARR_DIR)
     parser.add_argument("--output-root", type=Path, default=OUTPUT_ROOT)
     args = parser.parse_args()
@@ -112,12 +116,12 @@ def main():
     print(f"\nGenerating {len(variants_to_run)} dataset variant(s):\n")
 
     for variant in variants_to_run:
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Variant: {variant.name}")
         print(f"  {variant.description[:80]}...")
         generate_variant(variant, zarr_paths, args.output_root)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Done. Each directory contains:")
     print("  - params.json    (extraction parameters + recommended training config)")
     print("  - summary.json   (patch count, timing)")

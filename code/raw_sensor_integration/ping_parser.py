@@ -29,24 +29,29 @@ def decode_data_type(data_type: int) -> Dict[str, Any]:
     - has_angle: True if angle data is included
     """
     base_type = data_type & 0x07
-    types = ['Power', 'Angle', 'PowerAngle', 'Complex']
-    base = types[base_type] if base_type < 4 else f'Unknown({base_type})'
+    types = ["Power", "Angle", "PowerAngle", "Complex"]
+    base = types[base_type] if base_type < 4 else f"Unknown({base_type})"
 
     return {
-        'base_type': base,
-        'complex_float32': bool((data_type >> 3) & 1),
-        'has_angle': bool((data_type >> 8) & 1),
-        'has_complex': bool((data_type >> 9) & 1),
-        'raw': data_type
+        "base_type": base,
+        "complex_float32": bool((data_type >> 3) & 1),
+        "has_angle": bool((data_type >> 8) & 1),
+        "has_complex": bool((data_type >> 9) & 1),
+        "raw": data_type,
     }
 
 
 class Ping:
     """Represents a single ping from an echosounder."""
 
-    def __init__(self, channel_id: str, timestamp: datetime,
-                 samples: np.ndarray, sample_offset: int,
-                 data_type_info: Dict[str, Any]):
+    def __init__(
+        self,
+        channel_id: str,
+        timestamp: datetime,
+        samples: np.ndarray,
+        sample_offset: int,
+        data_type_info: Dict[str, Any],
+    ):
         self.channel_id = channel_id
         self.timestamp = timestamp
         self.samples = samples  # Complex samples
@@ -71,7 +76,9 @@ class Ping:
         return 10 * np.log10(power)
 
     def __repr__(self):
-        return f"Ping(channel={self.channel_id}, time={self.timestamp}, samples={self.sample_count})"
+        return (
+            f"Ping(channel={self.channel_id}, time={self.timestamp}, samples={self.sample_count})"
+        )
 
 
 def parse_raw3_datagram(data: bytes, offset: int) -> Tuple[Ping, int]:
@@ -86,21 +93,21 @@ def parse_raw3_datagram(data: bytes, offset: int) -> Tuple[Ping, int]:
         (Ping object, next offset after datagram)
     """
     # Get datagram length
-    dgram_len = struct.unpack('<I', data[offset-4:offset])[0]
+    dgram_len = struct.unpack("<I", data[offset - 4 : offset])[0]
 
     pos = offset + 4  # Skip 'RAW3'
 
     # Timestamp (8 bytes)
-    nt_time = struct.unpack('<q', data[pos:pos+8])[0]
+    nt_time = struct.unpack("<q", data[pos : pos + 8])[0]
     timestamp = nt_to_datetime(nt_time)
     pos += 8
 
     # Channel ID (128 bytes)
-    channel_id = data[pos:pos+128].split(b'\x00')[0].decode('ascii')
+    channel_id = data[pos : pos + 128].split(b"\x00")[0].decode("ascii")
     pos += 128
 
     # Data type (2 bytes)
-    data_type = struct.unpack('<H', data[pos:pos+2])[0]
+    data_type = struct.unpack("<H", data[pos : pos + 2])[0]
     data_type_info = decode_data_type(data_type)
     pos += 2
 
@@ -108,11 +115,11 @@ def parse_raw3_datagram(data: bytes, offset: int) -> Tuple[Ping, int]:
     pos += 2
 
     # Sample offset (4 bytes)
-    sample_offset = struct.unpack('<i', data[pos:pos+4])[0]
+    sample_offset = struct.unpack("<i", data[pos : pos + 4])[0]
     pos += 4
 
     # Sample count (4 bytes)
-    sample_count = struct.unpack('<i', data[pos:pos+4])[0]
+    sample_count = struct.unpack("<i", data[pos : pos + 4])[0]
     pos += 4
 
     # Calculate header size and data size
@@ -120,15 +127,15 @@ def parse_raw3_datagram(data: bytes, offset: int) -> Tuple[Ping, int]:
     data_size = dgram_len - header_size
 
     # Read sample data
-    sample_bytes = data[pos:pos + data_size]
+    sample_bytes = data[pos : pos + data_size]
 
     # Parse samples based on data type
-    if data_type_info['complex_float32']:
+    if data_type_info["complex_float32"]:
         # Complex float32 data
         samples = np.frombuffer(sample_bytes, dtype=np.complex64)
 
         # If has_complex is set, data includes additional complex samples
-        if data_type_info['has_complex']:
+        if data_type_info["has_complex"]:
             # Data is interleaved: complex sample + angle data
             bytes_per_sample = data_size // sample_count
             if bytes_per_sample == 24:
@@ -150,7 +157,7 @@ def parse_raw3_datagram(data: bytes, offset: int) -> Tuple[Ping, int]:
         timestamp=timestamp,
         samples=samples,
         sample_offset=sample_offset,
-        data_type_info=data_type_info
+        data_type_info=data_type_info,
     )
 
     # Next offset is after datagram + trailing length field
@@ -159,8 +166,9 @@ def parse_raw3_datagram(data: bytes, offset: int) -> Tuple[Ping, int]:
     return ping, next_offset
 
 
-def extract_pings(path: str, channel_filter: Optional[str] = None,
-                  max_pings: Optional[int] = None) -> List[Ping]:
+def extract_pings(
+    path: str, channel_filter: Optional[str] = None, max_pings: Optional[int] = None
+) -> List[Ping]:
     """
     Extract all pings from a .raw file.
 
@@ -175,11 +183,11 @@ def extract_pings(path: str, channel_filter: Optional[str] = None,
     data = raw_parser.read_raw_file(path)
     datagram_types = raw_parser.find_datagram_types(data)
 
-    if 'RAW3' not in datagram_types:
+    if "RAW3" not in datagram_types:
         return []
 
     pings = []
-    for offset in datagram_types['RAW3']:
+    for offset in datagram_types["RAW3"]:
         try:
             ping, _ = parse_raw3_datagram(data, offset)
 
@@ -226,7 +234,7 @@ def get_ping_matrix(pings: List[Ping], channel_id: str) -> Tuple[np.ndarray, Lis
     timestamps = []
 
     for i, ping in enumerate(filtered):
-        matrix[:ping.sample_count, i] = ping.samples
+        matrix[: ping.sample_count, i] = ping.samples
         timestamps.append(ping.timestamp)
 
     return matrix, timestamps

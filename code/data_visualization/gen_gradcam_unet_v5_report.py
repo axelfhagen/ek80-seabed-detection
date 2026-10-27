@@ -4,7 +4,9 @@ This script keeps the v4 data/model choices but produces a compact figure set:
 square image panels, large readable titles, and at most three panels per figure.
 Output: Figures/gradcam_unet/v5_report/
 """
+
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
@@ -32,14 +34,16 @@ from data_visualization.thesis_style import (
 )
 
 apply_thesis_style()
-plt.rcParams.update({
-    "axes.titlesize": 24,
-    "axes.labelsize": 21,
-    "xtick.labelsize": 18,
-    "ytick.labelsize": 18,
-    "legend.fontsize": 18,
-    "figure.titlesize": 30,
-})
+plt.rcParams.update(
+    {
+        "axes.titlesize": 24,
+        "axes.labelsize": 21,
+        "xtick.labelsize": 18,
+        "ytick.labelsize": 18,
+        "legend.fontsize": 18,
+        "figure.titlesize": 30,
+    }
+)
 
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "gradcam_unet" / "v5_report"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -93,8 +97,8 @@ def _bottom_lines(sample):
 
 def _draw_bottom_lines(ax, sample, legend=True):
     x, label_line, pred_line = _bottom_lines(sample)
-    label_artist, = ax.plot(x, label_line, **LABEL_KW)
-    pred_artist, = ax.plot(x, pred_line, **PRED_KW)
+    (label_artist,) = ax.plot(x, label_line, **LABEL_KW)
+    (pred_artist,) = ax.plot(x, pred_line, **PRED_KW)
     label_artist.set_path_effects(LINE_EFFECTS)
     pred_artist.set_path_effects(LINE_EFFECTS)
     if legend:
@@ -120,8 +124,7 @@ def _cam_decoder_mean(model, sample):
         model.decoder.blocks[-1],
     ]
     cams = [
-        gv.gradcam_single(model, [layer], sample["input"], sample["pred_mask"])
-        for layer in layers
+        gv.gradcam_single(model, [layer], sample["input"], sample["pred_mask"]) for layer in layers
     ]
     cam = np.mean(cams, axis=0)
     return cam / (np.nanmax(cam) + 1e-8)
@@ -139,17 +142,15 @@ def fig01_hero_contour(model, sample, layer):
     _image_ax(axes[0], "Input Echogram")
 
     axes[1].imshow(echo, cmap="gray", vmin=0, vmax=1)
-    cs = axes[1].contourf(cam, levels=levels, cmap="turbo", alpha=0.62,
-                          extend="max")
-    axes[1].contour(cam, levels=levels, colors="black", linewidths=0.6,
-                    alpha=0.35)
+    cs = axes[1].contourf(cam, levels=levels, cmap="turbo", alpha=0.62, extend="max")
+    axes[1].contour(cam, levels=levels, colors="black", linewidths=0.6, alpha=0.35)
     _draw_bottom_lines(axes[1], sample)
     _image_ax(axes[1], "Grad-CAM Contours", show_depth=False)
-    style_colorbar(fig.colorbar(cs, ax=axes[1], fraction=0.046, pad=0.035),
-                   label="Grad-CAM importance")
+    style_colorbar(
+        fig.colorbar(cs, ax=axes[1], fraction=0.046, pad=0.035), label="Grad-CAM importance"
+    )
 
-    fig.suptitle(f"Seabed Decision Attention: {_sample_id(sample)}",
-                 fontweight="bold")
+    fig.suptitle(f"Seabed Decision Attention: {_sample_id(sample)}", fontweight="bold")
     _add_source(fig)
     savefig(fig, OUTPUT_DIR / "01_hero_contour_square.png")
     plt.close(fig)
@@ -169,11 +170,11 @@ def fig02_hero_colormap(model, sample, layer):
     im = axes[1].imshow(cam, cmap="turbo", vmin=0, vmax=1, alpha=0.68)
     _draw_bottom_lines(axes[1], sample)
     _image_ax(axes[1], "Grad-CAM Colormap", show_depth=False)
-    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.035),
-                   label="Grad-CAM importance")
+    style_colorbar(
+        fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.035), label="Grad-CAM importance"
+    )
 
-    fig.suptitle(f"Seabed Decision Attention: {_sample_id(sample)}",
-                 fontweight="bold")
+    fig.suptitle(f"Seabed Decision Attention: {_sample_id(sample)}", fontweight="bold")
     _add_source(fig)
     savefig(fig, OUTPUT_DIR / "02_hero_colormap_square.png")
     plt.close(fig)
@@ -192,11 +193,9 @@ def fig03_patch_last_decoder(model, sample, layer):
     im = axes[1].imshow(cam, cmap="inferno", vmin=0, vmax=1)
     _draw_bottom_lines(axes[1], sample)
     _image_ax(axes[1], "Last Decoder Grad-CAM", show_depth=False)
-    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.035),
-                   label="Importance")
+    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.035), label="Importance")
 
-    fig.suptitle(f"Patch-Level Explanation: {_sample_id(sample)}",
-                 fontweight="bold")
+    fig.suptitle(f"Patch-Level Explanation: {_sample_id(sample)}", fontweight="bold")
     _add_source(fig)
     savefig(fig, OUTPUT_DIR / "03_patch_last_decoder_square.png")
     plt.close(fig)
@@ -215,11 +214,9 @@ def fig04_patch_mean_decoder(model, sample):
     im = axes[1].imshow(cam, cmap="inferno", vmin=0, vmax=1)
     _draw_bottom_lines(axes[1], sample)
     _image_ax(axes[1], "Mean Decoder Grad-CAM", show_depth=False)
-    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.035),
-                   label="Mean importance")
+    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.035), label="Mean importance")
 
-    fig.suptitle(f"Average Decoder Attention: {_sample_id(sample)}",
-                 fontweight="bold")
+    fig.suptitle(f"Average Decoder Attention: {_sample_id(sample)}", fontweight="bold")
     _add_source(fig)
     savefig(fig, OUTPUT_DIR / "04_patch_mean_decoder_square.png")
     plt.close(fig)
@@ -229,8 +226,7 @@ def fig05_three_examples(model, samples, layer):
     """Three compact examples with contours and corrected label colours."""
     n = min(3, len(samples))
     levels = np.linspace(0.25, 0.9, 6)
-    fig, axes = plt.subplots(1, n, figsize=(5.8 * n, 6.5),
-                             constrained_layout=True)
+    fig, axes = plt.subplots(1, n, figsize=(5.8 * n, 6.5), constrained_layout=True)
     if n == 1:
         axes = [axes]
 
@@ -239,16 +235,15 @@ def fig05_three_examples(model, samples, layer):
         echo = v4.echogram_38khz(sample)
         cam = _cam_last(model, sample, layer)
         ax.imshow(echo, cmap="gray", vmin=0, vmax=1)
-        cs = ax.contourf(cam, levels=levels, cmap="turbo", alpha=0.62,
-                         extend="max")
+        cs = ax.contourf(cam, levels=levels, cmap="turbo", alpha=0.62, extend="max")
         _draw_bottom_lines(ax, sample, legend=False)
         _image_ax(ax, _sample_id(sample), show_depth=False)
 
     axes[0].legend(loc="upper left", framealpha=0.92, facecolor="white")
     if cs is not None:
-        style_colorbar(fig.colorbar(cs, ax=list(axes), fraction=0.036,
-                                    pad=0.025),
-                       label="Grad-CAM importance")
+        style_colorbar(
+            fig.colorbar(cs, ax=list(axes), fraction=0.036, pad=0.025), label="Grad-CAM importance"
+        )
 
     fig.suptitle("Grad-CAM Contours Across Test Patches", fontweight="bold")
     _add_source(fig)
@@ -278,8 +273,9 @@ def write_readme():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkpoint", type=Path, default=gv.CHECKPOINT_PATH,
-                        help="Checkpoint .pth to evaluate")
+    parser.add_argument(
+        "--checkpoint", type=Path, default=gv.CHECKPOINT_PATH, help="Checkpoint .pth to evaluate"
+    )
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--n", type=int, default=5)
     args = parser.parse_args()
@@ -303,15 +299,20 @@ def main():
         print(f"  {_sample_id(sample)}  variety={sample['variety']:.1f}")
 
     print("Figure 01: hero contour")
-    fig01_hero_contour(model, samples[0], layer); _cleanup()
+    fig01_hero_contour(model, samples[0], layer)
+    _cleanup()
     print("Figure 02: hero colormap")
-    fig02_hero_colormap(model, samples[0], layer); _cleanup()
+    fig02_hero_colormap(model, samples[0], layer)
+    _cleanup()
     print("Figure 03: patch + last decoder Grad-CAM")
-    fig03_patch_last_decoder(model, samples[0], layer); _cleanup()
+    fig03_patch_last_decoder(model, samples[0], layer)
+    _cleanup()
     print("Figure 04: patch + mean decoder Grad-CAM")
-    fig04_patch_mean_decoder(model, samples[0]); _cleanup()
+    fig04_patch_mean_decoder(model, samples[0])
+    _cleanup()
     print("Figure 05: three examples")
-    fig05_three_examples(model, samples[:3], layer); _cleanup()
+    fig05_three_examples(model, samples[:3], layer)
+    _cleanup()
     write_readme()
 
     print(f"\nAll figures written to {OUTPUT_DIR}")

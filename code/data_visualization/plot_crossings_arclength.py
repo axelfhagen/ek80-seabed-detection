@@ -19,6 +19,7 @@ from pathlib import Path
 import sys
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,7 +29,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from data_visualization.thesis_style import (
-    apply_thesis_style, FIGSIZE_FULL, savefig,
+    apply_thesis_style,
+    FIGSIZE_FULL,
+    savefig,
 )
 from validation.conformal_labelless import project_to_arclength, route_length_m
 
@@ -39,10 +42,10 @@ TZ = "Europe/Oslo"
 LON_MIN, LON_MAX = 10.470, 10.680
 LAT_MIN, LAT_MAX = 59.395, 59.445
 LON_MIDPOINT = 10.58
-HYST_DEG = 0.005          # ~280 m east-west buffer
-GAP_SECONDS = 300.0       # break a crossing when the sounder was off this long
-MIN_PINGS = 200           # ignore tiny fragments
-MIN_SPAN_KM = 3.0         # a real crossing covers a good stretch of the route
+HYST_DEG = 0.005  # ~280 m east-west buffer
+GAP_SECONDS = 300.0  # break a crossing when the sounder was off this long
+MIN_PINGS = 200  # ignore tiny fragments
+MIN_SPAN_KM = 3.0  # a real crossing covers a good stretch of the route
 
 
 def load_pings_by_day() -> dict[pd.Timestamp, pd.DataFrame]:
@@ -58,21 +61,26 @@ def load_pings_by_day() -> dict[pd.Timestamp, pd.DataFrame]:
         chunksize=1_000_000,
     ):
         chunk = chunk.dropna(subset=["timestamp", "lat", "lon", "depth_m"])
-        chunk = chunk[(chunk["lon"] > LON_MIN) & (chunk["lon"] < LON_MAX) &
-                      (chunk["lat"] > LAT_MIN) & (chunk["lat"] < LAT_MAX) &
-                      (chunk["depth_m"] > 0) & (chunk["depth_m"] < 200)]
+        chunk = chunk[
+            (chunk["lon"] > LON_MIN)
+            & (chunk["lon"] < LON_MAX)
+            & (chunk["lat"] > LAT_MIN)
+            & (chunk["lat"] < LAT_MAX)
+            & (chunk["depth_m"] > 0)
+            & (chunk["depth_m"] < 200)
+        ]
         if chunk.empty:
             continue
         ts_local = chunk["timestamp"].dt.tz_localize("UTC").dt.tz_convert(TZ)
         chunk = chunk.assign(ts_local=ts_local, date_local=ts_local.dt.normalize())
         for date, sub in chunk.groupby("date_local", sort=False):
-            by_day.setdefault(date, []).append(
-                sub[["ts_local", "lon", "lat", "depth_m"]].copy())
+            by_day.setdefault(date, []).append(sub[["ts_local", "lon", "lat", "depth_m"]].copy())
         n_rows += len(chunk)
         print(f"  {n_rows:>11,} pings loaded, {len(by_day)} dates seen")
-    return {d: (pd.concat(parts, ignore_index=True)
-                  .sort_values("ts_local").reset_index(drop=True))
-            for d, parts in by_day.items()}
+    return {
+        d: (pd.concat(parts, ignore_index=True).sort_values("ts_local").reset_index(drop=True))
+        for d, parts in by_day.items()
+    }
 
 
 def split_crossings(df: pd.DataFrame):
@@ -161,13 +169,27 @@ def main(bin_m: float = 50.0) -> None:
     # Faint spaghetti of every crossing -> a density cloud at this many lines.
     for r in range(n_cross):
         ax.plot(centers, mat[r], color="#4c72b0", alpha=0.03, linewidth=0.8)
-    ax.plot([], [], color="#4c72b0", alpha=0.5, linewidth=1.2,
-            label=f"Individual crossings (n={n_cross})")
+    ax.plot(
+        [],
+        [],
+        color="#4c72b0",
+        alpha=0.5,
+        linewidth=1.2,
+        label=f"Individual crossings (n={n_cross})",
+    )
 
-    ax.fill_between(centers[have], p10[have], p90[have], color="#dd8452",
-                    alpha=0.35, linewidth=0, label="10th to 90th percentile")
-    ax.plot(centers, med, color="#c44e52", linewidth=3.2, label="Median profile",
-            solid_capstyle="round")
+    ax.fill_between(
+        centers[have],
+        p10[have],
+        p90[have],
+        color="#dd8452",
+        alpha=0.35,
+        linewidth=0,
+        label="10th to 90th percentile",
+    )
+    ax.plot(
+        centers, med, color="#c44e52", linewidth=3.2, label="Median profile", solid_capstyle="round"
+    )
 
     ax.set_xlabel("Arc length along route, Horten to Moss (km)")
     ax.set_ylabel("Detected bottom depth (m)")
@@ -186,7 +208,6 @@ def main(bin_m: float = 50.0) -> None:
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--bin-size-m", type=float, default=50.0,
-                   help="Arc-length bin width (m).")
+    p.add_argument("--bin-size-m", type=float, default=50.0, help="Arc-length bin width (m).")
     args = p.parse_args()
     main(bin_m=args.bin_size_m)

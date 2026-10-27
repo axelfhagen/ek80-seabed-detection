@@ -18,6 +18,7 @@ probability map of shape (n_range, n_pings), output is an int64 array of shape
 (n_pings,) holding the per-ping bottom sample index, with -1 meaning no
 detection. This makes them drop-in compatible with ``evaluate.bottom_depth_error``.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -40,8 +41,9 @@ def _first_run_start(binary_col: np.ndarray, min_run: int) -> int:
     return -1
 
 
-def extract_bottom_contiguous(prob: np.ndarray, threshold: float = 0.5,
-                              min_run: int = 5) -> np.ndarray:
+def extract_bottom_contiguous(
+    prob: np.ndarray, threshold: float = 0.5, min_run: int = 5
+) -> np.ndarray:
     """Top of the first vertical run of >= ``min_run`` bottom pixels, per ping.
 
     A single high-probability pixel in the water column no longer counts as the
@@ -55,9 +57,13 @@ def extract_bottom_contiguous(prob: np.ndarray, threshold: float = 0.5,
     return bottom_idx
 
 
-def extract_bottom_gated(prob: np.ndarray, threshold: float = 0.5,
-                         high_threshold: float = 0.7, max_jump: int = 15,
-                         min_run: int = 3) -> np.ndarray:
+def extract_bottom_gated(
+    prob: np.ndarray,
+    threshold: float = 0.5,
+    high_threshold: float = 0.7,
+    max_jump: int = 15,
+    min_run: int = 3,
+) -> np.ndarray:
     """Temporal gating with hysteresis.
 
     Seeds from the first ping with a contiguous detection, then for each ping
@@ -146,9 +152,9 @@ def _step_edge_cost(prob: np.ndarray) -> np.ndarray:
     n_range, n_pings = prob.shape
     above = np.empty_like(prob, dtype=np.float64)
     above[0] = 0.0
-    np.cumsum(prob[:-1], axis=0, out=above[1:])             # sum of prob above r
-    miss = np.cumsum(1.0 - prob, axis=0)                    # sum of (1-prob) up to r
-    below = miss[-1] - miss + (1.0 - prob)                  # sum of (1-prob) for i>=r
+    np.cumsum(prob[:-1], axis=0, out=above[1:])  # sum of prob above r
+    miss = np.cumsum(1.0 - prob, axis=0)  # sum of (1-prob) up to r
+    below = miss[-1] - miss + (1.0 - prob)  # sum of (1-prob) for i>=r
     return above + below
 
 
@@ -178,8 +184,9 @@ def extract_bottom_dp(prob: np.ndarray, smoothness: float = 0.5) -> np.ndarray:
     return bottom_idx
 
 
-def extract_bottom_hampel(prob: np.ndarray, threshold: float = 0.5,
-                          window: int = 15, n_sigma: float = 3.0) -> np.ndarray:
+def extract_bottom_hampel(
+    prob: np.ndarray, threshold: float = 0.5, window: int = 15, n_sigma: float = 3.0
+) -> np.ndarray:
     """Baseline first-edge line, de-spiked with a rolling Hampel filter.
 
     Takes the baseline bottom (first pixel >= ``threshold``) per ping, then flags
@@ -199,7 +206,7 @@ def extract_bottom_hampel(prob: np.ndarray, threshold: float = 0.5,
     med = np.full(n_pings, np.nan)
     scaled_mad = np.full(n_pings, np.nan)
     for i in range(n_pings):
-        w = x[max(0, i - half):min(n_pings, i + half + 1)]
+        w = x[max(0, i - half) : min(n_pings, i + half + 1)]
         w = w[~np.isnan(w)]
         if len(w):
             m = np.median(w)
@@ -210,8 +217,7 @@ def extract_bottom_hampel(prob: np.ndarray, threshold: float = 0.5,
     # Floor the scale by the global MAD (and at least half a sample) so isolated
     # outliers are still rejected in otherwise-constant stretches.
     xv = x[~np.isnan(x)]
-    global_scale = 1.4826 * np.median(np.abs(xv - np.median(xv))) \
-        if len(xv) else 0.0
+    global_scale = 1.4826 * np.median(np.abs(xv - np.median(xv))) if len(xv) else 0.0
     floor = max(global_scale, 0.5)
     eff_scale = np.maximum(scaled_mad, floor)
     is_out = (~np.isnan(x)) & (np.abs(x - med) > n_sigma * eff_scale)
@@ -267,8 +273,9 @@ def extract_bottom_otsu(prob: np.ndarray, min_run: int = 5) -> np.ndarray:
     return extract_bottom_contiguous(prob, threshold=thr, min_run=min_run)
 
 
-def bottom_jumpiness(bottom_idx: np.ndarray, range_array: np.ndarray,
-                     jump_threshold_m: float = 5.0):
+def bottom_jumpiness(
+    bottom_idx: np.ndarray, range_array: np.ndarray, jump_threshold_m: float = 5.0
+):
     """Quantify how jumpy a bottom line is.
 
     Returns
@@ -285,7 +292,7 @@ def bottom_jumpiness(bottom_idx: np.ndarray, range_array: np.ndarray,
     steps = np.abs(np.diff(depth))
     steps = steps[~np.isnan(steps)]
     if len(steps) == 0:
-        return float('nan'), 0, float('nan')
+        return float("nan"), 0, float("nan")
     n_big = int(np.sum(steps > jump_threshold_m))
     return float(np.mean(steps)), n_big, float(n_big / len(steps))
 
@@ -303,7 +310,7 @@ def _self_test():
     # that previously made -log(prob) DP collapse to the deepest row.
     true_row = (100 + 8 * np.sin(np.linspace(0, 3, n_pings))).astype(int)
     for p in range(n_pings):
-        prob[true_row[p]:, p] = 0.95
+        prob[true_row[p] :, p] = 0.95
 
     # One spurious high pixel high in the water column at ping 60.
     prob[20, 60] = 0.99
@@ -319,18 +326,30 @@ def _self_test():
     hamp = extract_bottom_hampel(prob, threshold=0.5, window=15, n_sigma=3.0)
     otsu = extract_bottom_otsu(prob, min_run=5)
 
-    print("ping 60 (stray pixel): "
-          f"baseline={base[60]} contiguous={cont[60]} gated={gate[60]} dp={dp[60]} "
-          f"hampel={hamp[60]} otsu={otsu[60]} (true~{true_row[60]})")
-    print("ping 80 (dropped ping): "
-          f"baseline={base[80]} contiguous={cont[80]} gated={gate[80]} dp={dp[80]}")
+    print(
+        "ping 60 (stray pixel): "
+        f"baseline={base[60]} contiguous={cont[60]} gated={gate[60]} dp={dp[60]} "
+        f"hampel={hamp[60]} otsu={otsu[60]} (true~{true_row[60]})"
+    )
+    print(
+        "ping 80 (dropped ping): "
+        f"baseline={base[80]} contiguous={cont[80]} gated={gate[80]} dp={dp[80]}"
+    )
 
-    for name, line in [("baseline", base), ("contiguous", cont), ("gated", gate),
-                       ("dp", dp), ("hampel", hamp), ("otsu", otsu)]:
+    for name, line in [
+        ("baseline", base),
+        ("contiguous", cont),
+        ("gated", gate),
+        ("dp", dp),
+        ("hampel", hamp),
+        ("otsu", otsu),
+    ]:
         mstep, nbig, rate = bottom_jumpiness(line, range_array, jump_threshold_m=5.0)
         cov = float(np.mean(line >= 0))
-        print(f"  {name:11s} mean_step={mstep:6.3f} m  big_jumps={nbig:3d}  "
-              f"rate={rate:5.2%}  coverage={cov:5.1%}")
+        print(
+            f"  {name:11s} mean_step={mstep:6.3f} m  big_jumps={nbig:3d}  "
+            f"rate={rate:5.2%}  coverage={cov:5.1%}"
+        )
 
     assert abs(base[60] - true_row[60]) > 20, "baseline should spike on stray pixel"
     assert abs(cont[60] - true_row[60]) <= 2, "contiguous should ignore stray pixel"
@@ -347,5 +366,6 @@ def _self_test():
 if __name__ == "__main__":
     import sys
     from pathlib import Path
+
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     _self_test()

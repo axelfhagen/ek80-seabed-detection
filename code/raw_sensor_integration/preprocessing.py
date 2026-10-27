@@ -8,8 +8,9 @@ import numpy as np
 import pandas as pd
 
 
-def normalize_echogram(data, method='minmax', vmin=None, vmax=None,
-                       clip_percentile=None, fill_nan=None):
+def normalize_echogram(
+    data, method="minmax", vmin=None, vmax=None, clip_percentile=None, fill_nan=None
+):
     """
     Normalize echogram data for neural network input.
 
@@ -40,17 +41,17 @@ def normalize_echogram(data, method='minmax', vmin=None, vmax=None,
     range_span = high - low
     zero_range = not np.isfinite(range_span) or np.isclose(range_span, 0.0)
 
-    if method == 'minmax':
+    if method == "minmax":
         if zero_range:
             result = np.zeros_like(clipped, dtype=np.float64)
         else:
             result = (clipped - low) / range_span
-    elif method == 'symmetric':
+    elif method == "symmetric":
         if zero_range:
             result = np.zeros_like(clipped, dtype=np.float64)
         else:
             result = 2 * (clipped - low) / range_span - 1
-    elif method == 'standard':
+    elif method == "standard":
         std = np.nanstd(clipped)
         if not np.isfinite(std) or np.isclose(std, 0.0):
             result = np.zeros_like(clipped, dtype=np.float64)
@@ -65,7 +66,7 @@ def normalize_echogram(data, method='minmax', vmin=None, vmax=None,
     return result
 
 
-def downsample_depth(data, factor, method='max'):
+def downsample_depth(data, factor, method="max"):
     """
     Downsample echogram in the depth dimension only.
 
@@ -82,17 +83,17 @@ def downsample_depth(data, factor, method='max'):
     h, w = data.shape
     new_h = h // factor
 
-    if method == 'decimate':
-        truncated = data[:new_h * factor, :]
+    if method == "decimate":
+        truncated = data[: new_h * factor, :]
         return truncated[::factor, :]
 
     # Reshape for pooling: (new_h, factor, w) -> pool over axis 1
-    truncated = data[:new_h * factor, :]
+    truncated = data[: new_h * factor, :]
     reshaped = truncated.reshape(new_h, factor, w)
 
-    if method == 'max':
+    if method == "max":
         return reshaped.max(axis=1)
-    elif method == 'mean':
+    elif method == "mean":
         return reshaped.mean(axis=1)
     else:
         raise ValueError(f"Unknown method: {method}")
@@ -128,8 +129,7 @@ def _read_zarr_v3_array(array_path):
             continue
         arr = _decode_zarr_v3_chunk(chunk_path, dtype, chunk_shape)
         slices = tuple(
-            slice(i * c, min((i + 1) * c, s))
-            for i, c, s in zip(idx, chunk_shape, shape)
+            slice(i * c, min((i + 1) * c, s)) for i, c, s in zip(idx, chunk_shape, shape)
         )
         trim = tuple(slice(0, sl.stop - sl.start) for sl in slices)
         out[slices] = arr[trim]
@@ -157,7 +157,7 @@ def _read_zarr_v3_channel_array(array_path, channel_idx):
             arr = _decode_zarr_v3_chunk(chunk_path, dtype, chunk_shape)[0]
             ps = slice(pi * chunk_shape[1], min((pi + 1) * chunk_shape[1], shape[1]))
             rs = slice(ri * chunk_shape[2], min((ri + 1) * chunk_shape[2], shape[2]))
-            out[ps, rs] = arr[:ps.stop - ps.start, :rs.stop - rs.start]
+            out[ps, rs] = arr[: ps.stop - ps.start, : rs.stop - rs.start]
     return out
 
 
@@ -181,20 +181,20 @@ def _read_zarr_v3_channel_ping(array_path, channel_idx, ping_idx=0):
             continue
         arr = _decode_zarr_v3_chunk(chunk_path, dtype, chunk_shape)[0]
         rs = slice(ri * chunk_shape[2], min((ri + 1) * chunk_shape[2], shape[2]))
-        out[rs] = arr[local_ping, :rs.stop - rs.start]
+        out[rs] = arr[local_ping, : rs.stop - rs.start]
     return out
 
 
-def _load_sv_from_echopype_zarr_v3(zarr_path, frequency_hz, max_range_m=None,
-                                   ping_slice=None, max_range_samples=None):
+def _load_sv_from_echopype_zarr_v3(
+    zarr_path, frequency_hz, max_range_m=None, ping_slice=None, max_range_samples=None
+):
     zarr_path = Path(zarr_path)
     freq_nom = _read_zarr_v3_array(zarr_path / "frequency_nominal")
     freq_idx = int(np.argmin(np.abs(freq_nom - frequency_hz)))
     freq_used = float(freq_nom[freq_idx])
 
     sv = _read_zarr_v3_channel_array(zarr_path / "Sv", freq_idx)
-    echo_range = _read_zarr_v3_channel_array(
-        zarr_path / "echo_range", freq_idx)
+    echo_range = _read_zarr_v3_channel_array(zarr_path / "echo_range", freq_idx)
 
     if ping_slice is not None:
         sv = sv[ping_slice, :]
@@ -214,9 +214,7 @@ def _load_sv_from_echopype_zarr_v3(zarr_path, frequency_hz, max_range_m=None,
         sv = sv[:, keep]
 
     if max_range_m is not None and max_range_samples is not None:
-        raise ValueError(
-            "Use only one of max_range_m or max_range_samples (not both)."
-        )
+        raise ValueError("Use only one of max_range_m or max_range_samples (not both).")
     if max_range_m is not None:
         range_mask = range_array <= max_range_m
         sv = sv[:, range_mask]
@@ -224,8 +222,8 @@ def _load_sv_from_echopype_zarr_v3(zarr_path, frequency_hz, max_range_m=None,
     elif max_range_samples is not None:
         if max_range_samples <= 0:
             raise ValueError("max_range_samples must be a positive integer.")
-        sv = sv[:, :int(max_range_samples)]
-        range_array = range_array[:int(max_range_samples)]
+        sv = sv[:, : int(max_range_samples)]
+        range_array = range_array[: int(max_range_samples)]
 
     sv_db = sv.T.astype(np.float32)
 
@@ -252,8 +250,9 @@ def _load_sv_from_echopype_zarr_v3(zarr_path, frequency_hz, max_range_m=None,
     return sv_db, range_array, ping_times, pulse_duration, heave, freq_used
 
 
-def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
-                      ping_slice=None, max_range_samples=None):
+def load_sv_from_zarr(
+    zarr_path, frequency_hz, max_range_m=None, ping_slice=None, max_range_samples=None
+):
     """
     Load Sv from a CRIMAC zarr store and return numpy arrays
     in the convention used by bottom_detection.py:
@@ -285,7 +284,8 @@ def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
                 root_meta = json.load(f)
             if root_meta.get("zarr_format") == 3 and (zarr_path_obj / "Sv").exists():
                 return _load_sv_from_echopype_zarr_v3(
-                    zarr_path_obj, frequency_hz,
+                    zarr_path_obj,
+                    frequency_hz,
                     max_range_m=max_range_m,
                     ping_slice=ping_slice,
                     max_range_samples=max_range_samples,
@@ -298,10 +298,10 @@ def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
     ds = xr.open_zarr(zarr_path, consolidated=False)
 
     # Detect zarr format: echopype has uppercase 'Sv' (already dB), CRIMAC has lowercase 'sv' (linear)
-    is_echopype = 'Sv' in ds and 'sv' not in ds
+    is_echopype = "Sv" in ds and "sv" not in ds
 
     if is_echopype:
-        if 'frequency_nominal' in ds or 'frequency_nominal' in ds.coords:
+        if "frequency_nominal" in ds or "frequency_nominal" in ds.coords:
             freq_nom = ds.frequency_nominal.values
         else:
             freq_nom = ds.channel.values.astype(float)
@@ -318,16 +318,14 @@ def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
 
     # Keep cropping mode explicit: use either metric crop or sample-index crop.
     if max_range_m is not None and max_range_samples is not None:
-        raise ValueError(
-            "Use only one of max_range_m or max_range_samples (not both)."
-        )
+        raise ValueError("Use only one of max_range_m or max_range_samples (not both).")
 
     if is_echopype:
         # Build range array from echo_range (varies per ping, take mean)
         echo_range = ds.echo_range.isel(channel=freq_idx)
         if ping_slice is not None:
             echo_range = echo_range.isel(ping_time=ping_slice)
-        with np.errstate(all='ignore'):
+        with np.errstate(all="ignore"):
             range_array = np.nanmean(echo_range.values, axis=0).astype(np.float64)
 
         # Trim trailing NaN range values (padding)
@@ -345,7 +343,7 @@ def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
             if max_range_samples <= 0:
                 raise ValueError("max_range_samples must be a positive integer.")
             sv = sv.isel(range_sample=slice(0, int(max_range_samples)))
-            range_array = range_array[:int(max_range_samples)]
+            range_array = range_array[: int(max_range_samples)]
 
         sv_db = sv.values.T.astype(np.float32)  # already dB
     else:
@@ -357,9 +355,7 @@ def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
             sv = sv.isel(range=slice(0, int(max_range_samples)))
 
         sv_linear = sv.values.T.astype(np.float64)
-        sv_db = np.where(sv_linear > 0,
-                         10.0 * np.log10(sv_linear),
-                         np.nan).astype(np.float32)
+        sv_db = np.where(sv_linear > 0, 10.0 * np.log10(sv_linear), np.nan).astype(np.float32)
 
         range_array = sv.range.values.astype(np.float64)
 
@@ -379,7 +375,7 @@ def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
     else:
         pulse_duration = float(ds.pulse_length.values[freq_idx])
 
-    if 'heave' in ds:
+    if "heave" in ds:
         heave_full = ds.heave.values.astype(np.float64)
         if ping_slice is not None:
             heave = heave_full[ping_slice]
@@ -391,8 +387,7 @@ def load_sv_from_zarr(zarr_path, frequency_hz, max_range_m=None,
     return sv_db, range_array, ping_times, pulse_duration, heave, freq_used
 
 
-def preprocess_for_unet(power_db, depth_factor=4, target_height=512,
-                        norm_method='minmax'):
+def preprocess_for_unet(power_db, depth_factor=4, target_height=512, norm_method="minmax"):
     """
     Full preprocessing pipeline from raw dB echogram to U-Net input.
 
@@ -411,22 +406,24 @@ def preprocess_for_unet(power_db, depth_factor=4, target_height=512,
     (target_height, n_pings) float64 array, values in [0, 1]
     """
     cleaned = np.clip(power_db, -100, 0)
-    downsampled = downsample_depth(cleaned, depth_factor, method='max')
+    downsampled = downsample_depth(cleaned, depth_factor, method="max")
 
     h = downsampled.shape[0]
     if h > target_height:
         start = (h - target_height) // 2
-        sized = downsampled[start:start + target_height, :]
+        sized = downsampled[start : start + target_height, :]
     else:
         pad = target_height - h
-        sized = np.pad(downsampled, ((pad // 2, pad - pad // 2), (0, 0)),
-                       mode='constant', constant_values=-100)
+        sized = np.pad(
+            downsampled, ((pad // 2, pad - pad // 2), (0, 0)), mode="constant", constant_values=-100
+        )
 
     return normalize_echogram(sized, method=norm_method, clip_percentile=(2, 98))
 
 
-def extract_patches(sv_db, mask, patch_width=256, stride=128,
-                    require_bottom=True, vmin=-80.0, vmax=-34.0):
+def extract_patches(
+    sv_db, mask, patch_width=256, stride=128, require_bottom=True, vmin=-80.0, vmax=-34.0
+):
     """
     Slide a window along the ping axis and yield (image, label) pairs.
 
@@ -445,8 +442,7 @@ def extract_patches(sv_db, mask, patch_width=256, stride=128,
     label : (n_range, patch_width)   uint8
     """
     n_range, n_pings = sv_db.shape
-    norm = normalize_echogram(sv_db, method='minmax', vmin=vmin, vmax=vmax,
-                              fill_nan=0.0)
+    norm = normalize_echogram(sv_db, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0)
 
     for start in range(0, n_pings - patch_width + 1, stride):
         end = start + patch_width
@@ -459,9 +455,16 @@ def extract_patches(sv_db, mask, patch_width=256, stride=128,
         yield img_patch[np.newaxis].astype(np.float32), lbl_patch
 
 
-def extract_multifreq_patches(zarr_path, frequencies_hz, mask,
-                               patch_width=256, stride=128,
-                               max_range_m=None, vmin=-80.0, vmax=-34.0):
+def extract_multifreq_patches(
+    zarr_path,
+    frequencies_hz,
+    mask,
+    patch_width=256,
+    stride=128,
+    max_range_m=None,
+    vmin=-80.0,
+    vmax=-34.0,
+):
     """
     Multi-frequency version: loads each frequency and stacks on the channel axis.
 
@@ -473,9 +476,9 @@ def extract_multifreq_patches(zarr_path, frequencies_hz, mask,
     freq_arrays = []
     for f in frequencies_hz:
         sv_f, _, _, _, _, _ = load_sv_from_zarr(zarr_path, f, max_range_m)
-        freq_arrays.append(normalize_echogram(sv_f, method='minmax',
-                                              vmin=vmin, vmax=vmax,
-                                              fill_nan=0.0))
+        freq_arrays.append(
+            normalize_echogram(sv_f, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0)
+        )
 
     # Crop all to shortest range (frequencies may differ slightly)
     min_range = min(a.shape[0] for a in freq_arrays)
@@ -484,8 +487,7 @@ def extract_multifreq_patches(zarr_path, frequencies_hz, mask,
 
     if mask.ndim != 2 or mask.shape[1] != n_pings or mask.shape[0] < min_range:
         raise ValueError(
-            f"Incompatible mask shape {mask.shape} for stacked echogram "
-            f"{(min_range, n_pings)}"
+            f"Incompatible mask shape {mask.shape} for stacked echogram {(min_range, n_pings)}"
         )
 
     if mask.shape[0] > min_range:

@@ -6,14 +6,13 @@ map: the seafloor reflects coherently while scatterers and noise produce
 random phase.
 """
 
-
 import numpy as np
 import scipy.ndimage as ndi
 
 
-def compute_phase_variance(complex_data: np.ndarray,
-                           window_samples: int = 5,
-                           window_pings: int = 5) -> np.ndarray:
+def compute_phase_variance(
+    complex_data: np.ndarray, window_samples: int = 5, window_pings: int = 5
+) -> np.ndarray:
     """
     Compute circular phase variance from complex echo samples.
 
@@ -44,8 +43,8 @@ def compute_phase_variance(complex_data: np.ndarray,
     unit_phasors[amplitude == 0] = 0.0
 
     kernel_size = (window_samples, window_pings)
-    mean_real = ndi.uniform_filter(unit_phasors.real, size=kernel_size, mode='reflect')
-    mean_imag = ndi.uniform_filter(unit_phasors.imag, size=kernel_size, mode='reflect')
+    mean_real = ndi.uniform_filter(unit_phasors.real, size=kernel_size, mode="reflect")
+    mean_imag = ndi.uniform_filter(unit_phasors.imag, size=kernel_size, mode="reflect")
 
     mean_length = np.sqrt(mean_real**2 + mean_imag**2)
     confidence = np.clip(mean_length, 0.0, 1.0)

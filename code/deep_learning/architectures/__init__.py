@@ -24,9 +24,11 @@ REGISTRY: dict[str, Callable[..., SegmentationModel]] = {}
 
 def register(name: str):
     """Decorator to register an architecture factory."""
+
     def wrapper(fn):
         REGISTRY[name] = fn
         return fn
+
     return wrapper
 
 
@@ -37,9 +39,7 @@ def create_model(architecture: str, **kwargs) -> SegmentationModel:
     can be passed to any architecture.
     """
     if architecture not in REGISTRY:
-        raise ValueError(
-            f"Unknown architecture '{architecture}'. "
-            f"Available: {sorted(REGISTRY)}")
+        raise ValueError(f"Unknown architecture '{architecture}'. Available: {sorted(REGISTRY)}")
     return REGISTRY[architecture](**kwargs)
 
 
@@ -49,9 +49,15 @@ def list_architectures() -> list[str]:
 
 # ── smp wrappers ─────────────────────────────────────────────────────
 
+
 def _smp_factory(arch_type: str, **kw):
-    accepted = {"encoder_name", "encoder_weights", "in_channels", "classes",
-                "decoder_attention_type"}
+    accepted = {
+        "encoder_name",
+        "encoder_weights",
+        "in_channels",
+        "classes",
+        "decoder_attention_type",
+    }
     return SmpModel(arch_type=arch_type, **{k: v for k, v in kw.items() if k in accepted})
 
 
@@ -65,8 +71,7 @@ def _unet_regression(**kw):
     # Same smp U-Net backbone as smp_unet, but its single-channel output is
     # decoded per ping into a bottom-row depth (soft-argmax). Train with
     # --loss-type regression --task regression.
-    accepted = {"encoder_name", "encoder_weights", "in_channels",
-                "decoder_attention_type"}
+    accepted = {"encoder_name", "encoder_weights", "in_channels", "decoder_attention_type"}
     return RegressionUNet(**{k: v for k, v in kw.items() if k in accepted})
 
 
@@ -100,6 +105,7 @@ def _smp_segformer(**kw):
 
 
 # ── from-scratch architectures ───────────────────────────────────────
+
 
 @register("vanilla_unet")
 def _vanilla_unet(**kw):

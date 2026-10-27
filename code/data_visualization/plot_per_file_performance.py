@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,8 +28,13 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from data_visualization.thesis_style import apply_thesis_style, savefig
 
-EVAL = (PROJECT_ROOT / "code" / "checkpoints" /
-        "exp_20260420_080950_finetune_stages" / "eval_metrics.json")
+EVAL = (
+    PROJECT_ROOT
+    / "code"
+    / "checkpoints"
+    / "exp_20260420_080950_finetune_stages"
+    / "eval_metrics.json"
+)
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "per_file_performance"
 
 IOU_SPLIT = 0.99
@@ -53,8 +59,7 @@ def plot_iou(pf):
     fig, ax = plt.subplots(figsize=(11, 6))
     y = np.arange(len(pf))
     ax.barh(y, ious, color=colors, alpha=0.85)
-    ax.axvline(IOU_SPLIT, color="black", ls="--", lw=1.5,
-               label=f"IoU = {IOU_SPLIT}")
+    ax.axvline(IOU_SPLIT, color="black", ls="--", lw=1.5, label=f"IoU = {IOU_SPLIT}")
     ax.set_yticks(y)
     ax.set_yticklabels(names, fontsize=12)
     ax.set_xlim(0.90, 1.0)
@@ -65,11 +70,16 @@ def plot_iou(pf):
         plt.Rectangle((0, 0), 1, 1, color=GOOD, alpha=0.85),
         plt.Rectangle((0, 0), 1, 1, color=BAD, alpha=0.85),
     ]
-    ax.legend(handles + [plt.Line2D([0], [0], color="black", ls="--")],
-              [f"IoU $\\geq$ {IOU_SPLIT} ({len(pf) - n_bad} files)",
-               f"IoU $<$ {IOU_SPLIT} ({n_bad} files)",
-               f"split at {IOU_SPLIT}"],
-              loc="lower right", fontsize=13)
+    ax.legend(
+        handles + [plt.Line2D([0], [0], color="black", ls="--")],
+        [
+            f"IoU $\\geq$ {IOU_SPLIT} ({len(pf) - n_bad} files)",
+            f"IoU $<$ {IOU_SPLIT} ({n_bad} files)",
+            f"split at {IOU_SPLIT}",
+        ],
+        loc="lower right",
+        fontsize=13,
+    )
     ax.grid(axis="x", alpha=0.3)
     fig.tight_layout()
     savefig(fig, OUTPUT_DIR / "per_file_iou.pdf")
@@ -83,17 +93,36 @@ def plot_depth_error(pf):
     good = iou >= IOU_SPLIT
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.scatter(median[good], p95[good], s=120, color=GOOD, alpha=0.85,
-               edgecolor="black", linewidth=0.6,
-               label=f"IoU $\\geq$ {IOU_SPLIT}")
-    ax.scatter(median[~good], p95[~good], s=120, color=BAD, alpha=0.85,
-               edgecolor="black", linewidth=0.6,
-               label=f"IoU $<$ {IOU_SPLIT}")
+    ax.scatter(
+        median[good],
+        p95[good],
+        s=120,
+        color=GOOD,
+        alpha=0.85,
+        edgecolor="black",
+        linewidth=0.6,
+        label=f"IoU $\\geq$ {IOU_SPLIT}",
+    )
+    ax.scatter(
+        median[~good],
+        p95[~good],
+        s=120,
+        color=BAD,
+        alpha=0.85,
+        edgecolor="black",
+        linewidth=0.6,
+        label=f"IoU $<$ {IOU_SPLIT}",
+    )
     # Annotate the extreme-P95 files.
     order = np.argsort(p95)[::-1][:3]
     for i in order:
-        ax.annotate(pf[i]["name"], (median[i], p95[i]),
-                    textcoords="offset points", xytext=(8, 4), fontsize=11)
+        ax.annotate(
+            pf[i]["name"],
+            (median[i], p95[i]),
+            textcoords="offset points",
+            xytext=(8, 4),
+            fontsize=11,
+        )
     ax.set_xlabel("Median depth deviation (m)")
     ax.set_ylabel("95th-percentile depth deviation (m)")
     ax.set_yscale("log")
@@ -112,8 +141,10 @@ def main():
     plot_iou(pf)
     plot_depth_error(pf)
     ious = np.array([r["iou"] for r in pf])
-    print(f"n={len(pf)}  IoU>=0.99: {int(np.sum(ious >= IOU_SPLIT))}  "
-          f"IoU<0.99: {int(np.sum(ious < IOU_SPLIT))}")
+    print(
+        f"n={len(pf)}  IoU>=0.99: {int(np.sum(ious >= IOU_SPLIT))}  "
+        f"IoU<0.99: {int(np.sum(ious < IOU_SPLIT))}"
+    )
     print(f"Figures -> {OUTPUT_DIR}")
 
 

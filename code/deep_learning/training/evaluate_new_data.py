@@ -14,7 +14,8 @@ from pathlib import Path
 import numpy as np
 import torch
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 _project_root = str(Path(__file__).resolve().parents[2])
@@ -23,7 +24,8 @@ if _project_root not in sys.path:
 
 from deep_learning.architectures import create_model
 from deep_learning.evaluate import (
-    evaluate_file, plot_evaluation,
+    evaluate_file,
+    plot_evaluation,
 )
 from project_paths import REPO_ROOT
 
@@ -65,8 +67,11 @@ def select_random_files(n_per_bucket=3, seed=99):
     """Select random files from different date groups and depth ranges."""
     import xarray as xr
 
-    all_files = sorted(f for f in ZARR_BASE.iterdir()
-                       if f.name.endswith('.zarr') and f.name[1:9] not in TRAIN_DATES)
+    all_files = sorted(
+        f
+        for f in ZARR_BASE.iterdir()
+        if f.name.endswith(".zarr") and f.name[1:9] not in TRAIN_DATES
+    )
 
     # Group by date
     by_date = {}
@@ -102,8 +107,8 @@ def select_random_files(n_per_bucket=3, seed=99):
         for f in rng.sample(pool, min(50, len(pool))):
             try:
                 ds = xr.open_zarr(str(f), consolidated=False)
-                n_range = ds.dims['range_sample']
-                n_pings = ds.dims['ping_time']
+                n_range = ds.dims["range_sample"]
+                n_pings = ds.dims["ping_time"]
                 ds.close()
                 if n_pings < 100:
                     continue
@@ -122,12 +127,14 @@ def select_random_files(n_per_bucket=3, seed=99):
             picks.extend(rng.sample(shallow, min(1, len(shallow))))
 
         for f, np_, nr in picks:
-            selected.append({
-                "path": f,
-                "group": group_name,
-                "n_pings": np_,
-                "n_range": nr,
-            })
+            selected.append(
+                {
+                    "path": f,
+                    "group": group_name,
+                    "n_pings": np_,
+                    "n_range": nr,
+                }
+            )
 
     return selected
 
@@ -143,8 +150,7 @@ def main():
     test_files = select_random_files(n_per_bucket=3, seed=99)
     print(f"Selected {len(test_files)} files:")
     for tf in test_files:
-        print(f"  [{tf['group']}] {tf['path'].name}  "
-              f"pings={tf['n_pings']}  range={tf['n_range']}")
+        print(f"  [{tf['group']}] {tf['path'].name}  pings={tf['n_pings']}  range={tf['n_range']}")
     print()
 
     results = {}
@@ -155,9 +161,9 @@ def main():
             print(f"Skipping {model_name}: {ckpt_path} not found")
             continue
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"MODEL: {model_name}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         model = load_model(ckpt_path, device)
 
@@ -166,48 +172,68 @@ def main():
             zp = tf["path"]
             try:
                 m, pred, gt, sv, ra = evaluate_file(
-                    model, zp, FREQ1, FREQ2, TARGET_SIZE, device,
-                    vmin=-80.0, vmax=-34.0)
-                file_results.append({
-                    "file": m.file_name,
-                    "group": tf["group"],
-                    "n_pings": tf["n_pings"],
-                    "n_range": tf["n_range"],
-                    "iou": m.iou,
-                    "dice": m.dice,
-                    "precision": m.precision,
-                    "recall": m.recall,
-                    "bottom_error_mean_m": m.bottom_error_mean_m,
-                    "bottom_error_median_m": m.bottom_error_median_m,
-                    "bottom_error_p95_m": m.bottom_error_p95_m,
-                })
-                print(f"  [{tf['group']:>15}] {m.file_name}: "
-                      f"IoU={m.iou:.4f}  Dice={m.dice:.4f}  "
-                      f"BotErr mean={m.bottom_error_mean_m:.2f}m  "
-                      f"median={m.bottom_error_median_m:.2f}m  "
-                      f"p95={m.bottom_error_p95_m:.2f}m")
+                    model, zp, FREQ1, FREQ2, TARGET_SIZE, device, vmin=-80.0, vmax=-34.0
+                )
+                file_results.append(
+                    {
+                        "file": m.file_name,
+                        "group": tf["group"],
+                        "n_pings": tf["n_pings"],
+                        "n_range": tf["n_range"],
+                        "iou": m.iou,
+                        "dice": m.dice,
+                        "precision": m.precision,
+                        "recall": m.recall,
+                        "bottom_error_mean_m": m.bottom_error_mean_m,
+                        "bottom_error_median_m": m.bottom_error_median_m,
+                        "bottom_error_p95_m": m.bottom_error_p95_m,
+                    }
+                )
+                print(
+                    f"  [{tf['group']:>15}] {m.file_name}: "
+                    f"IoU={m.iou:.4f}  Dice={m.dice:.4f}  "
+                    f"BotErr mean={m.bottom_error_mean_m:.2f}m  "
+                    f"median={m.bottom_error_median_m:.2f}m  "
+                    f"p95={m.bottom_error_p95_m:.2f}m"
+                )
 
                 # Save plot for every file
-                fig = plot_evaluation(sv, gt, pred, ra, m, threshold=0.5,
-                    save_path=OUTPUT_DIR / f"{model_name}_{zp.stem}.png")
+                fig = plot_evaluation(
+                    sv,
+                    gt,
+                    pred,
+                    ra,
+                    m,
+                    threshold=0.5,
+                    save_path=OUTPUT_DIR / f"{model_name}_{zp.stem}.png",
+                )
                 plt.close(fig)
             except Exception as e:
                 print(f"  [{tf['group']:>15}] {zp.name}: FAILED - {e}")
                 import traceback
+
                 traceback.print_exc()
 
         if file_results:
             ious = [r["iou"] for r in file_results]
-            errs = [r["bottom_error_mean_m"] for r in file_results
-                    if not np.isnan(r["bottom_error_mean_m"])]
-            med_errs = [r["bottom_error_median_m"] for r in file_results
-                        if not np.isnan(r["bottom_error_median_m"])]
+            errs = [
+                r["bottom_error_mean_m"]
+                for r in file_results
+                if not np.isnan(r["bottom_error_mean_m"])
+            ]
+            med_errs = [
+                r["bottom_error_median_m"]
+                for r in file_results
+                if not np.isnan(r["bottom_error_median_m"])
+            ]
 
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"AGGREGATE — {model_name} ({len(file_results)} files)")
-            print(f"{'='*60}")
-            print(f"  IoU:        {np.mean(ious):.4f} ± {np.std(ious):.4f}  "
-                  f"(min={np.min(ious):.4f}, max={np.max(ious):.4f})")
+            print(f"{'=' * 60}")
+            print(
+                f"  IoU:        {np.mean(ious):.4f} ± {np.std(ious):.4f}  "
+                f"(min={np.min(ious):.4f}, max={np.max(ious):.4f})"
+            )
             print(f"  Bot err mean:   {np.mean(errs):.2f} ± {np.std(errs):.2f}m")
             print(f"  Bot err median: {np.mean(med_errs):.2f}m")
 
@@ -218,10 +244,13 @@ def main():
             print("\n  Per-group breakdown:")
             for g, rs in sorted(by_group.items()):
                 g_ious = [r["iou"] for r in rs]
-                g_errs = [r["bottom_error_mean_m"] for r in rs
-                          if not np.isnan(r["bottom_error_mean_m"])]
-                print(f"    {g:>15}: n={len(rs)}  IoU={np.mean(g_ious):.4f}  "
-                      f"BotErr={np.mean(g_errs):.2f}m")
+                g_errs = [
+                    r["bottom_error_mean_m"] for r in rs if not np.isnan(r["bottom_error_mean_m"])
+                ]
+                print(
+                    f"    {g:>15}: n={len(rs)}  IoU={np.mean(g_ious):.4f}  "
+                    f"BotErr={np.mean(g_errs):.2f}m"
+                )
 
             results[model_name] = {
                 "n_files": len(file_results),

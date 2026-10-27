@@ -8,17 +8,18 @@ sharp correlation peak at the bottom — sharper than the raw echo because
 the matched filter is optimal in the maximum-SNR sense.
 """
 
-
 import numpy as np
 import scipy.signal as sig
 
 from .dp import _apply_pseudo_tvg
 
 
-def _build_reference_pulse(pulse_duration: float,
-                           sample_interval: float,
-                           frequency_hz: float = 38000.0,
-                           decay_samples: int = 10) -> np.ndarray:
+def _build_reference_pulse(
+    pulse_duration: float,
+    sample_interval: float,
+    frequency_hz: float = 38000.0,
+    decay_samples: int = 10,
+) -> np.ndarray:
     """
     Build a synthetic reference pulse matching the EK80 CW transmit.
 
@@ -62,7 +63,7 @@ def _build_reference_pulse(pulse_duration: float,
     reference = envelope * carrier
 
     # Normalise to unit energy
-    energy = np.sqrt(np.sum(reference ** 2))
+    energy = np.sqrt(np.sum(reference**2))
     if energy > 0:
         reference /= energy
 
@@ -122,14 +123,17 @@ def detect_bottom_matched_filter(
 
     # Build reference pulse
     reference = _build_reference_pulse(
-        pulse_duration, sample_interval, frequency_hz, decay_samples,
+        pulse_duration,
+        sample_interval,
+        frequency_hz,
+        decay_samples,
     )
 
     if use_envelope:
         # Use just the envelope (absolute value of analytic signal)
         analytic = sig.hilbert(reference)
         reference = np.abs(analytic)
-        energy = np.sqrt(np.sum(reference ** 2))
+        energy = np.sqrt(np.sum(reference**2))
         if energy > 0:
             reference /= energy
 
@@ -142,7 +146,7 @@ def detect_bottom_matched_filter(
         col = corrected[:, j]
 
         # Cross-correlate with reference pulse
-        corr = sig.correlate(col, reference, mode='same')
+        corr = sig.correlate(col, reference, mode="same")
 
         # Search only above minimum range
         corr_search = corr[min_index:]

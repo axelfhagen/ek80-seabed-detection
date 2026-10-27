@@ -16,8 +16,10 @@ import cv2
 # MC-Dropout full-echogram inference
 # ---------------------------------------------------------------------------
 
-def _predict_full_echogram_stochastic(model, sv_channels, target_size, device,
-                                      patch_width=512, stride=128):
+
+def _predict_full_echogram_stochastic(
+    model, sv_channels, target_size, device, patch_width=512, stride=128
+):
     """Single forward pass with dropout enabled (model must be in train mode).
 
     Same sliding-window logic as ``predict_full_echogram`` in
@@ -32,15 +34,13 @@ def _predict_full_echogram_stochastic(model, sv_channels, target_size, device,
     def _run_patch(start, end):
         patch = sv_channels[:, :, start:end]
         patch_hwc = np.transpose(patch, (1, 2, 0))
-        patch_resized = cv2.resize(patch_hwc, (w, h),
-                                   interpolation=cv2.INTER_LINEAR)
+        patch_resized = cv2.resize(patch_hwc, (w, h), interpolation=cv2.INTER_LINEAR)
         patch_chw = np.transpose(patch_resized, (2, 0, 1))
 
         inp = torch.from_numpy(patch_chw[np.newaxis]).float().to(device)
         logits = model(inp)
         probs = torch.sigmoid(logits).squeeze().cpu().numpy()
-        probs_orig = cv2.resize(probs, (patch_width, n_range),
-                                interpolation=cv2.INTER_LINEAR)
+        probs_orig = cv2.resize(probs, (patch_width, n_range), interpolation=cv2.INTER_LINEAR)
 
         sum_pred[:, start:end] += probs_orig
         count[:, start:end] += 1.0
@@ -51,9 +51,9 @@ def _predict_full_echogram_stochastic(model, sv_channels, target_size, device,
     if n_pings > patch_width and (n_pings - patch_width) % stride != 0:
         _run_patch(n_pings - patch_width, n_pings)
 
-    prediction = np.divide(sum_pred, count,
-                           out=np.zeros_like(sum_pred),
-                           where=count > 0).astype(np.float32)
+    prediction = np.divide(sum_pred, count, out=np.zeros_like(sum_pred), where=count > 0).astype(
+        np.float32
+    )
     return prediction
 
 
@@ -63,9 +63,16 @@ def _has_dropout(model):
 
 
 @torch.no_grad()
-def mc_dropout_predict(model, sv_channels, target_size, device,
-                       n_samples=10, patch_width=512, stride=128,
-                       dropout_p=0.1):
+def mc_dropout_predict(
+    model,
+    sv_channels,
+    target_size,
+    device,
+    n_samples=10,
+    patch_width=512,
+    stride=128,
+    dropout_p=0.1,
+):
     """Run MC-Dropout inference on a full echogram.
 
     Enables dropout at inference time by switching the model to train mode,
@@ -94,10 +101,11 @@ def mc_dropout_predict(model, sv_channels, target_size, device,
     all_preds : (n_samples, n_range, n_pings) float32 — individual samples
     """
     if not _has_dropout(model):
-        if hasattr(model, 'add_mc_dropout'):
+        if hasattr(model, "add_mc_dropout"):
             model.add_mc_dropout(p=dropout_p)
         else:
             from deep_learning.unet_model import add_mc_dropout
+
             add_mc_dropout(model, p=dropout_p)
 
     was_training = model.training
@@ -119,8 +127,8 @@ def mc_dropout_predict(model, sv_channels, target_size, device,
 
     for i in range(n_samples):
         all_preds[i] = _predict_full_echogram_stochastic(
-            model, sv_channels, target_size, device,
-            patch_width=patch_width, stride=stride)
+            model, sv_channels, target_size, device, patch_width=patch_width, stride=stride
+        )
 
     if not was_training:
         model.eval()
@@ -134,6 +142,7 @@ def mc_dropout_predict(model, sv_channels, target_size, device,
 # ---------------------------------------------------------------------------
 # Prediction entropy
 # ---------------------------------------------------------------------------
+
 
 def prediction_entropy(prob_map):
     """Compute per-pixel binary entropy from a probability map.
@@ -159,9 +168,10 @@ def prediction_entropy(prob_map):
 # Bottom uncertainty band
 # ---------------------------------------------------------------------------
 
-def bottom_uncertainty_band(prob_map, range_array,
-                            lower_t=0.25, upper_t=0.75,
-                            mode='global', mid_t=0.5):
+
+def bottom_uncertainty_band(
+    prob_map, range_array, lower_t=0.25, upper_t=0.75, mode="global", mid_t=0.5
+):
     """Derive a per-ping uncertainty band from the probability transition.
 
     For each ping, the seabed boundary region is where the probability
@@ -203,7 +213,7 @@ def bottom_uncertainty_band(prob_map, range_array,
     lower_depth : (n_pings,) float — depth of the lower_t crossing
     band_width  : (n_pings,) float — |lower_depth - upper_depth| in metres
     """
-    if mode not in ('global', 'local'):
+    if mode not in ("global", "local"):
         raise ValueError(f"Unknown mode: {mode!r} (expected 'global'/'local')")
 
     n_range, n_pings = prob_map.shape
@@ -213,7 +223,7 @@ def bottom_uncertainty_band(prob_map, range_array,
     for ping in range(n_pings):
         col = prob_map[:, ping]
 
-        if mode == 'global':
+        if mode == "global":
             hits_upper = np.where(col >= upper_t)[0]
             hits_lower = np.where(col >= lower_t)[0]
             if len(hits_upper) > 0:
@@ -238,7 +248,7 @@ def bottom_uncertainty_band(prob_map, range_array,
             hi += 1
         # deep (bottom-side) edge: first upper_t crossing inside the run,
         # else the deep end of the run (genuinely uncertain ping)
-        seg_upper = np.where(col[lo:hi + 1] >= upper_t)[0]
+        seg_upper = np.where(col[lo : hi + 1] >= upper_t)[0]
         up = lo + seg_upper[0] if len(seg_upper) > 0 else hi
 
         lower_depth[ping] = range_array[lo]

@@ -53,6 +53,7 @@ in spirit to cross-conformal prediction with leave-one-replicate-out
 scores. The 1-D arc-length projection is specific to the linear ferry
 route geometry.
 """
+
 from __future__ import annotations
 
 import json
@@ -72,7 +73,7 @@ from validation.conformal import conformal_quantile
 
 LON_HORTEN = 10.50
 LON_MOSS = 10.66
-DOCK_HALFWIDTH_DEG = 0.010   # ~580 m east-west: counts as "at the dock"
+DOCK_HALFWIDTH_DEG = 0.010  # ~580 m east-west: counts as "at the dock"
 
 # Approximate terminal coordinates used for the route projection.
 HORTEN_LAT_LON = (59.412, 10.493)
@@ -90,6 +91,7 @@ EARTH_R_M = 6_371_000.0
 # Crossing detection
 # ---------------------------------------------------------------------------
 
+
 def detect_crossings(lon: np.ndarray, times: np.ndarray) -> list[dict]:
     """One-way pass detection by midpoint-line hysteresis.
 
@@ -100,44 +102,56 @@ def detect_crossings(lon: np.ndarray, times: np.ndarray) -> list[dict]:
     moss_min = LON_MOSS - DOCK_HALFWIDTH_DEG
 
     crossings: list[dict] = []
-    state = 'between'
+    state = "between"
     last_horten = None
     last_moss = None
     for i, x in enumerate(lon):
         if np.isnan(x):
             continue
         if x <= horten_max:
-            new_state = 'horten'
+            new_state = "horten"
             last_horten = i
         elif x >= moss_min:
-            new_state = 'moss'
+            new_state = "moss"
             last_moss = i
         else:
-            new_state = 'between'
+            new_state = "between"
 
-        if new_state == 'moss' and state == 'horten' and last_horten is not None:
-            crossings.append({'direction': 'H2M',
-                              'start': last_horten, 'end': i,
-                              't_start': times[last_horten], 't_end': times[i]})
+        if new_state == "moss" and state == "horten" and last_horten is not None:
+            crossings.append(
+                {
+                    "direction": "H2M",
+                    "start": last_horten,
+                    "end": i,
+                    "t_start": times[last_horten],
+                    "t_end": times[i],
+                }
+            )
             last_moss = i
-        elif new_state == 'horten' and state == 'moss' and last_moss is not None:
-            crossings.append({'direction': 'M2H',
-                              'start': last_moss, 'end': i,
-                              't_start': times[last_moss], 't_end': times[i]})
+        elif new_state == "horten" and state == "moss" and last_moss is not None:
+            crossings.append(
+                {
+                    "direction": "M2H",
+                    "start": last_moss,
+                    "end": i,
+                    "t_start": times[last_moss],
+                    "t_end": times[i],
+                }
+            )
             last_horten = i
 
-        if new_state in ('horten', 'moss'):
+        if new_state in ("horten", "moss"):
             state = new_state
     return crossings
 
 
-def filter_by_duration(crossings: list[dict],
-                       min_min: float = MIN_PASS_MIN,
-                       max_min: float = MAX_PASS_MIN) -> list[dict]:
+def filter_by_duration(
+    crossings: list[dict], min_min: float = MIN_PASS_MIN, max_min: float = MAX_PASS_MIN
+) -> list[dict]:
     """Drop crossings whose elapsed time is implausible."""
     kept: list[dict] = []
     for c in crossings:
-        dt = pd.Timestamp(c['t_end']) - pd.Timestamp(c['t_start'])
+        dt = pd.Timestamp(c["t_end"]) - pd.Timestamp(c["t_start"])
         minutes = dt.total_seconds() / 60.0
         if min_min <= minutes <= max_min:
             kept.append(c)
@@ -148,10 +162,13 @@ def filter_by_duration(crossings: list[dict],
 # Arc-length projection along the Horten-Moss route
 # ---------------------------------------------------------------------------
 
-def project_to_arclength(lat: np.ndarray, lon: np.ndarray,
-                         origin: tuple[float, float] = HORTEN_LAT_LON,
-                         end: tuple[float, float] = MOSS_LAT_LON
-                         ) -> np.ndarray:
+
+def project_to_arclength(
+    lat: np.ndarray,
+    lon: np.ndarray,
+    origin: tuple[float, float] = HORTEN_LAT_LON,
+    end: tuple[float, float] = MOSS_LAT_LON,
+) -> np.ndarray:
     """Project geographic points onto the 1-D route corridor.
 
     Equirectangular projection around the route midpoint, then a dot
@@ -184,8 +201,9 @@ def project_to_arclength(lat: np.ndarray, lon: np.ndarray,
     return x * ux + y * uy
 
 
-def route_length_m(origin: tuple[float, float] = HORTEN_LAT_LON,
-                   end: tuple[float, float] = MOSS_LAT_LON) -> float:
+def route_length_m(
+    origin: tuple[float, float] = HORTEN_LAT_LON, end: tuple[float, float] = MOSS_LAT_LON
+) -> float:
     lat0, lon0 = origin
     lat1, lon1 = end
     mean_lat = 0.5 * (lat0 + lat1)
@@ -205,9 +223,11 @@ def bin_arclength(s: np.ndarray, bin_size_m: float = 20.0) -> np.ndarray:
 # Per-file ping extraction
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CrossingPings:
     """Long-format record produced for one zarr file."""
+
     df: pd.DataFrame
     n_pings_total: int
     n_pings_in_crossing: int
@@ -224,7 +244,7 @@ def _load_latlon(zarr_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndar
     ds = xr.open_zarr(str(zarr_path), consolidated=False)
     try:
         ping_time = pd.to_datetime(ds.ping_time.values, utc=True).values
-        if 'latitude' in ds and 'longitude' in ds:
+        if "latitude" in ds and "longitude" in ds:
             lat = np.asarray(ds.latitude.values, dtype=np.float64)
             lon = np.asarray(ds.longitude.values, dtype=np.float64)
         else:
@@ -279,7 +299,7 @@ def extract_crossing_pings(
     rows: list[dict] = []
     in_cross = 0
     for c in crossings:
-        s_idx, e_idx = c['start'], c['end']
+        s_idx, e_idx = c["start"], c["end"]
         cid = f"{fid}_{s_idx:06d}_{c['direction']}"
         idx_range = np.arange(s_idx, e_idx + 1)
         lat_c, lon_c = lat[idx_range], lon[idx_range]
@@ -288,8 +308,10 @@ def extract_crossing_pings(
 
         # Drop NaN GPS, NaN depths, and points still inside dock buffers.
         valid = (
-            np.isfinite(lat_c) & np.isfinite(lon_c)
-            & np.isfinite(pd_c) & (pd_c > 0)
+            np.isfinite(lat_c)
+            & np.isfinite(lon_c)
+            & np.isfinite(pd_c)
+            & (pd_c > 0)
             & (lon_c > LON_HORTEN + DOCK_HALFWIDTH_DEG)
             & (lon_c < LON_MOSS - DOCK_HALFWIDTH_DEG)
         )
@@ -300,22 +322,26 @@ def extract_crossing_pings(
         in_cross += int(valid.sum())
 
         for k, i_local in enumerate(np.where(valid)[0]):
-            rows.append({
-                'file_id': fid,
-                'ping_idx': int(idx_range[i_local]),
-                'ping_time': pt_c[i_local],
-                'lat': float(lat_c[i_local]),
-                'lon': float(lon_c[i_local]),
-                'pred_depth_m': float(pd_c[i_local]),
-                'crossing_id': cid,
-                'direction': c['direction'],
-                'arc_length_m': float(s[k]),
-            })
+            rows.append(
+                {
+                    "file_id": fid,
+                    "ping_idx": int(idx_range[i_local]),
+                    "ping_time": pt_c[i_local],
+                    "lat": float(lat_c[i_local]),
+                    "lon": float(lon_c[i_local]),
+                    "pred_depth_m": float(pd_c[i_local]),
+                    "crossing_id": cid,
+                    "direction": c["direction"],
+                    "arc_length_m": float(s[k]),
+                }
+            )
 
     df = pd.DataFrame(rows)
     return CrossingPings(
-        df=df, n_pings_total=int(n_total),
-        n_pings_in_crossing=in_cross, n_crossings=len(crossings),
+        df=df,
+        n_pings_total=int(n_total),
+        n_pings_in_crossing=in_cross,
+        n_crossings=len(crossings),
     )
 
 
@@ -323,18 +349,17 @@ def extract_crossing_pings(
 # Calibration
 # ---------------------------------------------------------------------------
 
-EPSILON_SIGMA_M = 0.5   # floor on per-ping sigma to avoid divide-by-zero
+EPSILON_SIGMA_M = 0.5  # floor on per-ping sigma to avoid divide-by-zero
 
 
-def _collapse_per_crossing(work: pd.DataFrame, group_cols: list[str],
-                           sigma_col: str | None) -> pd.DataFrame:
+def _collapse_per_crossing(
+    work: pd.DataFrame, group_cols: list[str], sigma_col: str | None
+) -> pd.DataFrame:
     """One row per (bin, crossing): median depth (+ median sigma) in the bin."""
-    agg = {'pred_depth_m': 'median'}
+    agg = {"pred_depth_m": "median"}
     if sigma_col is not None:
-        agg[sigma_col] = 'median'
-    return (work.groupby(group_cols + ['crossing_id'])
-                .agg(agg)
-                .reset_index())
+        agg[sigma_col] = "median"
+    return work.groupby(group_cols + ["crossing_id"]).agg(agg).reset_index()
 
 
 def build_calibration_scores(
@@ -343,7 +368,7 @@ def build_calibration_scores(
     bin_size_m: float = 20.0,
     min_crossings_per_bin: int = 2,
     per_direction: bool = False,
-    score_mode: str = 'pairwise',
+    score_mode: str = "pairwise",
     sigma_col: str | None = None,
 ) -> tuple[np.ndarray, pd.DataFrame]:
     """Per-bin nonconformity scores from repeated crossings.
@@ -375,40 +400,38 @@ def build_calibration_scores(
     bin_info : DataFrame with one row per used bin
         (bin, direction, median_depth_m, n_pings, n_crossings).
     """
-    valid_modes = ('pairwise', 'median', 'pairwise_norm', 'median_norm')
+    valid_modes = ("pairwise", "median", "pairwise_norm", "median_norm")
     if score_mode not in valid_modes:
         raise ValueError(f"score_mode must be one of {valid_modes}, got {score_mode!r}")
-    normalized = score_mode.endswith('_norm')
+    normalized = score_mode.endswith("_norm")
     if normalized and sigma_col is None:
         raise ValueError(f"score_mode={score_mode!r} requires a sigma_col")
     if df.empty:
         return np.array([], dtype=np.float64), pd.DataFrame()
 
     work = df.copy()
-    work['bin'] = bin_arclength(work['arc_length_m'].to_numpy(), bin_size_m)
-    group_cols = ['bin', 'direction'] if per_direction else ['bin']
+    work["bin"] = bin_arclength(work["arc_length_m"].to_numpy(), bin_size_m)
+    group_cols = ["bin", "direction"] if per_direction else ["bin"]
 
     per_crossing = _collapse_per_crossing(work, group_cols, sigma_col)
-    n_pings_per_bin = (
-        work.groupby(group_cols)['pred_depth_m'].size().rename('n_pings')
-    )
+    n_pings_per_bin = work.groupby(group_cols)["pred_depth_m"].size().rename("n_pings")
 
     scores: list[np.ndarray] = []
     bin_records: list[dict] = []
     for key, sub in per_crossing.groupby(group_cols):
         if len(sub) < min_crossings_per_bin:
             continue
-        vals = sub['pred_depth_m'].to_numpy()
+        vals = sub["pred_depth_m"].to_numpy()
         med = float(np.median(vals))
         if normalized:
             sig = np.maximum(sub[sigma_col].to_numpy(), EPSILON_SIGMA_M)
 
-        if score_mode == 'pairwise':
+        if score_mode == "pairwise":
             i, j = np.triu_indices(len(vals), k=1)
             s = np.abs(vals[i] - vals[j])
-        elif score_mode == 'median':
+        elif score_mode == "median":
             s = np.abs(vals - med)
-        elif score_mode == 'pairwise_norm':
+        elif score_mode == "pairwise_norm":
             # Ordered pairs: interval owned by crossing i, "other" is j.
             # Denominator is the owner's sigma so the band at a new ping is
             # pred ± q_hat * sigma_ping (consistent with validation).
@@ -419,17 +442,15 @@ def build_calibration_scores(
 
         scores.append(s)
         n_pings = int(n_pings_per_bin.loc[key]) if key in n_pings_per_bin.index else int(len(sub))
-        rec = {'median_depth_m': med,
-               'n_crossings': int(len(sub)),
-               'n_pings': n_pings}
+        rec = {"median_depth_m": med, "n_crossings": int(len(sub)), "n_pings": n_pings}
         if per_direction:
             bin_val, dir_val = key
-            rec['bin'] = int(bin_val)
-            rec['direction'] = dir_val
+            rec["bin"] = int(bin_val)
+            rec["direction"] = dir_val
         else:
             bin_val = key[0] if isinstance(key, tuple) else key
-            rec['bin'] = int(bin_val)
-            rec['direction'] = 'BOTH'
+            rec["bin"] = int(bin_val)
+            rec["direction"] = "BOTH"
         bin_records.append(rec)
 
     if not scores:
@@ -443,9 +464,13 @@ def calibrate_labelless(scores: np.ndarray, alpha: float = 0.1) -> float:
     return conformal_quantile(scores, alpha=alpha)
 
 
-def compute_bin_dispersion(df: pd.DataFrame, *, bin_size_m: float = 20.0,
-                           per_direction: bool = False,
-                           min_crossings_per_bin: int = 2) -> pd.DataFrame:
+def compute_bin_dispersion(
+    df: pd.DataFrame,
+    *,
+    bin_size_m: float = 20.0,
+    per_direction: bool = False,
+    min_crossings_per_bin: int = 2,
+) -> pd.DataFrame:
     """Per-bin robust dispersion of predicted depth across crossings.
 
     This is the most direct label-free difficulty signal: a bin where
@@ -460,52 +485,58 @@ def compute_bin_dispersion(df: pd.DataFrame, *, bin_size_m: float = 20.0,
     if df.empty:
         return pd.DataFrame()
     work = df.copy()
-    work['bin'] = bin_arclength(work['arc_length_m'].to_numpy(), bin_size_m)
-    group_cols = ['bin', 'direction'] if per_direction else ['bin']
-    per_crossing = (work.groupby(group_cols + ['crossing_id'])['pred_depth_m']
-                        .median().reset_index())
+    work["bin"] = bin_arclength(work["arc_length_m"].to_numpy(), bin_size_m)
+    group_cols = ["bin", "direction"] if per_direction else ["bin"]
+    per_crossing = work.groupby(group_cols + ["crossing_id"])["pred_depth_m"].median().reset_index()
 
     recs = []
     for key, sub in per_crossing.groupby(group_cols):
         if len(sub) < min_crossings_per_bin:
             continue
-        vals = sub['pred_depth_m'].to_numpy()
+        vals = sub["pred_depth_m"].to_numpy()
         mad = float(np.median(np.abs(vals - np.median(vals))))
-        rec = {'sigma_disp_m': max(1.4826 * mad, EPSILON_SIGMA_M)}
+        rec = {"sigma_disp_m": max(1.4826 * mad, EPSILON_SIGMA_M)}
         if per_direction:
-            rec['bin'], rec['direction'] = int(key[0]), key[1]
+            rec["bin"], rec["direction"] = int(key[0]), key[1]
         else:
-            rec['bin'] = int(key[0] if isinstance(key, tuple) else key)
+            rec["bin"] = int(key[0] if isinstance(key, tuple) else key)
         recs.append(rec)
     return pd.DataFrame(recs)
 
 
-def assign_bin_sigma(df: pd.DataFrame, dispersion: pd.DataFrame, *,
-                     bin_size_m: float = 20.0, per_direction: bool = False,
-                     out_col: str = 'sigma_m') -> pd.DataFrame:
+def assign_bin_sigma(
+    df: pd.DataFrame,
+    dispersion: pd.DataFrame,
+    *,
+    bin_size_m: float = 20.0,
+    per_direction: bool = False,
+    out_col: str = "sigma_m",
+) -> pd.DataFrame:
     """Map per-bin dispersion onto each ping's ``out_col``.
 
     Pings in bins absent from ``dispersion`` (e.g. test-only bins) fall back
     to the global median dispersion so they still receive a finite band.
     """
     work = df.copy()
-    work['bin'] = bin_arclength(work['arc_length_m'].to_numpy(), bin_size_m)
-    keys = ['bin', 'direction'] if per_direction else ['bin']
+    work["bin"] = bin_arclength(work["arc_length_m"].to_numpy(), bin_size_m)
+    keys = ["bin", "direction"] if per_direction else ["bin"]
     if dispersion.empty:
         work[out_col] = 1.0
-        return work.drop(columns='bin')
-    fallback = float(dispersion['sigma_disp_m'].median())
-    merged = work.merge(dispersion, on=keys, how='left')
-    merged[out_col] = merged['sigma_disp_m'].fillna(fallback)
-    return merged.drop(columns=['bin', 'sigma_disp_m'])
+        return work.drop(columns="bin")
+    fallback = float(dispersion["sigma_disp_m"].median())
+    merged = work.merge(dispersion, on=keys, how="left")
+    merged[out_col] = merged["sigma_disp_m"].fillna(fallback)
+    return merged.drop(columns=["bin", "sigma_disp_m"])
 
 
 # ---------------------------------------------------------------------------
 # Validation: pairwise coverage on held-out crossings
 # ---------------------------------------------------------------------------
 
-def split_crossings(df: pd.DataFrame, calib_frac: float = 0.5,
-                    seed: int = 0) -> tuple[pd.DataFrame, pd.DataFrame]:
+
+def split_crossings(
+    df: pd.DataFrame, calib_frac: float = 0.5, seed: int = 0
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Split rows by crossing_id (not by ping) for calibration vs test."""
     if df.empty:
         return df.copy(), df.copy()
@@ -513,12 +544,12 @@ def split_crossings(df: pd.DataFrame, calib_frac: float = 0.5,
     # Stratify by direction so both H2M and M2H appear in both splits.
     parts_calib: list[pd.DataFrame] = []
     parts_test: list[pd.DataFrame] = []
-    for direction, sub in df.groupby('direction'):
-        crossings = np.asarray(sub['crossing_id'].unique(), dtype=object)
+    for direction, sub in df.groupby("direction"):
+        crossings = np.asarray(sub["crossing_id"].unique(), dtype=object)
         rng.shuffle(crossings)
         n_calib = int(round(len(crossings) * calib_frac))
         calib_ids = set(crossings[:n_calib])
-        in_calib = sub['crossing_id'].isin(calib_ids)
+        in_calib = sub["crossing_id"].isin(calib_ids)
         parts_calib.append(sub[in_calib])
         parts_test.append(sub[~in_calib])
     df_calib = pd.concat(parts_calib, ignore_index=True)
@@ -526,11 +557,14 @@ def split_crossings(df: pd.DataFrame, calib_frac: float = 0.5,
     return df_calib, df_test
 
 
-def pairwise_coverage(df_test: pd.DataFrame, q_hat: float,
-                      bin_size_m: float = 20.0,
-                      per_direction: bool = False,
-                      score_mode: str = 'pairwise',
-                      sigma_col: str | None = None) -> dict:
+def pairwise_coverage(
+    df_test: pd.DataFrame,
+    q_hat: float,
+    bin_size_m: float = 20.0,
+    per_direction: bool = False,
+    score_mode: str = "pairwise",
+    sigma_col: str | None = None,
+) -> dict:
     """Held-out pairwise coverage: fraction of crossing pairs at the same bin
     whose second prediction falls inside the first's interval.
 
@@ -542,34 +576,37 @@ def pairwise_coverage(df_test: pd.DataFrame, q_hat: float,
     A 90%-nominal q_hat should give ~90% empirical pair coverage when the
     crossings are exchangeable.
     """
-    normalized = score_mode.endswith('_norm')
-    empty = {'coverage': float('nan'), 'n_pairs': 0,
-             'median_abs_diff_m': float('nan'),
-             'mean_band_width_m': float('nan')}
+    normalized = score_mode.endswith("_norm")
+    empty = {
+        "coverage": float("nan"),
+        "n_pairs": 0,
+        "median_abs_diff_m": float("nan"),
+        "mean_band_width_m": float("nan"),
+    }
     if df_test.empty:
         return empty
     if normalized and sigma_col is None:
         raise ValueError(f"score_mode={score_mode!r} requires a sigma_col")
 
     work = df_test.copy()
-    work['bin'] = bin_arclength(work['arc_length_m'].to_numpy(), bin_size_m)
-    group_cols = ['bin', 'direction'] if per_direction else ['bin']
+    work["bin"] = bin_arclength(work["arc_length_m"].to_numpy(), bin_size_m)
+    group_cols = ["bin", "direction"] if per_direction else ["bin"]
     per_crossing = _collapse_per_crossing(work, group_cols, sigma_col)
 
     diffs: list[np.ndarray] = []
     widths: list[np.ndarray] = []
     covered: list[np.ndarray] = []
     for _, sub in per_crossing.groupby(group_cols):
-        vals = sub['pred_depth_m'].to_numpy()
+        vals = sub["pred_depth_m"].to_numpy()
         if len(vals) < 2:
             continue
         if normalized:
             sig = np.maximum(sub[sigma_col].to_numpy(), EPSILON_SIGMA_M)
-            i, j = np.where(~np.eye(len(vals), dtype=bool))   # ordered pairs
+            i, j = np.where(~np.eye(len(vals), dtype=bool))  # ordered pairs
             d = np.abs(vals[i] - vals[j])
             half = q_hat * sig[i]
         else:
-            i, j = np.triu_indices(len(vals), k=1)            # unordered pairs
+            i, j = np.triu_indices(len(vals), k=1)  # unordered pairs
             d = np.abs(vals[i] - vals[j])
             half = np.full(len(d), q_hat)
         diffs.append(d)
@@ -583,17 +620,16 @@ def pairwise_coverage(df_test: pd.DataFrame, q_hat: float,
     all_w = np.concatenate(widths)
     all_c = np.concatenate(covered)
     return {
-        'coverage': float(all_c.mean()),
-        'n_pairs': int(len(all_d)),
-        'median_abs_diff_m': float(np.median(all_d)),
-        'mean_abs_diff_m': float(np.mean(all_d)),
-        'mean_band_width_m': float(np.mean(all_w)),
-        'median_band_width_m': float(np.median(all_w)),
+        "coverage": float(all_c.mean()),
+        "n_pairs": int(len(all_d)),
+        "median_abs_diff_m": float(np.median(all_d)),
+        "mean_abs_diff_m": float(np.mean(all_d)),
+        "mean_band_width_m": float(np.mean(all_w)),
+        "median_band_width_m": float(np.median(all_w)),
     }
 
 
-def predict_adaptive_band(pred_depths, sigma, q_hat,
-                          epsilon: float = EPSILON_SIGMA_M):
+def predict_adaptive_band(pred_depths, sigma, q_hat, epsilon: float = EPSILON_SIGMA_M):
     """Per-ping adaptive band: pred ± q_hat * max(sigma, eps).
 
     Returns (upper, lower, band_width) — upper is the shallower edge.
@@ -604,15 +640,17 @@ def predict_adaptive_band(pred_depths, sigma, q_hat,
     return pred - half, pred + half, 2.0 * half
 
 
-def pairwise_coverage_curve(df_calib: pd.DataFrame, df_test: pd.DataFrame,
-                            alphas: Iterable[float] | None = None,
-                            *,
-                            bin_size_m: float = 20.0,
-                            per_direction: bool = False,
-                            min_crossings_per_bin: int = 2,
-                            score_mode: str = 'pairwise',
-                            sigma_col: str | None = None,
-                            ) -> pd.DataFrame:
+def pairwise_coverage_curve(
+    df_calib: pd.DataFrame,
+    df_test: pd.DataFrame,
+    alphas: Iterable[float] | None = None,
+    *,
+    bin_size_m: float = 20.0,
+    per_direction: bool = False,
+    min_crossings_per_bin: int = 2,
+    score_mode: str = "pairwise",
+    sigma_col: str | None = None,
+) -> pd.DataFrame:
     """Sweep alpha; return (alpha, q_hat, empirical_coverage, n_pairs).
 
     For the adaptive modes ``q_hat`` is dimensionless (a multiplier on the
@@ -624,30 +662,44 @@ def pairwise_coverage_curve(df_calib: pd.DataFrame, df_test: pd.DataFrame,
     alphas = np.asarray(list(alphas), dtype=np.float64)
 
     scores, _ = build_calibration_scores(
-        df_calib, bin_size_m=bin_size_m,
+        df_calib,
+        bin_size_m=bin_size_m,
         min_crossings_per_bin=min_crossings_per_bin,
         per_direction=per_direction,
         score_mode=score_mode,
         sigma_col=sigma_col,
     )
     if len(scores) == 0:
-        return pd.DataFrame({'alpha': alphas,
-                             'q_hat': np.nan,
-                             'empirical_coverage': np.nan,
-                             'mean_band_width_m': np.nan,
-                             'n_pairs': 0})
+        return pd.DataFrame(
+            {
+                "alpha": alphas,
+                "q_hat": np.nan,
+                "empirical_coverage": np.nan,
+                "mean_band_width_m": np.nan,
+                "n_pairs": 0,
+            }
+        )
 
     records = []
     for a in alphas:
         q = conformal_quantile(scores, alpha=float(a))
-        cov = pairwise_coverage(df_test, q, bin_size_m=bin_size_m,
-                                per_direction=per_direction,
-                                score_mode=score_mode, sigma_col=sigma_col)
-        records.append({'alpha': float(a),
-                        'q_hat': float(q),
-                        'empirical_coverage': cov['coverage'],
-                        'mean_band_width_m': cov.get('mean_band_width_m', np.nan),
-                        'n_pairs': cov['n_pairs']})
+        cov = pairwise_coverage(
+            df_test,
+            q,
+            bin_size_m=bin_size_m,
+            per_direction=per_direction,
+            score_mode=score_mode,
+            sigma_col=sigma_col,
+        )
+        records.append(
+            {
+                "alpha": float(a),
+                "q_hat": float(q),
+                "empirical_coverage": cov["coverage"],
+                "mean_band_width_m": cov.get("mean_band_width_m", np.nan),
+                "n_pairs": cov["n_pairs"],
+            }
+        )
     return pd.DataFrame(records)
 
 
@@ -655,39 +707,41 @@ def pairwise_coverage_curve(df_calib: pd.DataFrame, df_test: pd.DataFrame,
 # Visualization
 # ---------------------------------------------------------------------------
 
-def plot_pairwise_coverage_curve(curve: pd.DataFrame,
-                                 save_path: Path | str | None = None,
-                                 title: str | None = None):
+
+def plot_pairwise_coverage_curve(
+    curve: pd.DataFrame, save_path: Path | str | None = None, title: str | None = None
+):
     """Empirical vs nominal coverage curve, label-less."""
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(6, 5), dpi=150)
-    nominal = 1.0 - curve['alpha'].to_numpy()
-    empirical = curve['empirical_coverage'].to_numpy()
-    ax.plot([0, 1], [0, 1], color='gray', linestyle=':', lw=1,
-            label='ideal (y = x)')
-    ax.plot(nominal, empirical, marker='o', lw=1.5, color='#1f77b4',
-            label='label-less (pairwise)')
-    ax.set_xlabel('Nominal coverage (1 - α)')
-    ax.set_ylabel('Empirical pairwise coverage')
+    nominal = 1.0 - curve["alpha"].to_numpy()
+    empirical = curve["empirical_coverage"].to_numpy()
+    ax.plot([0, 1], [0, 1], color="gray", linestyle=":", lw=1, label="ideal (y = x)")
+    ax.plot(nominal, empirical, marker="o", lw=1.5, color="#1f77b4", label="label-less (pairwise)")
+    ax.set_xlabel("Nominal coverage (1 - α)")
+    ax.set_ylabel("Empirical pairwise coverage")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.grid(alpha=0.3)
-    ax.legend(loc='lower right')
-    ax.set_title(title or 'Label-less conformal calibration')
+    ax.legend(loc="lower right")
+    ax.set_title(title or "Label-less conformal calibration")
     fig.tight_layout()
     if save_path is not None:
-        fig.savefig(str(save_path), bbox_inches='tight')
+        fig.savefig(str(save_path), bbox_inches="tight")
     return fig
 
 
-def plot_labelless_band(df_crossing: pd.DataFrame, q_hat: float,
-                        df_neighbour: pd.DataFrame | None = None,
-                        bin_size_m: float = 20.0,
-                        save_path: Path | str | None = None,
-                        title: str | None = None,
-                        sigma_col: str | None = None,
-                        ymax: float | None = None):
+def plot_labelless_band(
+    df_crossing: pd.DataFrame,
+    q_hat: float,
+    df_neighbour: pd.DataFrame | None = None,
+    bin_size_m: float = 20.0,
+    save_path: Path | str | None = None,
+    title: str | None = None,
+    sigma_col: str | None = None,
+    ymax: float | None = None,
+):
     """Depth profile of one crossing with the conformal band shaded.
 
     If ``sigma_col`` is given the band is adaptive (``pred ± q_hat * sigma``,
@@ -699,52 +753,56 @@ def plot_labelless_band(df_crossing: pd.DataFrame, q_hat: float,
     import matplotlib.pyplot as plt
 
     if df_crossing.empty:
-        raise ValueError('df_crossing is empty')
+        raise ValueError("df_crossing is empty")
 
-    sub = df_crossing.sort_values('arc_length_m').reset_index(drop=True)
-    s = sub['arc_length_m'].to_numpy() / 1000.0   # plot in km
-    d = sub['pred_depth_m'].to_numpy()
+    sub = df_crossing.sort_values("arc_length_m").reset_index(drop=True)
+    s = sub["arc_length_m"].to_numpy() / 1000.0  # plot in km
+    d = sub["pred_depth_m"].to_numpy()
 
     if sigma_col is not None:
         half = q_hat * np.maximum(sub[sigma_col].to_numpy(), EPSILON_SIGMA_M)
-        band_label = f'adaptive band (q={q_hat:.2f}×σ, mean ±{np.nanmean(half):.2f} m)'
+        band_label = f"adaptive band (q={q_hat:.2f}×σ, mean ±{np.nanmean(half):.2f} m)"
     else:
         half = np.full(len(d), q_hat)
-        band_label = f'constant band (±{q_hat:.2f} m)'
+        band_label = f"constant band (±{q_hat:.2f} m)"
 
     fig, ax = plt.subplots(figsize=(11, 4.5), dpi=150)
-    ax.fill_between(s, d - half, d + half, color='#ff7f0e', alpha=0.30,
-                    label=band_label)
-    ax.plot(s, d, color='#d62728', lw=1.4, label='this crossing')
+    ax.fill_between(s, d - half, d + half, color="#ff7f0e", alpha=0.30, label=band_label)
+    ax.plot(s, d, color="#d62728", lw=1.4, label="this crossing")
 
     if df_neighbour is not None and not df_neighbour.empty:
-        for cid, g in df_neighbour.groupby('crossing_id'):
-            g = g.sort_values('arc_length_m')
-            ax.plot(g['arc_length_m'].to_numpy() / 1000.0,
-                    g['pred_depth_m'].to_numpy(),
-                    color='white', alpha=0.85, lw=0.9)
-        ax.plot([], [], color='white', lw=0.9, label='other crossings')
+        for cid, g in df_neighbour.groupby("crossing_id"):
+            g = g.sort_values("arc_length_m")
+            ax.plot(
+                g["arc_length_m"].to_numpy() / 1000.0,
+                g["pred_depth_m"].to_numpy(),
+                color="white",
+                alpha=0.85,
+                lw=0.9,
+            )
+        ax.plot([], [], color="white", lw=0.9, label="other crossings")
 
     top = ymax if ymax is not None else float(np.nanmax(d + half)) * 1.05
-    ax.set_ylim(top, 0)   # inverted depth axis, clipped
-    ax.set_xlabel('Arc-length along route (km, Horten → Moss)')
-    ax.set_ylabel('Predicted bottom depth (m)')
+    ax.set_ylim(top, 0)  # inverted depth axis, clipped
+    ax.set_xlabel("Arc-length along route (km, Horten → Moss)")
+    ax.set_ylabel("Predicted bottom depth (m)")
     ax.grid(alpha=0.3)
-    ax.legend(loc='upper right')
+    ax.legend(loc="upper right")
     if title is None:
-        cid0 = sub['crossing_id'].iloc[0]
-        title = f'Label-less conformal band — {cid0}'
+        cid0 = sub["crossing_id"].iloc[0]
+        title = f"Label-less conformal band — {cid0}"
     ax.set_title(title)
-    ax.set_facecolor('#222222')
+    ax.set_facecolor("#222222")
     fig.tight_layout()
     if save_path is not None:
-        fig.savefig(str(save_path), bbox_inches='tight')
+        fig.savefig(str(save_path), bbox_inches="tight")
     return fig
 
 
 # ---------------------------------------------------------------------------
 # Convenience: dump calibration metadata
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LabellessCalibration:

@@ -26,6 +26,7 @@ from .metrics import get_bottom_line, _estimate_bottom_from_channel
 # Echogram-only metrics
 # ---------------------------------------------------------------------------
 
+
 def _saturation_frac(ch):
     """Fraction of pixels at the upper clip (value == 1.0)."""
     return float((ch >= 0.999).mean())
@@ -81,7 +82,7 @@ def _intensity_skewness(ch):
     s = x.std()
     if s < 1e-6:
         return 0.0
-    return float(((x - m) ** 3).mean() / (s ** 3))
+    return float(((x - m) ** 3).mean() / (s**3))
 
 
 def _intensity_kurtosis(ch):
@@ -91,7 +92,7 @@ def _intensity_kurtosis(ch):
     s = x.std()
     if s < 1e-6:
         return 0.0
-    return float(((x - m) ** 4).mean() / (s ** 4) - 3.0)
+    return float(((x - m) ** 4).mean() / (s**4) - 3.0)
 
 
 def _intensity_entropy(ch, bins=32):
@@ -126,6 +127,7 @@ def _ping_dropout_frac(ch, low_thr=0.005):
 # ---------------------------------------------------------------------------
 # Mask / label metrics
 # ---------------------------------------------------------------------------
+
 
 def _bottom_mad(bottom, valid):
     if valid.sum() < 5:
@@ -227,7 +229,7 @@ def _mask_below_fill(mask, bottom, valid):
     filled = 0
     for j in np.where(valid)[0]:
         b = bottom[j]
-        total_below += (H - b)
+        total_below += H - b
         filled += int(mask[b:, j].sum())
     if total_below == 0:
         return np.nan
@@ -366,6 +368,7 @@ def _bottom_gradient_p95(bottom, valid):
 # Top-level: compute all extended metrics for a single (patch, mask)
 # ---------------------------------------------------------------------------
 
+
 def compute_extended_metrics(patch, mask):
     """Compute extended metrics for one (patch, mask) pair.
 
@@ -388,37 +391,37 @@ def compute_extended_metrics(patch, mask):
     m = {}
 
     # --- echogram-only metrics ---
-    m['saturation_frac']        = _saturation_frac(ch0)
-    m['high_intensity_frac']    = _high_intensity_frac(ch0, thr=0.6)
-    m['top_band_intensity']     = _top_band_intensity(ch0, band_frac=0.10)
-    m['bottom_band_intensity']  = _bottom_band_intensity(ch0, band_frac=0.05)
-    m['ping_streak_score']      = _ping_streak_score(ch0)
-    m['row_streak_score']       = _row_streak_score(ch0)
-    m['intensity_skewness']     = _intensity_skewness(ch0)
-    m['intensity_kurtosis']     = _intensity_kurtosis(ch0)
-    m['intensity_entropy']      = _intensity_entropy(ch0, bins=32)
-    m['local_variance']         = _local_variance(ch0, k=8)
-    m['ping_dropout_frac']      = _ping_dropout_frac(ch0)
+    m["saturation_frac"] = _saturation_frac(ch0)
+    m["high_intensity_frac"] = _high_intensity_frac(ch0, thr=0.6)
+    m["top_band_intensity"] = _top_band_intensity(ch0, band_frac=0.10)
+    m["bottom_band_intensity"] = _bottom_band_intensity(ch0, band_frac=0.05)
+    m["ping_streak_score"] = _ping_streak_score(ch0)
+    m["row_streak_score"] = _row_streak_score(ch0)
+    m["intensity_skewness"] = _intensity_skewness(ch0)
+    m["intensity_kurtosis"] = _intensity_kurtosis(ch0)
+    m["intensity_entropy"] = _intensity_entropy(ch0, bins=32)
+    m["local_variance"] = _local_variance(ch0, k=8)
+    m["ping_dropout_frac"] = _ping_dropout_frac(ch0)
 
     # --- mask / label metrics ---
-    m['bottom_mad']             = _bottom_mad(bottom, valid)
-    m['bottom_outlier_frac']    = _bottom_outlier_frac(bottom, valid, n_mad=4.0)
-    m['bottom_jump_count']      = _bottom_jump_count(bottom, valid, jump_thr=40)
-    m['bottom_quad_residual']   = _bottom_quadratic_residual(bottom, valid)
-    m['bottom_too_shallow']     = _bottom_too_shallow_frac(bottom, valid, H, top_frac=0.05)
-    m['bottom_too_deep']        = _bottom_too_deep_frac(bottom, valid, H, bot_frac=0.02)
-    m['bottom_rel_depth']       = _bottom_relative_depth(bottom, valid, H)
-    m['mask_holes_above']       = _mask_holes_above(mask, bottom, valid)
-    m['mask_below_fill']        = _mask_below_fill(mask, bottom, valid)
-    m['largest_component_frac'] = _largest_component_frac(mask)
-    m['bottom_intensity_p10']   = _bottom_intensity_p10(ch0, bottom, valid)
-    m['bottom_intensity_std']   = _bottom_intensity_std(ch0, bottom, valid)
-    m['bottom_argmax_misalign'] = _bottom_argmax_misalign(ch0, bottom, valid, search_window=80)
-    m['bottom_invalid_runs']    = _bottom_invalid_runs(valid)
-    m['water_col_p99']          = _water_col_p99(ch0, bottom, valid)
-    m['water_col_high_frac']    = _water_col_high_frac(ch0, bottom, valid, thr=0.5)
-    m['bottom_pingwise_mean']   = _bottom_pingwise_intensity(ch0, bottom, valid)
-    m['bottom_gradient_p95']    = _bottom_gradient_p95(bottom, valid)
+    m["bottom_mad"] = _bottom_mad(bottom, valid)
+    m["bottom_outlier_frac"] = _bottom_outlier_frac(bottom, valid, n_mad=4.0)
+    m["bottom_jump_count"] = _bottom_jump_count(bottom, valid, jump_thr=40)
+    m["bottom_quad_residual"] = _bottom_quadratic_residual(bottom, valid)
+    m["bottom_too_shallow"] = _bottom_too_shallow_frac(bottom, valid, H, top_frac=0.05)
+    m["bottom_too_deep"] = _bottom_too_deep_frac(bottom, valid, H, bot_frac=0.02)
+    m["bottom_rel_depth"] = _bottom_relative_depth(bottom, valid, H)
+    m["mask_holes_above"] = _mask_holes_above(mask, bottom, valid)
+    m["mask_below_fill"] = _mask_below_fill(mask, bottom, valid)
+    m["largest_component_frac"] = _largest_component_frac(mask)
+    m["bottom_intensity_p10"] = _bottom_intensity_p10(ch0, bottom, valid)
+    m["bottom_intensity_std"] = _bottom_intensity_std(ch0, bottom, valid)
+    m["bottom_argmax_misalign"] = _bottom_argmax_misalign(ch0, bottom, valid, search_window=80)
+    m["bottom_invalid_runs"] = _bottom_invalid_runs(valid)
+    m["water_col_p99"] = _water_col_p99(ch0, bottom, valid)
+    m["water_col_high_frac"] = _water_col_high_frac(ch0, bottom, valid, thr=0.5)
+    m["bottom_pingwise_mean"] = _bottom_pingwise_intensity(ch0, bottom, valid)
+    m["bottom_gradient_p95"] = _bottom_gradient_p95(bottom, valid)
 
     return m
 
@@ -433,19 +436,19 @@ def compute_full_metrics_for_npz(npz_path):
 
     npz_path = Path(npz_path)
     stem = npz_path.stem
-    source_zarr = '_'.join(stem.split('_')[:-1])
+    source_zarr = "_".join(stem.split("_")[:-1])
 
     data = np.load(npz_path)
-    patches, masks = data['patches'], data['masks']
+    patches, masks = data["patches"], data["masks"]
 
     records = []
     for i in range(patches.shape[0]):
         m = compute_all_metrics(patches[i], masks[i])
         m.update(compute_extended_metrics(patches[i], masks[i]))
-        m['uid'] = f'{stem}::{i}'
-        m['npz_file'] = stem
-        m['patch_idx'] = i
-        m['source_zarr'] = source_zarr
-        m['height'] = patches.shape[2]
+        m["uid"] = f"{stem}::{i}"
+        m["npz_file"] = stem
+        m["patch_idx"] = i
+        m["source_zarr"] = source_zarr
+        m["height"] = patches.shape[2]
         records.append(m)
     return records

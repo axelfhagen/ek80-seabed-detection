@@ -17,7 +17,7 @@ from .dp import detect_bottom_tvg, _apply_pseudo_tvg
 def fuse_multifreq_bottom(
     traces: Dict[str, np.ndarray],
     max_agreement_dist: float = 2.0,
-    fallback: str = 'median',
+    fallback: str = "median",
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Fuse bottom depth traces from multiple frequencies.
@@ -69,7 +69,7 @@ def fuse_multifreq_bottom(
 
         if n_agree >= 2:
             fused[j] = float(np.median(valid[agreeing]))
-        elif fallback == 'lowest':
+        elif fallback == "lowest":
             fused[j] = float(np.min(valid))
         else:
             fused[j] = med
@@ -129,13 +129,16 @@ def detect_bottom_multifreq(
     tvg_traces = {}
     for freq in freq_labels:
         tvg_traces[freq] = detect_bottom_tvg(
-            echograms[freq], range_arrays[freq],
-            minimum_range=minimum_range, backstep_db=backstep_db,
+            echograms[freq],
+            range_arrays[freq],
+            minimum_range=minimum_range,
+            backstep_db=backstep_db,
         )
 
     # Fuse per-frequency traces
     fused_trace, confidence = fuse_multifreq_bottom(
-        tvg_traces, max_agreement_dist=max_agreement_dist,
+        tvg_traces,
+        max_agreement_dist=max_agreement_dist,
     )
 
     # Build frequency agreement image on the grid of the first frequency
@@ -161,9 +164,9 @@ def detect_bottom_multifreq(
         # onto the reference grid
         if corrected.shape[0] != n_samples:
             from scipy.interpolate import interp1d
+
             src_range = range_arrays[freq]
-            f_interp = interp1d(src_range, strong, axis=0,
-                                bounds_error=False, fill_value=0.0)
+            f_interp = interp1d(src_range, strong, axis=0, bounds_error=False, fill_value=0.0)
             strong = f_interp(ref_range)
 
         agreement_image += strong

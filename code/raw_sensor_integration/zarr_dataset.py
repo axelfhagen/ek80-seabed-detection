@@ -42,6 +42,7 @@ __all__ = [
 # Helpers (also used in the notebook)
 # ---------------------------------------------------------------------------
 
+
 def _load_sv_from_zarr(
     zarr_path: Path,
     frequency_hz: float,
@@ -55,16 +56,22 @@ def _load_sv_from_zarr(
     duplication.
     """
     from raw_sensor_integration.preprocessing import load_sv_from_zarr
+
     return load_sv_from_zarr(
-        zarr_path, frequency_hz,
+        zarr_path,
+        frequency_hz,
         max_range_m=max_range_m,
         ping_slice=ping_slice,
         max_range_samples=max_range_samples,
     )
 
 
-def _run_bottom_detection(zarr_path: Path, minimum_range: float = 10.0,
-                          offset: float = 0.5, threshold_log_sv: float = -31.0):
+def _run_bottom_detection(
+    zarr_path: Path,
+    minimum_range: float = 10.0,
+    offset: float = 0.5,
+    threshold_log_sv: float = -31.0,
+):
     """
     Run the CRIMAC ensemble bottom detector on a zarr store.
 
@@ -81,8 +88,9 @@ def _run_bottom_detection(zarr_path: Path, minimum_range: float = 10.0,
     from raw_sensor_integration.rsi_bottomdetection.parameters import Parameters
 
     ds = xr.open_zarr(zarr_path, consolidated=False)
-    params = Parameters(minimum_range=minimum_range, offset=offset,
-                        threshold_log_sv=threshold_log_sv)
+    params = Parameters(
+        minimum_range=minimum_range, offset=offset, threshold_log_sv=threshold_log_sv
+    )
     b_simple = simple_bottom_detector.detect_bottom(ds, params)
     b_edge = edge_bottom_detector.detect_bottom(ds, params)
     b_ensemble = np.nanmedian(np.stack([b_simple.values, b_edge.values]), axis=0)
@@ -112,9 +120,7 @@ def _build_masks(
     valid = ~np.isnan(b_range)
     if valid.any():
         pixel_rows = np.interp(b_range[valid], range_array, np.arange(n_samples))
-        bottom_idx[valid] = np.clip(
-            np.round(pixel_rows).astype(np.int64), 0, n_samples - 1
-        )
+        bottom_idx[valid] = np.clip(np.round(pixel_rows).astype(np.int64), 0, n_samples - 1)
 
     mask_below = np.zeros((n_samples, n_pings), dtype=np.uint8)
     mask_line = np.zeros((n_samples, n_pings), dtype=np.uint8)
@@ -123,7 +129,7 @@ def _build_masks(
         if idx < 0:
             continue
         mask_below[idx:, i] = 1
-        mask_line[max(0, idx - line_half): min(n_samples, idx + line_half + 1), i] = 1
+        mask_line[max(0, idx - line_half) : min(n_samples, idx + line_half + 1), i] = 1
 
     return mask_below, mask_line, bottom_idx
 
@@ -141,6 +147,7 @@ def _normalize_sv(sv_db: np.ndarray, vmin: float = -80.0, vmax: float = -34.0) -
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def save_patches_npz(
     zarr_path: "str | Path",
@@ -208,7 +215,7 @@ def save_patches_npz(
         frequencies_hz = list(frequencies_hz)
 
     if verbose:
-        print(f"Frequencies: {[f/1000 for f in frequencies_hz]} kHz")
+        print(f"Frequencies: {[f / 1000 for f in frequencies_hz]} kHz")
 
     # ---- 2. Bottom detection (uses first available frequency) -----------
     if verbose:
@@ -246,26 +253,22 @@ def save_patches_npz(
     stacked = np.stack([a[:min_range] for a in freq_norms], axis=0)  # (C, H, n_pings)
 
     # ---- 4. Build segmentation masks ------------------------------------
-    mask_below, _, bottom_idx = _build_masks(
-        b_ensemble, range_array_ref, n_pings, heave_draft
-    )
-    mask_below = mask_below[:min_range]   # (H, n_pings)
+    mask_below, _, bottom_idx = _build_masks(b_ensemble, range_array_ref, n_pings, heave_draft)
+    mask_below = mask_below[:min_range]  # (H, n_pings)
 
     # ---- 5. Slide patches -----------------------------------------------
     images_list: List[np.ndarray] = []
     labels_list: List[np.ndarray] = []
     allowed_starts_set = (
-        set(int(s) for s in allowed_patch_starts)
-        if allowed_patch_starts is not None
-        else None
+        set(int(s) for s in allowed_patch_starts) if allowed_patch_starts is not None else None
     )
 
     for start in range(0, n_pings - patch_width + 1, stride):
         if allowed_starts_set is not None and start not in allowed_starts_set:
             continue
         end = start + patch_width
-        img_patch = stacked[:, :, start:end]      # (C, H, W)
-        lbl_patch = mask_below[:, start:end]      # (H, W)
+        img_patch = stacked[:, :, start:end]  # (C, H, W)
+        lbl_patch = mask_below[:, start:end]  # (H, W)
 
         if require_bottom and lbl_patch.max() == 0:
             continue
@@ -279,7 +282,7 @@ def save_patches_npz(
         if n_pings == 0:
             print("Labeled pings: 0/0 (no pings available)")
         else:
-            print(f"Labeled pings: {labeled}/{n_pings} ({labeled/n_pings:.1%})")
+            print(f"Labeled pings: {labeled}/{n_pings} ({labeled / n_pings:.1%})")
         print(f"Patches extracted: {n_patches}")
 
     if n_patches == 0:
@@ -288,8 +291,8 @@ def save_patches_npz(
             "data and that bottom detection succeeds."
         )
 
-    images_arr = np.stack(images_list, axis=0)   # (N, C, H, W)
-    labels_arr = np.stack(labels_list, axis=0)   # (N, H, W)
+    images_arr = np.stack(images_list, axis=0)  # (N, C, H, W)
+    labels_arr = np.stack(labels_list, axis=0)  # (N, H, W)
 
     # ---- 6. Save to disk ------------------------------------------------
     np.savez_compressed(
@@ -345,8 +348,8 @@ class ZarrBottomDataset:
         import torch  # noqa: F401 – ensure torch is available at import time
 
         with np.load(npz_path) as data:
-            self._images = data["images"].copy()     # (N, C, H, W) float32
-            self._labels = data["labels"].copy()     # (N, H, W)    uint8
+            self._images = data["images"].copy()  # (N, C, H, W) float32
+            self._labels = data["labels"].copy()  # (N, H, W)    uint8
 
             self.frequencies = data["frequencies"].copy()
             self.range_m = data["range_m"].copy()
@@ -365,10 +368,8 @@ class ZarrBottomDataset:
     def __getitem__(self, idx: int):
         import torch
 
-        image = torch.from_numpy(self._images[idx])           # (C, H, W) float32
-        label = torch.from_numpy(
-            self._labels[idx].astype(np.float32)
-        )                                                      # (H, W) float32
+        image = torch.from_numpy(self._images[idx])  # (C, H, W) float32
+        label = torch.from_numpy(self._labels[idx].astype(np.float32))  # (H, W) float32
 
         if self.transform is not None:
             image = self.transform(image)
@@ -380,7 +381,7 @@ class ZarrBottomDataset:
     # ------------------------------------------------------------------
     def __repr__(self) -> str:
         C, H, W = self._images.shape[1], self._images.shape[2], self._images.shape[3]
-        freqs_khz = [f"{f/1000:.0f}" for f in self.frequencies]
+        freqs_khz = [f"{f / 1000:.0f}" for f in self.frequencies]
         return (
             f"ZarrBottomDataset("
             f"n={len(self)}, "

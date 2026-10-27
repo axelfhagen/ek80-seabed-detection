@@ -46,8 +46,7 @@ class _Up(nn.Module):
         dy = skip.size(2) - x.size(2)
         dx = skip.size(3) - x.size(3)
         if dy != 0 or dx != 0:
-            x = nn.functional.pad(x, [dx // 2, dx - dx // 2,
-                                       dy // 2, dy - dy // 2])
+            x = nn.functional.pad(x, [dx // 2, dx - dx // 2, dy // 2, dy - dy // 2])
         x = torch.cat([skip, x], dim=1)
         return self.conv(x)
 
@@ -63,14 +62,15 @@ class VanillaUNet(SegmentationModel):
     base_filters : filters in the first encoder stage; doubles each stage
     """
 
-    def __init__(self, in_channels: int = 3, classes: int = 1,
-                 depth: int = 4, base_filters: int = 32):
+    def __init__(
+        self, in_channels: int = 3, classes: int = 1, depth: int = 4, base_filters: int = 32
+    ):
         super().__init__()
         self._depth = depth
         self._base_filters = base_filters
 
         # Build channel sequence: e.g. depth=4, bf=32 -> [32, 64, 128, 256, 512]
-        channels = [base_filters * (2 ** i) for i in range(depth + 1)]
+        channels = [base_filters * (2**i) for i in range(depth + 1)]
 
         # Encoder
         self.enc_input = _DoubleConv(in_channels, channels[0])

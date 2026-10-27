@@ -1,4 +1,5 @@
 """Scan production patch caches for empty (all-zero) masks and degenerate patch images."""
+
 import glob
 import os
 

@@ -20,9 +20,7 @@ import scipy.signal as sig
 from .dp import _apply_pseudo_tvg
 
 
-def _find_cwt_bottom(cwt_matrix: np.ndarray,
-                     min_index: int,
-                     ridge_threshold: float) -> float:
+def _find_cwt_bottom(cwt_matrix: np.ndarray, min_index: int, ridge_threshold: float) -> float:
     """
     Find the bottom position from a CWT scalogram.
 

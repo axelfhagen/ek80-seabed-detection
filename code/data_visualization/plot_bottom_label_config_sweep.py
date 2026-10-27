@@ -9,6 +9,7 @@ pipeline on the same 10 random 38 kHz zarr echograms and overlay the
 resulting bottom trace as a red line. A combined overlay PNG plots all
 five configs together on each echogram for direct comparison.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,6 +22,7 @@ from typing import Optional
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import scipy.signal as sig
@@ -120,6 +122,7 @@ CONFIGS = [
 def load_38k_echogram(zarr_path: Path):
     """Return (sv, ranges, heave) for the 38 kHz channel of one zarr."""
     import xarray as xr
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
         ds = xr.open_zarr(zarr_path, consolidated=False)
@@ -135,19 +138,19 @@ def load_38k_echogram(zarr_path: Path):
         ranges = ranges[valid_r]
         sv = sv[valid_r]
 
-        heave = (ds.heave.values.astype(np.float64)
-                 if "heave" in ds else np.zeros(sv.shape[1]))
+        heave = ds.heave.values.astype(np.float64) if "heave" in ds else np.zeros(sv.shape[1])
         ds.close()
     return sv, ranges, heave
 
 
-def run_config(sv: np.ndarray, ranges: np.ndarray, heave: np.ndarray,
-               cfg: Config) -> np.ndarray:
+def run_config(sv: np.ndarray, ranges: np.ndarray, heave: np.ndarray, cfg: Config) -> np.ndarray:
     """Run ensemble + custom post-processing for one config."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         bottom, _, _ = detect_bottom_ensemble_pipeline(
-            sv, ranges, heave,
+            sv,
+            ranges,
+            heave,
             pulse_duration=PULSE_DURATION,
             frequency_hz=FREQ_HZ,
             minimum_range=cfg.minimum_range,
@@ -171,7 +174,9 @@ def run_config(sv: np.ndarray, ranges: np.ndarray, heave: np.ndarray,
                 x = np.arange(len(bottom))
                 filled = np.interp(x, x[valid], bottom[valid])
                 bottom = sig.savgol_filter(
-                    filled, cfg.savgol["window"], cfg.savgol["order"],
+                    filled,
+                    cfg.savgol["window"],
+                    cfg.savgol["order"],
                 )
     return bottom
 
@@ -189,21 +194,30 @@ def _trim_to_data(sv: np.ndarray, ranges: np.ndarray):
 def style_axes(ax, sv, ranges, n_pings, title: str):
     sv_t, r_t = _trim_to_data(sv, ranges)
     extent = [0, n_pings, float(r_t[-1]), float(r_t[0])]
-    ax.imshow(sv_t, aspect="auto", origin="upper", extent=extent,
-              vmin=-80, vmax=-34, cmap="viridis", interpolation="nearest")
+    ax.imshow(
+        sv_t,
+        aspect="auto",
+        origin="upper",
+        extent=extent,
+        vmin=-80,
+        vmax=-34,
+        cmap="viridis",
+        interpolation="nearest",
+    )
     ax.set_ylim(float(r_t[-1]), float(r_t[0]))
     ax.set_xlim(0, n_pings)
     ax.set_title(title, fontsize=17)
     ax.tick_params(labelsize=14)
 
 
-def plot_config_grid(cfg: Config, idx: int, echograms: list[dict],
-                     out_path: Path) -> None:
+def plot_config_grid(cfg: Config, idx: int, echograms: list[dict], out_path: Path) -> None:
     """2x5 grid of echograms with red bottom line for one config."""
     n = len(echograms)
     n_cols, n_rows = 2, (n + 1) // 2
     fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(11.0 * n_cols, 3.8 * n_rows),
+        n_rows,
+        n_cols,
+        figsize=(11.0 * n_cols, 3.8 * n_rows),
         constrained_layout=True,
     )
     axes = np.atleast_2d(axes)
@@ -213,8 +227,7 @@ def plot_config_grid(cfg: Config, idx: int, echograms: list[dict],
         ax = axes[r, c]
         style_axes(ax, e["sv"], e["ranges"], e["n_pings"], title=e["name"])
         bottom = e["traces"][cfg.name]
-        ax.plot(np.arange(e["n_pings"]), bottom,
-                color="#ff3b30", lw=1.8)
+        ax.plot(np.arange(e["n_pings"]), bottom, color="#ff3b30", lw=1.8)
         if r == n_rows - 1:
             ax.set_xlabel("Ping", fontsize=15)
         if c == 0:
@@ -226,9 +239,9 @@ def plot_config_grid(cfg: Config, idx: int, echograms: list[dict],
 
     # Wrap the description so long single-line titles don't shrink the panels
     import textwrap
+
     desc_wrap = textwrap.fill(cfg.description, width=110)
-    fig.suptitle(f"{cfg.name}\n{desc_wrap}", fontsize=18, y=1.04,
-                 linespacing=1.3)
+    fig.suptitle(f"{cfg.name}\n{desc_wrap}", fontsize=18, y=1.04, linespacing=1.3)
     fig.savefig(out_path, dpi=140, bbox_inches="tight")
     plt.close(fig)
 
@@ -238,7 +251,9 @@ def plot_overlay_comparison(echograms: list[dict], out_path: Path) -> None:
     n = len(echograms)
     n_cols, n_rows = 2, (n + 1) // 2
     fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(11.0 * n_cols, 4.2 * n_rows),
+        n_rows,
+        n_cols,
+        figsize=(11.0 * n_cols, 4.2 * n_rows),
         constrained_layout=True,
     )
     axes = np.atleast_2d(axes)
@@ -252,11 +267,9 @@ def plot_overlay_comparison(echograms: list[dict], out_path: Path) -> None:
         style_axes(ax, e["sv"], e["ranges"], e["n_pings"], title=e["name"])
         x = np.arange(e["n_pings"])
         for name, col in zip(config_names, colors):
-            ax.plot(x, e["traces"][name], color=col, lw=1.2, label=name,
-                    alpha=0.85)
+            ax.plot(x, e["traces"][name], color=col, lw=1.2, label=name, alpha=0.85)
         if k == 0:
-            ax.legend(loc="upper right", fontsize=12, framealpha=0.85,
-                      ncol=1)
+            ax.legend(loc="upper right", fontsize=12, framealpha=0.85, ncol=1)
         if r == n_rows - 1:
             ax.set_xlabel("Ping", fontsize=15)
         if c == 0:
@@ -266,8 +279,7 @@ def plot_overlay_comparison(echograms: list[dict], out_path: Path) -> None:
         r, c = divmod(k, n_cols)
         axes[r, c].axis("off")
 
-    fig.suptitle("Bottom-labelling config sweep, all 5 configs overlaid",
-                 fontsize=22, y=1.02)
+    fig.suptitle("Bottom-labelling config sweep, all 5 configs overlaid", fontsize=22, y=1.02)
     fig.savefig(out_path, dpi=140, bbox_inches="tight")
     plt.close(fig)
 
@@ -288,8 +300,7 @@ def main() -> None:
         sys.exit(1)
 
     rng = np.random.default_rng(args.seed)
-    pick = rng.choice(len(zarr_paths), size=min(args.n, len(zarr_paths)),
-                      replace=False)
+    pick = rng.choice(len(zarr_paths), size=min(args.n, len(zarr_paths)), replace=False)
     selected = [zarr_paths[i] for i in sorted(pick.tolist())]
     print(f"Selected {len(selected)} echograms (seed={args.seed}):")
     for zp in selected:
@@ -300,7 +311,7 @@ def main() -> None:
         try:
             sv, ranges, heave = load_38k_echogram(zp)
         except Exception as exc:
-            print(f"[{zi+1}/{len(selected)}] {zp.stem}: load FAILED — {exc}")
+            print(f"[{zi + 1}/{len(selected)}] {zp.stem}: load FAILED — {exc}")
             continue
         n_pings = sv.shape[1]
         traces = {}
@@ -310,14 +321,16 @@ def main() -> None:
             except Exception as exc:
                 print(f"  {cfg.name}: FAILED — {exc}")
                 traces[cfg.name] = np.full(n_pings, np.nan)
-        echograms.append({
-            "name": zp.stem,
-            "sv": sv,
-            "ranges": ranges,
-            "n_pings": n_pings,
-            "traces": traces,
-        })
-        print(f"[{zi+1}/{len(selected)}] {zp.stem}: {n_pings} pings")
+        echograms.append(
+            {
+                "name": zp.stem,
+                "sv": sv,
+                "ranges": ranges,
+                "n_pings": n_pings,
+                "traces": traces,
+            }
+        )
+        print(f"[{zi + 1}/{len(selected)}] {zp.stem}: {n_pings} pings")
 
     if not echograms:
         print("No echograms loaded; aborting.", file=sys.stderr)

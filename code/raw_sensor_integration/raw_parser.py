@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Tuple
 
 def read_raw_file(path: str) -> bytes:
     """Load a .raw file as bytes."""
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         return f.read()
 
 
@@ -28,11 +28,11 @@ def find_text_strings(data: bytes, min_length: int = 4) -> List[Tuple[int, str]]
             current.append(chr(byte))
         else:
             if len(current) >= min_length:
-                strings.append((start, ''.join(current)))
+                strings.append((start, "".join(current)))
             current = []
 
     if len(current) >= min_length:
-        strings.append((start, ''.join(current)))
+        strings.append((start, "".join(current)))
 
     return strings
 
@@ -44,13 +44,15 @@ def find_datagram_types(data: bytes) -> Dict[str, List[int]]:
     """
     # Common Simrad datagram types
     known_types = [
-        b'CON0', b'CON1',  # Configuration
-        b'RAW0', b'RAW3',  # Raw data
-        b'XML0',           # XML configuration
-        b'NME0',           # NMEA data
-        b'TAG0',           # Annotations
-        b'FIL1',           # Filter
-        b'MRU0',           # Motion reference unit
+        b"CON0",
+        b"CON1",  # Configuration
+        b"RAW0",
+        b"RAW3",  # Raw data
+        b"XML0",  # XML configuration
+        b"NME0",  # NMEA data
+        b"TAG0",  # Annotations
+        b"FIL1",  # Filter
+        b"MRU0",  # Motion reference unit
     ]
 
     found = {}
@@ -65,7 +67,7 @@ def find_datagram_types(data: bytes) -> Dict[str, List[int]]:
             start = pos + 1
 
         if offsets:
-            found[dtype.decode('ascii')] = offsets
+            found[dtype.decode("ascii")] = offsets
 
     return found
 
@@ -79,17 +81,17 @@ def parse_datagram_header(data: bytes, offset: int) -> Dict[str, Any]:
     """
     # Try to read length (4 bytes before type identifier)
     if offset >= 4:
-        length = int.from_bytes(data[offset-4:offset], 'little')
+        length = int.from_bytes(data[offset - 4 : offset], "little")
     else:
         length = None
 
     # Read type (4 bytes)
-    dtype = data[offset:offset+4].decode('ascii', errors='replace')
+    dtype = data[offset : offset + 4].decode("ascii", errors="replace")
 
     return {
-        'offset': offset,
-        'type': dtype,
-        'length': length,
+        "offset": offset,
+        "type": dtype,
+        "length": length,
     }
 
 
@@ -103,7 +105,7 @@ def extract_xml_content(data: bytes) -> List[str]:
     # Find XML0 datagrams
     start = 0
     while True:
-        pos = data.find(b'XML0', start)
+        pos = data.find(b"XML0", start)
         if pos == -1:
             break
 
@@ -114,16 +116,16 @@ def extract_xml_content(data: bytes) -> List[str]:
         section = data[search_start:search_end]
 
         # Find XML start
-        xml_start = section.find(b'<?xml')
+        xml_start = section.find(b"<?xml")
         if xml_start == -1:
-            xml_start = section.find(b'<')
+            xml_start = section.find(b"<")
 
         if xml_start != -1:
             # Find end of XML (look for closing tag or null bytes)
             xml_data = section[xml_start:]
-            end = xml_data.find(b'\x00\x00')
+            end = xml_data.find(b"\x00\x00")
             if end != -1:
-                xml_text = xml_data[:end].decode('utf-8', errors='replace')
+                xml_text = xml_data[:end].decode("utf-8", errors="replace")
                 xml_sections.append(xml_text)
 
         start = pos + 1
@@ -139,9 +141,9 @@ def get_file_info(path: str) -> Dict[str, Any]:
     data = read_raw_file(path)
 
     return {
-        'filename': p.name,
-        'size_bytes': len(data),
-        'size_mb': len(data) / (1024 * 1024),
-        'first_bytes': data[:100].hex(),
-        'datagram_types': find_datagram_types(data),
+        "filename": p.name,
+        "size_bytes": len(data),
+        "size_mb": len(data) / (1024 * 1024),
+        "first_bytes": data[:100].hex(),
+        "datagram_types": find_datagram_types(data),
     }

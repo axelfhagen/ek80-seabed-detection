@@ -7,14 +7,22 @@ import matplotlib.pyplot as plt
 #
 # ECHOGRAM_CMAP  — use when showing the echogram on its own.
 # ECHOGRAM_MASK_CMAP — use when a bottom detection line or mask is overlaid.
-ECHOGRAM_CMAP = 'viridis'
+ECHOGRAM_CMAP = "viridis"
 
-ECHOGRAM_MASK_CMAP = 'viridis'
+ECHOGRAM_MASK_CMAP = "viridis"
 
 
-def plot_echogram(data, title="Echogram", vmin=-80, vmax=-20, cmap=ECHOGRAM_CMAP,
-                  ax=None, figsize=(14, 6), ylabel='Range (m)',
-                  range_array=None):
+def plot_echogram(
+    data,
+    title="Echogram",
+    vmin=-80,
+    vmax=-20,
+    cmap=ECHOGRAM_CMAP,
+    ax=None,
+    figsize=(14, 6),
+    ylabel="Range (m)",
+    range_array=None,
+):
     """
     Plot echogram with standard acoustic visualization settings.
 
@@ -44,13 +52,14 @@ def plot_echogram(data, title="Echogram", vmin=-80, vmax=-20, cmap=ECHOGRAM_CMAP
         n_pings = data.shape[1]
         extent = [0, n_pings, range_array[-1], range_array[0]]
 
-    im = ax.imshow(data, aspect='auto', cmap=cmap, vmin=vmin, vmax=vmax,
-                   origin='upper', extent=extent)
-    ax.set_xlabel('Ping number')
+    im = ax.imshow(
+        data, aspect="auto", cmap=cmap, vmin=vmin, vmax=vmax, origin="upper", extent=extent
+    )
+    ax.set_xlabel("Ping number")
     ax.set_ylabel(ylabel)
     ax.set_title(f"{title}  ({data.shape[0]} × {data.shape[1]})")
 
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-    cbar.set_label('Power (dB)')
+    cbar.set_label("Power (dB)")
 
     return fig, ax

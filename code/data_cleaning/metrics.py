@@ -18,6 +18,7 @@ from pathlib import Path
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def get_bottom_line(mask):
     """Extract per-ping bottom depth index from a binary mask.
 
@@ -76,6 +77,7 @@ def _estimate_bottom_from_channel(channel, mask_bottom, window=100):
 # Patch metrics (from notebook 05)
 # ---------------------------------------------------------------------------
 
+
 def compute_patch_metrics(patch, mask):
     """Compute signal and basic mask quality metrics for a single patch.
 
@@ -102,40 +104,40 @@ def compute_patch_metrics(patch, mask):
     m = {}
 
     # --- Signal quality ---
-    m['zero_frac'] = float((ch0 == 0.0).mean())
-    m['dynamic_range'] = float(np.percentile(ch0, 95) - np.percentile(ch0, 5))
+    m["zero_frac"] = float((ch0 == 0.0).mean())
+    m["dynamic_range"] = float(np.percentile(ch0, 95) - np.percentile(ch0, 5))
 
     # Water column stats (pixels above the bottom line)
     if n_valid > 0:
         water_pixels = []
         for j in np.where(valid)[0]:
             if bottom[j] > 5:
-                water_pixels.append(ch0[:bottom[j], j])
+                water_pixels.append(ch0[: bottom[j], j])
         if water_pixels:
             water = np.concatenate(water_pixels)
-            m['water_col_mean'] = float(water.mean())
-            m['water_col_std'] = float(water.std())
+            m["water_col_mean"] = float(water.mean())
+            m["water_col_std"] = float(water.std())
         else:
-            m['water_col_mean'] = np.nan
-            m['water_col_std'] = np.nan
+            m["water_col_mean"] = np.nan
+            m["water_col_std"] = np.nan
     else:
-        m['water_col_mean'] = np.nan
-        m['water_col_std'] = np.nan
+        m["water_col_mean"] = np.nan
+        m["water_col_std"] = np.nan
 
     # --- Mask / bottom quality ---
-    m['bottom_coverage'] = float(n_valid / W)
-    m['bottom_frac'] = float(mask.mean())
+    m["bottom_coverage"] = float(n_valid / W)
+    m["bottom_frac"] = float(mask.mean())
 
     if n_valid > 1:
         valid_depths = bottom[valid]
-        m['bottom_smoothness'] = float(valid_depths.std())
-        m['bottom_depth_range'] = float(valid_depths.max() - valid_depths.min())
+        m["bottom_smoothness"] = float(valid_depths.std())
+        m["bottom_depth_range"] = float(valid_depths.max() - valid_depths.min())
         diffs = np.abs(np.diff(valid_depths))
-        m['bottom_gradient_max'] = float(diffs.max()) if len(diffs) > 0 else 0.0
+        m["bottom_gradient_max"] = float(diffs.max()) if len(diffs) > 0 else 0.0
     else:
-        m['bottom_smoothness'] = np.nan
-        m['bottom_depth_range'] = np.nan
-        m['bottom_gradient_max'] = np.nan
+        m["bottom_smoothness"] = np.nan
+        m["bottom_depth_range"] = np.nan
+        m["bottom_gradient_max"] = np.nan
 
     # --- Boundary quality ---
     if n_valid > 0:
@@ -156,20 +158,20 @@ def compute_patch_metrics(patch, mask):
             coherence_vals_0.append(ch0[above_start:below_end, j])
             coherence_vals_1.append(ch1[above_start:below_end, j])
 
-        m['boundary_contrast'] = float(np.mean(contrasts)) if contrasts else np.nan
+        m["boundary_contrast"] = float(np.mean(contrasts)) if contrasts else np.nan
 
         if len(coherence_vals_0) > 10:
             vec0 = np.concatenate(coherence_vals_0)
             vec1 = np.concatenate(coherence_vals_1)
             if vec0.std() > 1e-6 and vec1.std() > 1e-6:
-                m['freq_coherence'] = float(np.corrcoef(vec0, vec1)[0, 1])
+                m["freq_coherence"] = float(np.corrcoef(vec0, vec1)[0, 1])
             else:
-                m['freq_coherence'] = np.nan
+                m["freq_coherence"] = np.nan
         else:
-            m['freq_coherence'] = np.nan
+            m["freq_coherence"] = np.nan
     else:
-        m['boundary_contrast'] = np.nan
-        m['freq_coherence'] = np.nan
+        m["boundary_contrast"] = np.nan
+        m["freq_coherence"] = np.nan
 
     return m
 
@@ -177,6 +179,7 @@ def compute_patch_metrics(patch, mask):
 # ---------------------------------------------------------------------------
 # Mask metrics (from notebook 19)
 # ---------------------------------------------------------------------------
+
 
 def compute_mask_metrics(patch, mask):
     """Compute mask-focused quality metrics for a single patch.
@@ -206,17 +209,17 @@ def compute_mask_metrics(patch, mask):
     # --- Bottom line continuity ---
     if W > 1:
         both_valid = valid[:-1] & valid[1:]
-        m['bottom_continuity'] = float(both_valid.sum() / (W - 1))
+        m["bottom_continuity"] = float(both_valid.sum() / (W - 1))
     else:
-        m['bottom_continuity'] = np.nan
+        m["bottom_continuity"] = np.nan
 
     # --- Bottom curvature (second derivative) ---
     if n_valid > 2:
         valid_depths = bottom[valid].astype(float)
         d2 = np.diff(valid_depths, n=2)
-        m['bottom_curvature'] = float(np.mean(np.abs(d2)))
+        m["bottom_curvature"] = float(np.mean(np.abs(d2)))
     else:
-        m['bottom_curvature'] = np.nan
+        m["bottom_curvature"] = np.nan
 
     # --- Edge intensity: mean ch0 value at the exact bottom row ---
     if n_valid > 0:
@@ -225,9 +228,9 @@ def compute_mask_metrics(patch, mask):
             b = bottom[j]
             if 0 <= b < H:
                 intensities.append(ch0[b, j])
-        m['mask_edge_intensity'] = float(np.mean(intensities)) if intensities else np.nan
+        m["mask_edge_intensity"] = float(np.mean(intensities)) if intensities else np.nan
     else:
-        m['mask_edge_intensity'] = np.nan
+        m["mask_edge_intensity"] = np.nan
 
     # --- Cross-frequency bottom difference ---
     # Uses windowed search around mask bottom instead of full-column argmax
@@ -237,11 +240,11 @@ def compute_mask_metrics(patch, mask):
         both = valid & ch1_valid
         if both.sum() > 5:
             diffs = np.abs(bottom[both] - ch1_bottom[both]).astype(float)
-            m['cross_freq_bottom_diff'] = float(np.mean(diffs))
+            m["cross_freq_bottom_diff"] = float(np.mean(diffs))
         else:
-            m['cross_freq_bottom_diff'] = np.nan
+            m["cross_freq_bottom_diff"] = np.nan
     else:
-        m['cross_freq_bottom_diff'] = np.nan
+        m["cross_freq_bottom_diff"] = np.nan
 
     # --- Below-bottom decay ---
     if n_valid > 10:
@@ -256,34 +259,34 @@ def compute_mask_metrics(patch, mask):
                     x = np.arange(len(band_vals), dtype=float)
                     slope = np.polyfit(x, band_vals, 1)[0]
                     slopes.append(slope)
-        m['below_bottom_decay'] = float(np.mean(slopes)) if slopes else np.nan
+        m["below_bottom_decay"] = float(np.mean(slopes)) if slopes else np.nan
     else:
-        m['below_bottom_decay'] = np.nan
+        m["below_bottom_decay"] = np.nan
 
     # --- Above-bottom coefficient of variation ---
     if n_valid > 10:
         water_pixels = []
         for j in np.where(valid)[0]:
             if bottom[j] > 10:
-                water_pixels.append(ch0[:bottom[j], j])
+                water_pixels.append(ch0[: bottom[j], j])
         if water_pixels:
             water = np.concatenate(water_pixels)
             mean_w = water.mean()
             if mean_w > 1e-6:
-                m['above_bottom_cv'] = float(water.std() / mean_w)
+                m["above_bottom_cv"] = float(water.std() / mean_w)
             else:
-                m['above_bottom_cv'] = np.nan
+                m["above_bottom_cv"] = np.nan
         else:
-            m['above_bottom_cv'] = np.nan
+            m["above_bottom_cv"] = np.nan
     else:
-        m['above_bottom_cv'] = np.nan
+        m["above_bottom_cv"] = np.nan
 
     # --- Mask connectivity ---
     if mask.any():
         _, n_components = ndimage.label(mask)
-        m['mask_connectivity'] = int(n_components)
+        m["mask_connectivity"] = int(n_components)
     else:
-        m['mask_connectivity'] = 0
+        m["mask_connectivity"] = 0
 
     # --- Bottom SNR ---
     if n_valid > 10:
@@ -297,9 +300,9 @@ def compute_mask_metrics(patch, mask):
                 above_mean = ch0[above_start:b, j].mean()
                 below_mean = ch0[b:below_end, j].mean()
                 snr_vals.append(below_mean - above_mean)
-        m['bottom_snr'] = float(np.mean(snr_vals)) if snr_vals else np.nan
+        m["bottom_snr"] = float(np.mean(snr_vals)) if snr_vals else np.nan
     else:
-        m['bottom_snr'] = np.nan
+        m["bottom_snr"] = np.nan
 
     return m
 
@@ -307,6 +310,7 @@ def compute_mask_metrics(patch, mask):
 # ---------------------------------------------------------------------------
 # Combined metrics
 # ---------------------------------------------------------------------------
+
 
 def compute_all_metrics(patch, mask):
     """Compute all 19 quality metrics for a single patch + mask pair.
@@ -332,20 +336,20 @@ def compute_metrics_for_npz(npz_path):
     """
     npz_path = Path(npz_path)
     stem = npz_path.stem
-    source_zarr = '_'.join(stem.split('_')[:-1])
+    source_zarr = "_".join(stem.split("_")[:-1])
 
     data = np.load(npz_path)
-    patches, masks = data['patches'], data['masks']
+    patches, masks = data["patches"], data["masks"]
     n = patches.shape[0]
 
     records = []
     for i in range(n):
         m = compute_all_metrics(patches[i], masks[i])
-        m['uid'] = f'{stem}::{i}'
-        m['npz_file'] = stem
-        m['patch_idx'] = i
-        m['source_zarr'] = source_zarr
-        m['height'] = patches.shape[2]
+        m["uid"] = f"{stem}::{i}"
+        m["npz_file"] = stem
+        m["patch_idx"] = i
+        m["source_zarr"] = source_zarr
+        m["height"] = patches.shape[2]
         records.append(m)
 
     return records

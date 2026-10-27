@@ -39,24 +39,27 @@ from validation.dataset_shift.distribution_comparison import (
 
 FREQUENCIES = [38_000, 200_000]
 
-plt.rcParams.update({
-    "axes.labelsize": 18,
-    "axes.titlesize": 20,
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
-    "legend.fontsize": 16,
-})
+plt.rcParams.update(
+    {
+        "axes.labelsize": 18,
+        "axes.titlesize": 20,
+        "xtick.labelsize": 16,
+        "ytick.labelsize": 16,
+        "legend.fontsize": 16,
+    }
+)
 
 
 def split_files_in_half(
-    files: list[Path], rng: np.random.Generator,
+    files: list[Path],
+    rng: np.random.Generator,
 ) -> tuple[list[Path], list[Path]]:
     """Randomly split a file list into two non-overlapping halves."""
     idx = np.arange(len(files))
     rng.shuffle(idx)
     cut = len(files) // 2
     a = [files[i] for i in idx[:cut]]
-    b = [files[i] for i in idx[cut:cut * 2]]
+    b = [files[i] for i in idx[cut : cut * 2]]
     return a, b
 
 
@@ -77,8 +80,11 @@ def sample_from_files(
     return np.concatenate(parts)
 
 
-def ks_and_jsd(a: np.ndarray, b: np.ndarray, n_bins: int = 200,
-               ) -> tuple[float, float]:
+def ks_and_jsd(
+    a: np.ndarray,
+    b: np.ndarray,
+    n_bins: int = 200,
+) -> tuple[float, float]:
     """KS statistic and Jensen-Shannon divergence between two samples."""
     ks_stat, _ = stats.ks_2samp(a, b)
     sv_min = float(min(a.min(), b.min()))
@@ -122,30 +128,26 @@ def within_survey_distances(
             if sv_a.size == 0 or sv_b.size == 0:
                 continue
             ks_stat, jsd = ks_and_jsd(sv_a, sv_b)
-            rows.append({
-                "survey": survey_name,
-                "label": label,
-                "seed_idx": seed_idx,
-                "ks_statistic": ks_stat,
-                "jsd": jsd,
-                "n_files_a": len(half_a),
-                "n_files_b": len(half_b),
-                "n_samples_a": int(sv_a.size),
-                "n_samples_b": int(sv_b.size),
-            })
-            print(
-                f"  {label} seed {seed_idx}: "
-                f"KS={ks_stat:.3f}  JSD={jsd:.3f}"
+            rows.append(
+                {
+                    "survey": survey_name,
+                    "label": label,
+                    "seed_idx": seed_idx,
+                    "ks_statistic": ks_stat,
+                    "jsd": jsd,
+                    "n_files_a": len(half_a),
+                    "n_files_b": len(half_b),
+                    "n_samples_a": int(sv_a.size),
+                    "n_samples_b": int(sv_b.size),
+                }
             )
+            print(f"  {label} seed {seed_idx}: KS={ks_stat:.3f}  JSD={jsd:.3f}")
     return pd.DataFrame(rows)
 
 
 def load_between_survey_distances(freq_hz: int) -> pd.DataFrame | None:
     """Load the pre-computed inter-survey distances from CSV, if available."""
-    path = (
-        Path("Figures/distribution_comparison")
-        / f"pairwise_stats_{freq_hz // 1000}kHz.csv"
-    )
+    path = Path("Figures/distribution_comparison") / f"pairwise_stats_{freq_hz // 1000}kHz.csv"
     if not path.exists():
         return None
     return pd.read_csv(path)
@@ -159,16 +161,12 @@ def plot_within_vs_between(
 ) -> None:
     """Ladder plot: per-survey within-survey distances + inter-survey range."""
     if within_df.empty:
-        print(f"  No within-survey samples for {freq_hz // 1000} kHz, "
-              "skipping plot")
+        print(f"  No within-survey samples for {freq_hz // 1000} kHz, skipping plot")
         return
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharey=False)
 
-    survey_order = (
-        within_df.groupby("survey")["ks_statistic"].mean()
-        .sort_values().index.tolist()
-    )
+    survey_order = within_df.groupby("survey")["ks_statistic"].mean().sort_values().index.tolist()
     label_map = within_df.set_index("survey")["label"].to_dict()
     labels = [label_map[s] for s in survey_order]
     x = np.arange(len(survey_order))
@@ -178,17 +176,24 @@ def plot_within_vs_between(
         (axes[1], "jsd", "Jensen-Shannon divergence"),
     ]:
         for i, survey in enumerate(survey_order):
-            vals = within_df.loc[
-                within_df["survey"] == survey, metric
-            ].to_numpy()
+            vals = within_df.loc[within_df["survey"] == survey, metric].to_numpy()
             ax.scatter(
-                np.full_like(vals, i, dtype=float), vals,
-                color="tab:blue", alpha=0.7, s=60, zorder=3,
+                np.full_like(vals, i, dtype=float),
+                vals,
+                color="tab:blue",
+                alpha=0.7,
+                s=60,
+                zorder=3,
                 label=("within survey (random halves)" if i == 0 else None),
             )
             ax.scatter(
-                [i], [vals.mean()], color="tab:blue", marker="_",
-                s=400, linewidths=3, zorder=4,
+                [i],
+                [vals.mean()],
+                color="tab:blue",
+                marker="_",
+                s=400,
+                linewidths=3,
+                zorder=4,
             )
 
         if between_df is not None and not between_df.empty:
@@ -196,11 +201,16 @@ def plot_within_vs_between(
             hi = between_df[metric].max()
             med = between_df[metric].median()
             ax.axhspan(
-                lo, hi, color="tab:orange", alpha=0.15,
+                lo,
+                hi,
+                color="tab:orange",
+                alpha=0.15,
                 label=f"between surveys: [{lo:.2f}, {hi:.2f}]",
             )
             ax.axhline(
-                med, color="tab:orange", linestyle="--",
+                med,
+                color="tab:orange",
+                linestyle="--",
                 linewidth=2,
                 label=f"between surveys: median {med:.2f}",
             )
@@ -223,13 +233,12 @@ def plot_within_vs_between(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=(
-            "Compute within-survey KS/JSD baseline by random file halving"
-        ),
+        description=("Compute within-survey KS/JSD baseline by random file halving"),
     )
     parser.add_argument("--zarr-dir", type=Path, default=None)
     parser.add_argument(
-        "--output-dir", type=Path,
+        "--output-dir",
+        type=Path,
         default=Path("Figures/distribution_comparison/within_survey"),
     )
     parser.add_argument("--max-files", type=int, default=20)
@@ -237,7 +246,10 @@ def main() -> None:
     parser.add_argument("--n-seeds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
-        "--frequencies", type=int, nargs="+", default=FREQUENCIES,
+        "--frequencies",
+        type=int,
+        nargs="+",
+        default=FREQUENCIES,
     )
     args = parser.parse_args()
 

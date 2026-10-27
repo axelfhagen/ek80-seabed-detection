@@ -54,8 +54,7 @@ def test_parse_raw3_decodes_complex_float32_ping(tmp_path):
     # the convention for the ``offset`` argument).
     assert next_offset == len(d)
     np.testing.assert_allclose(ping.power, [5.0, 25.0, 0.25, 1.0])
-    np.testing.assert_allclose(ping.power_db, 10 * np.log10([5.0, 25.0, 0.25, 1.0]),
-                               rtol=1e-6)
+    np.testing.assert_allclose(ping.power_db, 10 * np.log10([5.0, 25.0, 0.25, 1.0]), rtol=1e-6)
 
 
 def test_parse_raw3_promotes_real_float32_samples_to_complex():
@@ -106,23 +105,32 @@ def test_get_ping_matrix_zero_pads_shorter_pings_samples_by_pings(tmp_path):
     assert img[2, 1] == pytest.approx(-200.0)
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "EK80 DataType bit0=Power, bit1=Angle (Simrad EK80 interface spec); "
-    "decode_data_type maps value 1 to 'Angle' via a 0-based list index"))
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "EK80 DataType bit0=Power, bit1=Angle (Simrad EK80 interface spec); "
+        "decode_data_type maps value 1 to 'Angle' via a 0-based list index"
+    ),
+)
 def test_decode_data_type_bit0_means_power():
     assert ping_parser.decode_data_type(0x01)["base_type"] == "Power"
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "EK80 complex data stores NComplex values per sample in bits 8-10 of "
-    "DataType (e.g. 0x0408 = 4 sectors). parse_raw3_datagram truncates the "
-    "interleaved buffer to sample_count, mixing sectors instead of returning "
-    "one value per range sample"))
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "EK80 complex data stores NComplex values per sample in bits 8-10 of "
+        "DataType (e.g. 0x0408 = 4 sectors). parse_raw3_datagram truncates the "
+        "interleaved buffer to sample_count, mixing sectors instead of returning "
+        "one value per range sample"
+    ),
+)
 def test_parse_raw3_multi_sector_complex_returns_one_value_per_range_sample():
     n_samples, n_sectors = 3, 4
     # value encodes (sample, sector) as sample*10 + sector
-    grid = np.array([[s * 10 + k for k in range(n_sectors)] for s in range(n_samples)],
-                    dtype=np.complex64)
+    grid = np.array(
+        [[s * 10 + k for k in range(n_sectors)] for s in range(n_samples)], dtype=np.complex64
+    )
     d = raw3(T0, CH38, grid.reshape(-1), data_type=0x0408, sample_count=n_samples)
     ping, _ = ping_parser.parse_raw3_datagram(d, 4)
     # consecutive entries must belong to consecutive range samples

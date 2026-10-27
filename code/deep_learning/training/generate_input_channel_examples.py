@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -22,7 +23,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 from deep_learning.evaluate import load_file_data
 from deep_learning.echo_dataset import prepare_patches_from_zarr, _resize_patch
 from data_visualization.thesis_style import (
-    apply_thesis_style, FIGSIZE_FULL, FIGSIZE_HALF, style_colorbar, savefig,
+    apply_thesis_style,
+    FIGSIZE_FULL,
+    FIGSIZE_HALF,
+    style_colorbar,
+    savefig,
 )
 
 apply_thesis_style()
@@ -129,7 +134,11 @@ def main():
             continue
         print(f"[{label}] loading {zarr_name}")
         sv_channels, gt_mask, _, _ = load_file_data(
-            zarr_path, FREQ1, FREQ2, vmin=VMIN, vmax=VMAX,
+            zarr_path,
+            FREQ1,
+            FREQ2,
+            vmin=VMIN,
+            vmax=VMAX,
         )
         stem = zarr_path.stem
         plot_input_channels_2x2(
@@ -145,9 +154,14 @@ def main():
 
         # Square training patch (input RGB next to its label).
         patches, masks = prepare_patches_from_zarr(
-            zarr_path, FREQ1, FREQ2,
-            patch_width=PATCH_WIDTH, stride=PATCH_WIDTH,
-            vmin=VMIN, vmax=VMAX, require_bottom=True,
+            zarr_path,
+            FREQ1,
+            FREQ2,
+            patch_width=PATCH_WIDTH,
+            stride=PATCH_WIDTH,
+            vmin=VMIN,
+            vmax=VMAX,
+            require_bottom=True,
             min_bottom_fraction=0.1,
         )
         if not patches:
@@ -160,7 +174,8 @@ def main():
         pick = order[len(order) // 2]
         patch, mask = _resize_patch(patches[pick], masks[pick], TARGET_SIZE)
         plot_input_and_label(
-            patch, mask,
+            patch,
+            mask,
             MASKS_OUT / f"input_label_{label}_{stem}.png",
         )
 

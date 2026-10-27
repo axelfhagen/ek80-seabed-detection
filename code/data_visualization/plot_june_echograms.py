@@ -1,10 +1,13 @@
 """Plot echograms from the 3 failed June 2025 raw-to-zarr conversions."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from raw_sensor_integration.ping_parser import extract_pings, pings_to_power_image
@@ -21,11 +24,12 @@ RAW_FILES = [
 OUT_DIR = str(REPO_ROOT / "code" / "plots_june2025")
 
 import os
+
 os.makedirs(OUT_DIR, exist_ok=True)
 
 for raw_path in RAW_FILES:
-    fname = os.path.basename(raw_path).replace('.raw', '')
-    print(f"\n{'='*60}")
+    fname = os.path.basename(raw_path).replace(".raw", "")
+    print(f"\n{'=' * 60}")
     print(f"Processing {fname}")
     print(f"  File size: {os.path.getsize(raw_path) / 1e9:.2f} GB")
 
@@ -40,9 +44,11 @@ for raw_path in RAW_FILES:
         channels = list(settings.keys())
         print(f"  Channels: {channels}")
         for ch, s in settings.items():
-            print(f"    {ch}: freq={s.get('frequency', '?')}Hz, "
-                  f"sample_interval={s.get('sample_interval', '?')}, "
-                  f"max_range={s.get('max_range', '?')}m")
+            print(
+                f"    {ch}: freq={s.get('frequency', '?')}Hz, "
+                f"sample_interval={s.get('sample_interval', '?')}, "
+                f"max_range={s.get('max_range', '?')}m"
+            )
     except Exception as e:
         print(f"  Could not extract settings: {e}")
         channels = []
@@ -70,16 +76,17 @@ for raw_path in RAW_FILES:
         n_samples, n_pings_ch = power_db.shape
 
         vmin, vmax = np.percentile(power_db[np.isfinite(power_db)], [2, 98])
-        im = ax.imshow(power_db, aspect='auto', cmap='viridis',
-                       vmin=vmin, vmax=vmax, origin='upper')
-        plt.colorbar(im, ax=ax, label='Power (dB)')
+        im = ax.imshow(
+            power_db, aspect="auto", cmap="viridis", vmin=vmin, vmax=vmax, origin="upper"
+        )
+        plt.colorbar(im, ax=ax, label="Power (dB)")
 
-        freq_label = ch.split()[-1] if ' ' in ch else ch
+        freq_label = ch.split()[-1] if " " in ch else ch
         ax.set_title(f"{freq_label}\n{n_pings_ch} pings, {n_samples} samples")
-        ax.set_xlabel('Ping index')
-        ax.set_ylabel('Sample index')
+        ax.set_xlabel("Ping index")
+        ax.set_ylabel("Sample index")
 
-    fig.suptitle(f"{fname}", fontsize=14, fontweight='bold')
+    fig.suptitle(f"{fname}", fontsize=14, fontweight="bold")
     plt.tight_layout()
     out_path = os.path.join(OUT_DIR, f"{fname}_echogram.png")
     plt.savefig(out_path, dpi=150)

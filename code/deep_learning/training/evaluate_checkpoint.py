@@ -38,8 +38,10 @@ def main():
     cfg = build_config(args)
 
     if cfg.resume is None:
-        raise SystemExit("ERROR: evaluate_checkpoint requires --resume "
-                         "(a checkpoint .pth or a directory containing *_best.pth).")
+        raise SystemExit(
+            "ERROR: evaluate_checkpoint requires --resume "
+            "(a checkpoint .pth or a directory containing *_best.pth)."
+        )
 
     device = cfg.device
     print(f"Device: {device}")
@@ -47,10 +49,12 @@ def main():
     ckpt_path = resolve_checkpoint_path(cfg.resume)
     model = build_model(cfg).to(device)
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
-    model.load_state_dict(ckpt['model_state_dict'])
+    model.load_state_dict(ckpt["model_state_dict"])
     print(f"Loaded checkpoint: {ckpt_path}")
-    print(f"  trained to epoch {ckpt.get('epoch', '?')} "
-          f"(val_iou={ckpt.get('val_iou', float('nan')):.4f})")
+    print(
+        f"  trained to epoch {ckpt.get('epoch', '?')} "
+        f"(val_iou={ckpt.get('val_iou', float('nan')):.4f})"
+    )
 
     # For the random split run_evaluation needs the file list; survey split
     # ignores it (uses the canonical survey groups).

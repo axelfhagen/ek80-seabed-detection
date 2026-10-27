@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -28,7 +29,10 @@ from raw_sensor_integration.bottom_labelling import (
     detect_bottom_ensemble_pipeline,
 )
 from data_visualization.thesis_style import (
-    apply_thesis_style, FIGSIZE_FULL, style_colorbar, savefig,
+    apply_thesis_style,
+    FIGSIZE_FULL,
+    style_colorbar,
+    savefig,
 )
 
 apply_thesis_style()
@@ -74,8 +78,11 @@ def run_store(zarr_path):
     threshold = -31.0 if data1.calibrated else "auto"
 
     common = dict(
-        power_db=sv1, range_array=range_array, heave=heave,
-        pulse_duration=data1.pulse_duration, frequency_hz=data1.frequency_hz,
+        power_db=sv1,
+        range_array=range_array,
+        heave=heave,
+        pulse_duration=data1.pulse_duration,
+        frequency_hz=data1.frequency_hz,
         transducer_draft=data1.transducer_draft or 0.0,
         threshold_log_sv=threshold,
     )
@@ -85,10 +92,12 @@ def run_store(zarr_path):
     # Proposed (3 detectors), default gating: primary_count=2 means gradient is
     # only a tie-breaker when simple+edge disagree.
     b3, _, det3 = detect_bottom_ensemble_pipeline(
-        detectors=("simple", "edge", "gradient"), **common)
+        detectors=("simple", "edge", "gradient"), **common
+    )
     # Ungated 3-way median (primary_count=0): gradient votes on every ping.
     b3u, _, _ = detect_bottom_ensemble_pipeline(
-        detectors=("simple", "edge", "gradient"), primary_count=0, **common)
+        detectors=("simple", "edge", "gradient"), primary_count=0, **common
+    )
 
     # Raw per-detector traces (pre post-processing), for diagnostics.
     g = det3["gradient"]
@@ -117,8 +126,15 @@ def run_store(zarr_path):
     # ----- Overlay figure: Sv echogram with both label traces -----
     fig, ax = plt.subplots(figsize=FIGSIZE_FULL)
     extent = [0, n_pings, range_array[-1], range_array[0]]
-    im = ax.imshow(sv1, aspect="auto", cmap="viridis", vmin=-80, vmax=-34,
-                   extent=extent, interpolation="nearest")
+    im = ax.imshow(
+        sv1,
+        aspect="auto",
+        cmap="viridis",
+        vmin=-80,
+        vmax=-34,
+        extent=extent,
+        interpolation="nearest",
+    )
     ax.plot(np.arange(n_pings), b2, color="white", lw=1.5, label="2-detector (simple+edge)")
     ax.plot(np.arange(n_pings), b3, color="red", lw=1.0, ls="--", label="3-detector gated")
     ax.plot(np.arange(n_pings), b3u, color="orange", lw=1.0, ls=":", label="3-detector ungated")

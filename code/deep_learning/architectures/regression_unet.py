@@ -54,8 +54,8 @@ class RegressionUNet(SmpModel):
         Softmax over the depth (height) axis turns each column into a
         distribution over rows; the expectation is the (continuous) bottom row.
         """
-        x = logits.squeeze(1)                                   # (B, H, W)
+        x = logits.squeeze(1)  # (B, H, W)
         H = x.shape[1]
-        p = torch.softmax(x, dim=1)                             # over rows, per col
+        p = torch.softmax(x, dim=1)  # over rows, per col
         rows = torch.arange(H, device=x.device, dtype=x.dtype).view(1, H, 1)
-        return (p * rows).sum(dim=1)                            # (B, W)
+        return (p * rows).sum(dim=1)  # (B, W)

@@ -27,10 +27,17 @@ from .phase import compute_phase_variance
 from .multifreq import detect_bottom_multifreq, fuse_multifreq_bottom
 
 # Utilities
-from .utilities import (build_range_array, depth_to_range, range_to_depth,
-                        parse_mru0_datagrams, interpolate_heave_to_pings,
-                        overlay_bottom_on_echogram, bottom_to_sample_index,
-                        create_bottom_mask, save_bottom_detections)
+from .utilities import (
+    build_range_array,
+    depth_to_range,
+    range_to_depth,
+    parse_mru0_datagrams,
+    interpolate_heave_to_pings,
+    overlay_bottom_on_echogram,
+    bottom_to_sample_index,
+    create_bottom_mask,
+    save_bottom_detections,
+)
 
 # Additional per-ping and sequence detectors
 from .matched_filter import detect_bottom_matched_filter
@@ -44,17 +51,32 @@ from .changepoint import detect_bottom_changepoint
 from .dp import refine_bottom_snake
 
 __all__ = [
-    'detect_bottom_simple', 'detect_bottom_edge', 'detect_bottom_gradient',
-    'ensemble_bottom', 'post_process_bottom', 'detect_bottom_ensemble_pipeline',
-    'detect_bottom_tvg', 'detect_bottom_dp', 'refine_bottom_snake',
-    'compute_phase_variance',
-    'detect_bottom_multifreq', 'fuse_multifreq_bottom',
-    'build_range_array', 'depth_to_range', 'range_to_depth',
-    'parse_mru0_datagrams', 'interpolate_heave_to_pings',
-    'overlay_bottom_on_echogram', 'bottom_to_sample_index',
-    'create_bottom_mask', 'save_bottom_detections',
-    'detect_bottom_matched_filter',
-    'detect_bottom_temporal', 'compute_temporal_stability',
-    'detect_bottom_morphological', 'detect_bottom_cfar',
-    'detect_bottom_wavelet', 'detect_bottom_changepoint',
+    "detect_bottom_simple",
+    "detect_bottom_edge",
+    "detect_bottom_gradient",
+    "ensemble_bottom",
+    "post_process_bottom",
+    "detect_bottom_ensemble_pipeline",
+    "detect_bottom_tvg",
+    "detect_bottom_dp",
+    "refine_bottom_snake",
+    "compute_phase_variance",
+    "detect_bottom_multifreq",
+    "fuse_multifreq_bottom",
+    "build_range_array",
+    "depth_to_range",
+    "range_to_depth",
+    "parse_mru0_datagrams",
+    "interpolate_heave_to_pings",
+    "overlay_bottom_on_echogram",
+    "bottom_to_sample_index",
+    "create_bottom_mask",
+    "save_bottom_detections",
+    "detect_bottom_matched_filter",
+    "detect_bottom_temporal",
+    "compute_temporal_stability",
+    "detect_bottom_morphological",
+    "detect_bottom_cfar",
+    "detect_bottom_wavelet",
+    "detect_bottom_changepoint",
 ]

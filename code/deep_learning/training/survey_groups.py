@@ -28,16 +28,19 @@ SURVEYS: dict[str, dict] = {
     "apr_2024": {
         "label": "Apr 2024",
         "date_prefixes": [
-            "D20240408", "D20240409",
-            "D20240418", "D20240419", "D20240420", "D20240421",
+            "D20240408",
+            "D20240409",
+            "D20240418",
+            "D20240419",
+            "D20240420",
+            "D20240421",
         ],
         "season": "spring",
     },
     "jul_2024": {
         "label": "Jul 2024",
-        "date_prefixes": [
-            f"D2024070{d}" for d in range(1, 10)
-        ] + [f"D202407{d}" for d in range(10, 17)],
+        "date_prefixes": [f"D2024070{d}" for d in range(1, 10)]
+        + [f"D202407{d}" for d in range(10, 17)],
         "season": "summer",
     },
     "sep_2024": {
@@ -59,9 +62,8 @@ SURVEYS: dict[str, dict] = {
     },
     "jan_2025": {
         "label": "Jan 2025",
-        "date_prefixes": [
-            f"D2025011{d}" for d in range(4, 10)
-        ] + [f"D2025012{d}" for d in range(0, 4)],
+        "date_prefixes": [f"D2025011{d}" for d in range(4, 10)]
+        + [f"D2025012{d}" for d in range(0, 4)],
         "season": "winter",
     },
     "feb_2025": {
@@ -85,23 +87,22 @@ SPLITS: dict[str, list[str]] = {
 }
 
 
-def get_split_files(zarr_dir: Optional[Path] = None,
-                    ) -> dict[str, list[Path]]:
+def get_split_files(
+    zarr_dir: Optional[Path] = None,
+) -> dict[str, list[Path]]:
     """Return {split_name: [zarr_paths]} using the canonical survey split."""
     return {
-        split: sorted(
-            p for survey in surveys
-            for p in get_survey_files(survey, zarr_dir)
-        )
+        split: sorted(p for survey in surveys for p in get_survey_files(survey, zarr_dir))
         for split, surveys in SPLITS.items()
     }
 
 
-def get_random_pool_split(seed: int = 42,
-                          n_val_files: Optional[int] = None,
-                          zarr_dir: Optional[Path] = None,
-                          val_fraction: Optional[float] = None,
-                          ) -> dict[str, list[Path]]:
+def get_random_pool_split(
+    seed: int = 42,
+    n_val_files: Optional[int] = None,
+    zarr_dir: Optional[Path] = None,
+    val_fraction: Optional[float] = None,
+) -> dict[str, list[Path]]:
     """Random *file-level* train/val split over the survey train+val pool.
 
     Draws from exactly the same files as the canonical survey split's
@@ -115,11 +116,11 @@ def get_random_pool_split(seed: int = 42,
     strategy as the single changed variable.
     """
     split_files = get_split_files(zarr_dir)
-    pool = sorted(split_files['train'] + split_files['val'])
+    pool = sorted(split_files["train"] + split_files["val"])
     if val_fraction is not None:
         n_val_files = round(len(pool) * val_fraction)
     if n_val_files is None:
-        n_val_files = len(split_files['val'])
+        n_val_files = len(split_files["val"])
     n_val = min(max(1, n_val_files), len(pool) - 1)
 
     rng = np.random.RandomState(seed)
@@ -127,11 +128,10 @@ def get_random_pool_split(seed: int = 42,
     val_idx = set(int(i) for i in perm[:n_val])
     train = sorted(pool[i] for i in range(len(pool)) if i not in val_idx)
     val = sorted(pool[i] for i in range(len(pool)) if i in val_idx)
-    return {'train': train, 'val': val}
+    return {"train": train, "val": val}
 
 
-def get_survey_files(survey_name: str,
-                     zarr_dir: Optional[Path] = None) -> list[Path]:
+def get_survey_files(survey_name: str, zarr_dir: Optional[Path] = None) -> list[Path]:
     """Return sorted list of zarr paths belonging to a survey."""
     zarr_dir = Path(zarr_dir) if zarr_dir else ZARR_DIR
     prefixes = SURVEYS[survey_name]["date_prefixes"]
@@ -144,8 +144,9 @@ def get_survey_files(survey_name: str,
     return files
 
 
-def get_all_survey_files(zarr_dir: Optional[Path] = None,
-                         ) -> dict[str, list[Path]]:
+def get_all_survey_files(
+    zarr_dir: Optional[Path] = None,
+) -> dict[str, list[Path]]:
     """Return {survey_name: [zarr_paths]} for all surveys."""
     return {name: get_survey_files(name, zarr_dir) for name in SURVEYS}
 
@@ -159,14 +160,12 @@ def summarize(zarr_dir: Optional[Path] = None) -> None:
             survey_to_split[s] = split
 
     total = 0
-    print(f"{'Survey':<16} {'Label':<14} {'Season':<8} {'Split':<12} "
-          f"{'Files':>6}")
+    print(f"{'Survey':<16} {'Label':<14} {'Season':<8} {'Split':<12} {'Files':>6}")
     print("-" * 62)
     for name, files in all_files.items():
         info = SURVEYS[name]
         split = survey_to_split.get(name, "—")
-        print(f"{name:<16} {info['label']:<14} {info['season']:<8} "
-              f"{split:<12} {len(files):>6}")
+        print(f"{name:<16} {info['label']:<14} {info['season']:<8} {split:<12} {len(files):>6}")
         total += len(files)
     print("-" * 62)
     print(f"{'TOTAL':<48} {total:>6}")
@@ -174,8 +173,7 @@ def summarize(zarr_dir: Optional[Path] = None) -> None:
     print()
     split_files = get_split_files(zarr_dir)
     for split, files in split_files.items():
-        print(f"  {split:<14} {len(files):>6} files "
-              f"({100 * len(files) / total:.1f}%)")
+        print(f"  {split:<14} {len(files):>6} files ({100 * len(files) / total:.1f}%)")
 
 
 if __name__ == "__main__":

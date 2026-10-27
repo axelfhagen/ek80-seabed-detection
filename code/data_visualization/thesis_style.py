@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 
 # Figure sizes in inches. Kept generous on purpose: LaTeX downscales them, and
 # a larger canvas keeps the oversized fonts in proportion.
-FIGSIZE_FULL = (12, 7)   # geo/map plots and full-width panels
-FIGSIZE_STD = (10, 6)    # standard single-axes plot
-FIGSIZE_HALF = (7, 5)    # half-width or paired plots
+FIGSIZE_FULL = (12, 7)  # geo/map plots and full-width panels
+FIGSIZE_STD = (10, 6)  # standard single-axes plot
+FIGSIZE_HALF = (7, 5)  # half-width or paired plots
 
 LINEWIDTH = 2.0
 
@@ -34,7 +34,7 @@ SUPTITLE_SIZE = 22
 
 # Shared overlay colors for bottom-line figures.
 REFERENCE_BOTTOM_COLOR = "#00ccff"  # cyan reference / labelled bottom
-UNET_PREDICTION_COLOR = "#d62728"   # red U-Net prediction
+UNET_PREDICTION_COLOR = "#d62728"  # red U-Net prediction
 
 _RC = {
     # Computer Modern, to match the thesis body font (book class, default CM).

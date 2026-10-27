@@ -31,27 +31,36 @@ if _project_root not in sys.path:
 from raw_sensor_integration.preprocessing import normalize_echogram
 from raw_sensor_integration.data_loader import load_zarr
 from raw_sensor_integration.bottom_detection import (
-    bottom_to_sample_index, create_bottom_mask, detect_bottom_ensemble_pipeline,
+    bottom_to_sample_index,
+    create_bottom_mask,
+    detect_bottom_ensemble_pipeline,
 )
 
 # ---------------------------------------------------------------------------
 # Patch extraction from zarr
 # ---------------------------------------------------------------------------
 
-def prepare_patches_from_zarr(zarr_path, freq1_hz, freq2_hz,
-                              patch_width=256, stride=128,
-                              max_range_m=None,
-                              max_range_samples=None,
-                              vmin=-80.0, vmax=-34.0,
-                              require_bottom=True,
-                              min_bottom_fraction=0.0,
-                              mask_mode='below',
-                              line_thickness=3,
-                              norm_method='minmax',
-                              clip_percentile=None,
-                              single_freq=False,
-                              crop_mode='full',
-                              crop_padding=64):
+
+def prepare_patches_from_zarr(
+    zarr_path,
+    freq1_hz,
+    freq2_hz,
+    patch_width=256,
+    stride=128,
+    max_range_m=None,
+    max_range_samples=None,
+    vmin=-80.0,
+    vmax=-34.0,
+    require_bottom=True,
+    min_bottom_fraction=0.0,
+    mask_mode="below",
+    line_thickness=3,
+    norm_method="minmax",
+    clip_percentile=None,
+    single_freq=False,
+    crop_mode="full",
+    crop_padding=64,
+):
     """
     Load frequencies from a zarr store, run bottom detection, and extract patches.
 
@@ -123,10 +132,10 @@ def prepare_patches_from_zarr(zarr_path, freq1_hz, freq2_hz,
 
     norm_kwargs = dict(method=norm_method, fill_nan=0.0)
     if clip_percentile is not None:
-        norm_kwargs['clip_percentile'] = clip_percentile
+        norm_kwargs["clip_percentile"] = clip_percentile
     else:
-        norm_kwargs['vmin'] = vmin
-        norm_kwargs['vmax'] = vmax
+        norm_kwargs["vmin"] = vmin
+        norm_kwargs["vmax"] = vmax
 
     norm1 = normalize_echogram(sv1, **norm_kwargs).astype(np.float32)
     if not single_freq:
@@ -140,11 +149,12 @@ def prepare_patches_from_zarr(zarr_path, freq1_hz, freq2_hz,
     # format from save_dataset_zarr), use it directly — no need to re-run
     # bottom detection.
     import xarray as xr
+
     ds_check = xr.open_zarr(str(zarr_path), consolidated=False)
-    has_precomputed_mask = 'bottom_mask' in ds_check.data_vars
+    has_precomputed_mask = "bottom_mask" in ds_check.data_vars
 
     if has_precomputed_mask:
-        mask = ds_check['bottom_mask'].values.astype(np.uint8)
+        mask = ds_check["bottom_mask"].values.astype(np.uint8)
         mask = mask[:min_range_samp]
         if max_range_samples is not None:
             mask = mask[:max_range_samples]
@@ -159,20 +169,23 @@ def prepare_patches_from_zarr(zarr_path, freq1_hz, freq2_hz,
         if data1.calibrated:
             threshold = -31.0
         else:
-            threshold = 'auto'
+            threshold = "auto"
 
         bottom_range, _, details = detect_bottom_ensemble_pipeline(
-            sv1, range_array, heave=heave,
+            sv1,
+            range_array,
+            heave=heave,
             pulse_duration=data1.pulse_duration,
             frequency_hz=data1.frequency_hz,
             transducer_draft=data1.transducer_draft or 0.0,
             threshold_log_sv=threshold,
-            detectors=('simple', 'edge'),
+            detectors=("simple", "edge"),
         )
 
         bottom_indices = bottom_to_sample_index(bottom_range, range_array)
-        mask = create_bottom_mask(n_range, n_pings, bottom_indices,
-                                  mode=mask_mode, line_thickness=line_thickness)
+        mask = create_bottom_mask(
+            n_range, n_pings, bottom_indices, mode=mask_mode, line_thickness=line_thickness
+        )
 
     # ------------------------------------------------------------------
     # 3. Slide a window along the ping axis
@@ -192,7 +205,7 @@ def prepare_patches_from_zarr(zarr_path, freq1_hz, freq2_hz,
             continue
 
         # Determine vertical crop range
-        if crop_mode == 'bottom':
+        if crop_mode == "bottom":
             rows_with_bottom = np.where(lbl.any(axis=1))[0]
             if len(rows_with_bottom) == 0:
                 continue
@@ -211,11 +224,11 @@ def prepare_patches_from_zarr(zarr_path, freq1_hz, freq2_hz,
             r0, r1 = 0, n_range
 
         if single_freq:
-            img = norm1[np.newaxis, r0:r1, start:end]       # (1, H, W)
+            img = norm1[np.newaxis, r0:r1, start:end]  # (1, H, W)
         else:
-            img = np.stack([norm1[r0:r1, start:end],
-                            norm2[r0:r1, start:end],
-                            diff[r0:r1, start:end]], axis=0)  # (3, H, W)
+            img = np.stack(
+                [norm1[r0:r1, start:end], norm2[r0:r1, start:end], diff[r0:r1, start:end]], axis=0
+            )  # (3, H, W)
 
         patches.append(img)
         masks_out.append(lbl)
@@ -226,6 +239,7 @@ def prepare_patches_from_zarr(zarr_path, freq1_hz, freq2_hz,
 # ---------------------------------------------------------------------------
 # PyTorch Dataset
 # ---------------------------------------------------------------------------
+
 
 class EchogramPatchDataset(Dataset):
     """
@@ -249,7 +263,8 @@ class EchogramPatchDataset(Dataset):
         if h % 32 != 0 or w % 32 != 0:
             raise ValueError(
                 f"target_size {target_size} must be divisible by 32 "
-                f"(U-Net has 5 pooling stages of stride 2)")
+                f"(U-Net has 5 pooling stages of stride 2)"
+            )
 
         self.patches = patches
         self.masks = masks
@@ -260,8 +275,8 @@ class EchogramPatchDataset(Dataset):
         return len(self.patches)
 
     def __getitem__(self, idx):
-        img = self.patches[idx]   # (3, H_orig, W_orig) float32
-        msk = self.masks[idx]     # (H_orig, W_orig) uint8
+        img = self.patches[idx]  # (3, H_orig, W_orig) float32
+        msk = self.masks[idx]  # (H_orig, W_orig) uint8
         return _resize_and_augment(img, msk, self.target_size, self.transform)
 
 
@@ -285,7 +300,8 @@ class LazyPatchDataset(Dataset):
         if h % 32 != 0 or w % 32 != 0:
             raise ValueError(
                 f"target_size {target_size} must be divisible by 32 "
-                f"(U-Net has 5 pooling stages of stride 2)")
+                f"(U-Net has 5 pooling stages of stride 2)"
+            )
         self.index = index
         self.target_size = target_size
         self.transform = transform
@@ -305,12 +321,11 @@ class LazyPatchDataset(Dataset):
         #     reads only its one patch instead of the whole file.
         #   * ``*.npz``         — compressed, full-height; the whole file is
         #     decompressed and held in the single-file cache below.
-        if spath.endswith('.patches.npy'):
+        if spath.endswith(".patches.npy"):
             if self._cache_path != spath:
                 self._cache_path = spath
-                mpath = spath[:-len('.patches.npy')] + '.masks.npy'
-                self._cache_data = (np.load(spath, mmap_mode='r'),
-                                    np.load(mpath, mmap_mode='r'))
+                mpath = spath[: -len(".patches.npy")] + ".masks.npy"
+                self._cache_data = (np.load(spath, mmap_mode="r"), np.load(mpath, mmap_mode="r"))
             # Copy the slices out of the memmap so downstream augmentation
             # (which mutates in place) never writes back to the mapped file.
             img = np.array(self._cache_data[0][patch_idx])  # (C, H, W) float32
@@ -322,7 +337,7 @@ class LazyPatchDataset(Dataset):
             if self._cache_path != spath:
                 self._cache_path = spath
                 data = np.load(path)
-                self._cache_data = (data['patches'], data['masks'])
+                self._cache_data = (data["patches"], data["masks"])
             img = self._cache_data[0][patch_idx]  # (C, H, W) float32
             msk = self._cache_data[1][patch_idx]  # (H, W) uint8
 
@@ -338,18 +353,22 @@ def _resize_patch(img, msk, target_size):
     resizing the full-height patch on the fly.
     """
     import cv2
+
     h, w = target_size
     img_hwc = np.transpose(img, (1, 2, 0))
     img_r = cv2.resize(img_hwc, (w, h), interpolation=cv2.INTER_LINEAR)
     msk_r = cv2.resize(msk, (w, h), interpolation=cv2.INTER_NEAREST)
-    if img_r.ndim == 2:                # cv2 drops a singleton channel
+    if img_r.ndim == 2:  # cv2 drops a singleton channel
         img_r = img_r[..., None]
-    return (np.ascontiguousarray(img_r.transpose(2, 0, 1)).astype(np.float32),
-            msk_r.astype(np.uint8))
+    return (
+        np.ascontiguousarray(img_r.transpose(2, 0, 1)).astype(np.float32),
+        msk_r.astype(np.uint8),
+    )
 
 
 def _resize_and_augment(img, msk, target_size, transform):
     import cv2
+
     h, w = target_size
 
     if img.shape[1] == h and img.shape[2] == w:
@@ -359,28 +378,20 @@ def _resize_and_augment(img, msk, target_size, transform):
         msk_resized = msk
     else:
         img_hwc = np.transpose(img, (1, 2, 0))
-        img_resized = cv2.resize(img_hwc, (w, h),
-                                 interpolation=cv2.INTER_LINEAR)
-        msk_resized = cv2.resize(msk, (w, h),
-                                 interpolation=cv2.INTER_NEAREST)
+        img_resized = cv2.resize(img_hwc, (w, h), interpolation=cv2.INTER_LINEAR)
+        msk_resized = cv2.resize(msk, (w, h), interpolation=cv2.INTER_NEAREST)
 
     if transform is not None:
         transformed = transform(image=img_resized, mask=msk_resized)
-        img_resized = transformed['image']
-        msk_resized = transformed['mask']
+        img_resized = transformed["image"]
+        msk_resized = transformed["mask"]
 
     if img_resized.ndim == 3:
-        img_tensor = torch.from_numpy(
-            np.ascontiguousarray(img_resized.transpose(2, 0, 1))
-        ).float()
+        img_tensor = torch.from_numpy(np.ascontiguousarray(img_resized.transpose(2, 0, 1))).float()
     else:
-        img_tensor = torch.from_numpy(
-            np.ascontiguousarray(img_resized)
-        ).float()
+        img_tensor = torch.from_numpy(np.ascontiguousarray(img_resized)).float()
 
-    msk_tensor = torch.from_numpy(
-        np.ascontiguousarray(msk_resized)
-    ).float()
+    msk_tensor = torch.from_numpy(np.ascontiguousarray(msk_resized)).float()
 
     return img_tensor, msk_tensor
 
@@ -388,6 +399,7 @@ def _resize_and_augment(img, msk, target_size, transform):
 # ---------------------------------------------------------------------------
 # Augmentation
 # ---------------------------------------------------------------------------
+
 
 class PingDropout:
     """Corrupt 1-5 vertical stripes (pings) to simulate echosounder dropouts.
@@ -406,9 +418,8 @@ class PingDropout:
                       around 0 (the noise floor in normalized space).
     """
 
-    def __init__(self, p=0.0, mode='zero',
-                 max_stripes=5, max_width=20, noise_std=0.05):
-        if mode not in ('zero', 'shuffle', 'noise'):
+    def __init__(self, p=0.0, mode="zero", max_stripes=5, max_width=20, noise_std=0.05):
+        if mode not in ("zero", "shuffle", "noise"):
             raise ValueError(f"mode must be zero|shuffle|noise, got {mode!r}")
         self.p = float(p)
         self.mode = mode
@@ -429,12 +440,12 @@ class PingDropout:
             width = min(width, w)
             col = np.random.randint(0, w - width + 1)
             sl = (slice(None), slice(col, col + width))
-            if self.mode == 'zero':
+            if self.mode == "zero":
                 out[sl] = 0.0
-            elif self.mode == 'noise':
-                out[sl] = np.random.normal(
-                    0.0, self.noise_std, size=out[sl].shape
-                ).astype(out.dtype)
+            elif self.mode == "noise":
+                out[sl] = np.random.normal(0.0, self.noise_std, size=out[sl].shape).astype(
+                    out.dtype
+                )
             else:  # shuffle
                 stripe = out[sl]
                 if stripe.ndim == 3:
@@ -485,11 +496,15 @@ class RandomChannelDropout:
         return out
 
 
-def get_augmentation_pipeline(p_hflip=0.5, p_noise=0.3, p_brightness=0.3,
-                              p_channel_dropout=0.072,
-                              p_ping_dropout_zero=0.10,
-                              p_ping_dropout_shuffle=0.05,
-                              p_ping_dropout_noise=0.05):
+def get_augmentation_pipeline(
+    p_hflip=0.5,
+    p_noise=0.3,
+    p_brightness=0.3,
+    p_channel_dropout=0.072,
+    p_ping_dropout_zero=0.10,
+    p_ping_dropout_shuffle=0.05,
+    p_ping_dropout_noise=0.05,
+):
     """
     Return an albumentations pipeline for training augmentation.
 
@@ -521,27 +536,42 @@ def get_augmentation_pipeline(p_hflip=0.5, p_noise=0.3, p_brightness=0.3,
     transforms = [
         A.HorizontalFlip(p=p_hflip),
         A.GaussNoise(std_range=(0.01, 0.05), p=p_noise),
-        A.RandomBrightnessContrast(
-            brightness_limit=0.1, contrast_limit=0.1, p=p_brightness),
+        A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=p_brightness),
     ]
 
     if p_ping_dropout_zero > 0.0:
         transforms.append(
-            A.Lambda(image=PingDropout(p=p_ping_dropout_zero, mode='zero'),
-                     p=1.0, name='ping_dropout_zero'))
+            A.Lambda(
+                image=PingDropout(p=p_ping_dropout_zero, mode="zero"),
+                p=1.0,
+                name="ping_dropout_zero",
+            )
+        )
     if p_ping_dropout_shuffle > 0.0:
         transforms.append(
-            A.Lambda(image=PingDropout(p=p_ping_dropout_shuffle, mode='shuffle'),
-                     p=1.0, name='ping_dropout_shuffle'))
+            A.Lambda(
+                image=PingDropout(p=p_ping_dropout_shuffle, mode="shuffle"),
+                p=1.0,
+                name="ping_dropout_shuffle",
+            )
+        )
     if p_ping_dropout_noise > 0.0:
         transforms.append(
-            A.Lambda(image=PingDropout(p=p_ping_dropout_noise, mode='noise'),
-                     p=1.0, name='ping_dropout_noise'))
+            A.Lambda(
+                image=PingDropout(p=p_ping_dropout_noise, mode="noise"),
+                p=1.0,
+                name="ping_dropout_noise",
+            )
+        )
 
     if p_channel_dropout > 0.0:
         transforms.append(
-            A.Lambda(image=RandomChannelDropout(p=p_channel_dropout),
-                     p=1.0, name='random_channel_dropout'))
+            A.Lambda(
+                image=RandomChannelDropout(p=p_channel_dropout),
+                p=1.0,
+                name="random_channel_dropout",
+            )
+        )
 
     return A.Compose(transforms)
 
@@ -550,17 +580,24 @@ def get_augmentation_pipeline(p_hflip=0.5, p_noise=0.3, p_brightness=0.3,
 # Dataset builder with file-level train/val split
 # ---------------------------------------------------------------------------
 
-def build_datasets(zarr_paths, freq1_hz, freq2_hz,
-                   target_size=(512, 512),
-                   patch_width=256, stride=128,
-                   max_range_m=None,
-                   max_range_samples=None,
-                   vmin=-80.0, vmax=-34.0,
-                   val_fraction=0.2,
-                   seed=42,
-                   augment_train=True,
-                   mask_mode='below',
-                   line_thickness=3):
+
+def build_datasets(
+    zarr_paths,
+    freq1_hz,
+    freq2_hz,
+    target_size=(512, 512),
+    patch_width=256,
+    stride=128,
+    max_range_m=None,
+    max_range_samples=None,
+    vmin=-80.0,
+    vmax=-34.0,
+    val_fraction=0.2,
+    seed=42,
+    augment_train=True,
+    mask_mode="below",
+    line_thickness=3,
+):
     """
     Build train and validation datasets from a list of zarr paths.
 
@@ -603,12 +640,18 @@ def build_datasets(zarr_paths, freq1_hz, freq2_hz,
 
     for i, zp in enumerate(zarr_paths):
         patches, masks = prepare_patches_from_zarr(
-            zp, freq1_hz, freq2_hz,
-            patch_width=patch_width, stride=stride,
+            zp,
+            freq1_hz,
+            freq2_hz,
+            patch_width=patch_width,
+            stride=stride,
             max_range_m=max_range_m,
             max_range_samples=max_range_samples,
-            vmin=vmin, vmax=vmax,
-            mask_mode=mask_mode, line_thickness=line_thickness)
+            vmin=vmin,
+            vmax=vmax,
+            mask_mode=mask_mode,
+            line_thickness=line_thickness,
+        )
 
         if i in val_indices:
             val_patches.extend(patches)
@@ -620,17 +663,14 @@ def build_datasets(zarr_paths, freq1_hz, freq2_hz,
     transform = get_augmentation_pipeline() if augment_train else None
 
     train_ds = EchogramPatchDataset(
-        train_patches, train_masks,
-        target_size=target_size, transform=transform)
-    val_ds = EchogramPatchDataset(
-        val_patches, val_masks,
-        target_size=target_size, transform=None)
+        train_patches, train_masks, target_size=target_size, transform=transform
+    )
+    val_ds = EchogramPatchDataset(val_patches, val_masks, target_size=target_size, transform=None)
 
     return train_ds, val_ds
 
 
-def split_files_three_way(zarr_paths, val_fraction=0.15, calib_fraction=0.15,
-                          seed=42):
+def split_files_three_way(zarr_paths, val_fraction=0.15, calib_fraction=0.15, seed=42):
     """Split zarr file paths into train / val / calibration sets.
 
     Parameters
@@ -656,10 +696,9 @@ def split_files_three_way(zarr_paths, val_fraction=0.15, calib_fraction=0.15,
     n_calib = max(1, int(n_files * calib_fraction))
 
     val_idx = set(indices[:n_val])
-    calib_idx = set(indices[n_val:n_val + n_calib])
+    calib_idx = set(indices[n_val : n_val + n_calib])
 
-    train_paths = [zarr_paths[i] for i in range(n_files)
-                   if i not in val_idx and i not in calib_idx]
+    train_paths = [zarr_paths[i] for i in range(n_files) if i not in val_idx and i not in calib_idx]
     val_paths = [zarr_paths[i] for i in val_idx]
     calib_paths = [zarr_paths[i] for i in calib_idx]
 
@@ -670,11 +709,24 @@ def split_files_three_way(zarr_paths, val_fraction=0.15, calib_fraction=0.15,
 # Cached patch extraction
 # ---------------------------------------------------------------------------
 
-def _cache_key(zarr_path, freq1_hz, freq2_hz, patch_width, stride,
-               max_range_m, max_range_samples, vmin, vmax,
-               norm_method='minmax', clip_percentile=None,
-               single_freq=False, mask_mode='below',
-               crop_mode='full', crop_padding=64):
+
+def _cache_key(
+    zarr_path,
+    freq1_hz,
+    freq2_hz,
+    patch_width,
+    stride,
+    max_range_m,
+    max_range_samples,
+    vmin,
+    vmax,
+    norm_method="minmax",
+    clip_percentile=None,
+    single_freq=False,
+    mask_mode="below",
+    crop_mode="full",
+    crop_padding=64,
+):
     """Deterministic cache filename from extraction parameters.
 
     Frequencies are normalised to int so that callers passing ``38000`` and
@@ -682,6 +734,7 @@ def _cache_key(zarr_path, freq1_hz, freq2_hz, patch_width, stride,
     produce the same key — they describe identical data.
     """
     import hashlib
+
     parts = [
         str(Path(zarr_path).resolve()),
         f"{int(freq1_hz)}_{int(freq2_hz)}",
@@ -713,6 +766,7 @@ def _clean_owned_temp():
     touches paths tracked in ``_OWNED_TEMP_DIRS`` / ``_OWNED_LOCK_FILES``.
     """
     import shutil
+
     for d in list(_OWNED_TEMP_DIRS):
         try:
             shutil.rmtree(d, ignore_errors=True)
@@ -740,6 +794,7 @@ def _clean_stale_temp(cache_dir, max_age_sec=3600):
     """
     import shutil
     import time
+
     cache_dir = Path(cache_dir)
     if not cache_dir.is_dir():
         return
@@ -783,7 +838,7 @@ def _atomic_savez(npz_path, **arrays):
 def _npz_patch_count(npz_path):
     """Read patch count from an NPZ file without loading array data."""
     with zipfile.ZipFile(npz_path) as zf:
-        with zf.open('patches.npy') as f:
+        with zf.open("patches.npy") as f:
             version = np.lib.format.read_magic(f)
             reader = {
                 (1, 0): np.lib.format.read_array_header_1_0,
@@ -800,6 +855,7 @@ def _npz_patch_count(npz_path):
 # ---------------------------------------------------------------------------
 # Fast cache: uncompressed, pre-resized, mmap-able .npy pairs
 # ---------------------------------------------------------------------------
+
 
 def _fast_paths(npz_path, target_size):
     """Map a canonical .npz cache path to its fast (patches, masks) .npy pair.
@@ -818,7 +874,7 @@ def _fast_paths(npz_path, target_size):
 
 def _npy_patch_count(npy_path):
     """Patch count from a .npy header via mmap (no array data read)."""
-    mm = np.load(npy_path, mmap_mode='r')
+    mm = np.load(npy_path, mmap_mode="r")
     shape = mm.shape
     del mm
     if len(shape) == 0 or shape[0] == 0:
@@ -856,8 +912,8 @@ def _npz_to_fast(npz_path, patches_npy, masks_npy, target_size):
     happens for this file); every later epoch mmaps the .npy slices.
     """
     with np.load(npz_path) as data:
-        p = data['patches']
-        m = data['masks']
+        p = data["patches"]
+        m = data["masks"]
         if p.ndim == 0 or len(p) == 0:
             _atomic_save_npy(patches_npy, np.empty((0,), dtype=np.float32))
             _atomic_save_npy(masks_npy, np.empty((0,), dtype=np.uint8))
@@ -908,8 +964,7 @@ def _ensure_cached_fast(zarr_path, cache_dir, cfg, npz_path, fname, verbose):
             try:
                 count = _npy_patch_count(patches_npy)
                 if verbose:
-                    print(f"  Fast-cache hit (after lock): {patches_npy.name} "
-                          f"({count} patches)")
+                    print(f"  Fast-cache hit (after lock): {patches_npy.name} ({count} patches)")
                 return patches_npy, count
             except Exception:
                 patches_npy.unlink(missing_ok=True)
@@ -919,17 +974,26 @@ def _ensure_cached_fast(zarr_path, cache_dir, cfg, npz_path, fname, verbose):
             # Source .npz missing too — extract it from zarr (rare; the shared
             # cache already holds .npz for every survey file).
             save_patches_cached(
-                zarr_path, cache_dir,
-                freq1_hz=cfg.freq1_hz, freq2_hz=cfg.freq2_hz,
-                patch_width=cfg.patch_width, stride=cfg.stride,
-                max_range_m=cfg.max_range_m, max_range_samples=cfg.max_range_samples,
-                vmin=cfg.vmin, vmax=cfg.vmax,
+                zarr_path,
+                cache_dir,
+                freq1_hz=cfg.freq1_hz,
+                freq2_hz=cfg.freq2_hz,
+                patch_width=cfg.patch_width,
+                stride=cfg.stride,
+                max_range_m=cfg.max_range_m,
+                max_range_samples=cfg.max_range_samples,
+                vmin=cfg.vmin,
+                vmax=cfg.vmax,
                 require_bottom=cfg.require_bottom,
-                mask_mode=cfg.mask_mode, line_thickness=cfg.line_thickness,
-                norm_method=cfg.norm_method, clip_percentile=cfg.clip_percentile,
+                mask_mode=cfg.mask_mode,
+                line_thickness=cfg.line_thickness,
+                norm_method=cfg.norm_method,
+                clip_percentile=cfg.clip_percentile,
                 single_freq=cfg.single_freq,
-                crop_mode=cfg.crop_mode, crop_padding=cfg.crop_padding,
-                verbose=verbose, return_data=False,
+                crop_mode=cfg.crop_mode,
+                crop_padding=cfg.crop_padding,
+                verbose=verbose,
+                return_data=False,
             )
 
         if not npz_path.exists():
@@ -969,17 +1033,26 @@ def ensure_cached(zarr_path, cache_dir, cfg, verbose=True):
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     fname = _cache_key(
-        zarr_path, cfg.freq1_hz, cfg.freq2_hz, cfg.patch_width, cfg.stride,
-        cfg.max_range_m, cfg.max_range_samples, cfg.vmin, cfg.vmax,
-        norm_method=cfg.norm_method, clip_percentile=cfg.clip_percentile,
-        single_freq=cfg.single_freq, mask_mode=cfg.mask_mode,
-        crop_mode=cfg.crop_mode, crop_padding=cfg.crop_padding,
+        zarr_path,
+        cfg.freq1_hz,
+        cfg.freq2_hz,
+        cfg.patch_width,
+        cfg.stride,
+        cfg.max_range_m,
+        cfg.max_range_samples,
+        cfg.vmin,
+        cfg.vmax,
+        norm_method=cfg.norm_method,
+        clip_percentile=cfg.clip_percentile,
+        single_freq=cfg.single_freq,
+        mask_mode=cfg.mask_mode,
+        crop_mode=cfg.crop_mode,
+        crop_padding=cfg.crop_padding,
     )
     npz_path = cache_dir / fname
 
-    if getattr(cfg, 'fast_cache', False):
-        return _ensure_cached_fast(zarr_path, cache_dir, cfg, npz_path, fname,
-                                   verbose)
+    if getattr(cfg, "fast_cache", False):
+        return _ensure_cached_fast(zarr_path, cache_dir, cfg, npz_path, fname, verbose)
 
     if npz_path.exists():
         try:
@@ -1006,17 +1079,26 @@ def ensure_cached(zarr_path, cache_dir, cfg, verbose=True):
                 npz_path.unlink(missing_ok=True)
 
         save_patches_cached(
-            zarr_path, cache_dir,
-            freq1_hz=cfg.freq1_hz, freq2_hz=cfg.freq2_hz,
-            patch_width=cfg.patch_width, stride=cfg.stride,
-            max_range_m=cfg.max_range_m, max_range_samples=cfg.max_range_samples,
-            vmin=cfg.vmin, vmax=cfg.vmax,
+            zarr_path,
+            cache_dir,
+            freq1_hz=cfg.freq1_hz,
+            freq2_hz=cfg.freq2_hz,
+            patch_width=cfg.patch_width,
+            stride=cfg.stride,
+            max_range_m=cfg.max_range_m,
+            max_range_samples=cfg.max_range_samples,
+            vmin=cfg.vmin,
+            vmax=cfg.vmax,
             require_bottom=cfg.require_bottom,
-            mask_mode=cfg.mask_mode, line_thickness=cfg.line_thickness,
-            norm_method=cfg.norm_method, clip_percentile=cfg.clip_percentile,
+            mask_mode=cfg.mask_mode,
+            line_thickness=cfg.line_thickness,
+            norm_method=cfg.norm_method,
+            clip_percentile=cfg.clip_percentile,
             single_freq=cfg.single_freq,
-            crop_mode=cfg.crop_mode, crop_padding=cfg.crop_padding,
-            verbose=verbose, return_data=False,
+            crop_mode=cfg.crop_mode,
+            crop_padding=cfg.crop_padding,
+            verbose=verbose,
+            return_data=False,
         )
 
         try:
@@ -1035,16 +1117,28 @@ def ensure_cached(zarr_path, cache_dir, cfg, verbose=True):
     return npz_path, count
 
 
-def save_patches_cached(zarr_path, cache_dir, freq1_hz, freq2_hz,
-                        patch_width=256, stride=128,
-                        max_range_m=None, max_range_samples=None,
-                        vmin=-80.0, vmax=-34.0,
-                        require_bottom=True,
-                        mask_mode='below', line_thickness=3,
-                        norm_method='minmax', clip_percentile=None,
-                        single_freq=False,
-                        crop_mode='full', crop_padding=64,
-                        verbose=True, return_data=True):
+def save_patches_cached(
+    zarr_path,
+    cache_dir,
+    freq1_hz,
+    freq2_hz,
+    patch_width=256,
+    stride=128,
+    max_range_m=None,
+    max_range_samples=None,
+    vmin=-80.0,
+    vmax=-34.0,
+    require_bottom=True,
+    mask_mode="below",
+    line_thickness=3,
+    norm_method="minmax",
+    clip_percentile=None,
+    single_freq=False,
+    crop_mode="full",
+    crop_padding=64,
+    verbose=True,
+    return_data=True,
+):
     """Extract patches from a zarr file with on-disk caching.
 
     If a cached .npz already exists for the same parameters, loads it
@@ -1063,14 +1157,23 @@ def save_patches_cached(zarr_path, cache_dir, freq1_hz, freq2_hz,
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    fname = _cache_key(zarr_path, freq1_hz, freq2_hz, patch_width, stride,
-                       max_range_m, max_range_samples, vmin, vmax,
-                       norm_method=norm_method,
-                       clip_percentile=clip_percentile,
-                       single_freq=single_freq,
-                       mask_mode=mask_mode,
-                       crop_mode=crop_mode,
-                       crop_padding=crop_padding)
+    fname = _cache_key(
+        zarr_path,
+        freq1_hz,
+        freq2_hz,
+        patch_width,
+        stride,
+        max_range_m,
+        max_range_samples,
+        vmin,
+        vmax,
+        norm_method=norm_method,
+        clip_percentile=clip_percentile,
+        single_freq=single_freq,
+        mask_mode=mask_mode,
+        crop_mode=crop_mode,
+        crop_padding=crop_padding,
+    )
     npz_path = cache_dir / fname
 
     if npz_path.exists():
@@ -1095,16 +1198,23 @@ def save_patches_cached(zarr_path, cache_dir, freq1_hz, freq2_hz,
         print(f"  Extracting patches from {Path(zarr_path).name} ...")
 
     patches, masks = prepare_patches_from_zarr(
-        zarr_path, freq1_hz, freq2_hz,
-        patch_width=patch_width, stride=stride,
+        zarr_path,
+        freq1_hz,
+        freq2_hz,
+        patch_width=patch_width,
+        stride=stride,
         max_range_m=max_range_m,
         max_range_samples=max_range_samples,
-        vmin=vmin, vmax=vmax,
+        vmin=vmin,
+        vmax=vmax,
         require_bottom=require_bottom,
-        mask_mode=mask_mode, line_thickness=line_thickness,
-        norm_method=norm_method, clip_percentile=clip_percentile,
+        mask_mode=mask_mode,
+        line_thickness=line_thickness,
+        norm_method=norm_method,
+        clip_percentile=clip_percentile,
         single_freq=single_freq,
-        crop_mode=crop_mode, crop_padding=crop_padding,
+        crop_mode=crop_mode,
+        crop_padding=crop_padding,
     )
 
     if patches:
@@ -1152,9 +1262,10 @@ def save_patches_cached(zarr_path, cache_dir, freq1_hz, freq2_hz,
 # Raw directory → zarr conversion
 # ---------------------------------------------------------------------------
 
-def prepare_zarr_from_raw_dirs(raw_dirs, zarr_cache_dir,
-                               waveform_mode='BB', encode_mode='complex',
-                               verbose=True):
+
+def prepare_zarr_from_raw_dirs(
+    raw_dirs, zarr_cache_dir, waveform_mode="BB", encode_mode="complex", verbose=True
+):
     """Convert .raw files in one or more directories to zarr stores.
 
     Uses data_loader.convert_raw_dir() for each directory. Existing zarr
@@ -1193,8 +1304,8 @@ def prepare_zarr_from_raw_dirs(raw_dirs, zarr_cache_dir,
 # Data cleaning exclusion filter
 # ---------------------------------------------------------------------------
 
-def _apply_exclusions(all_patches, all_masks, all_uids, file_boundaries,
-                      zarr_paths, cfg):
+
+def _apply_exclusions(all_patches, all_masks, all_uids, file_boundaries, zarr_paths, cfg):
     """Filter out patches flagged for exclusion.
 
     Supports three exclusion mechanisms (applied in order):
@@ -1216,15 +1327,15 @@ def _apply_exclusions(all_patches, all_masks, all_uids, file_boundaries,
         if path.exists():
             with open(path) as f:
                 data = json.load(f)
-            excluded_uids |= set(data.get('excluded_uids', []))
+            excluded_uids |= set(data.get("excluded_uids", []))
 
     # 2. File-level exclusion
     if cfg.excluded_files:
         excluded_set = set(cfg.excluded_files)
         for uid in all_uids:
             # UID format: {zarr_stem}_{hash}::{idx} — extract zarr stem
-            stem = uid.split('::')[0]
-            zarr_name = '_'.join(stem.split('_')[:-1])
+            stem = uid.split("::")[0]
+            zarr_name = "_".join(stem.split("_")[:-1])
             if zarr_name in excluded_set:
                 excluded_uids.add(uid)
 
@@ -1233,8 +1344,8 @@ def _apply_exclusions(all_patches, all_masks, all_uids, file_boundaries,
         csv_path = Path(cfg.quality_csv_path)
         if csv_path.exists():
             qdf = pd.read_csv(csv_path)
-            if 'combined_score' in qdf.columns:
-                bad = qdf.loc[qdf['combined_score'] < cfg.min_quality_score, 'uid']
+            if "combined_score" in qdf.columns:
+                bad = qdf.loc[qdf["combined_score"] < cfg.min_quality_score, "uid"]
                 excluded_uids |= set(bad)
 
     if not excluded_uids:
@@ -1257,8 +1368,7 @@ def _apply_exclusions(all_patches, all_masks, all_uids, file_boundaries,
 
     n_excluded = n_before - len(new_patches)
     if n_excluded > 0:
-        print(f'  Data cleaning: excluded {n_excluded} patches '
-              f'({n_before} → {len(new_patches)})')
+        print(f"  Data cleaning: excluded {n_excluded} patches ({n_before} → {len(new_patches)})")
 
     return new_patches, new_masks, new_uids, new_boundaries
 
@@ -1266,6 +1376,7 @@ def _apply_exclusions(all_patches, all_masks, all_uids, file_boundaries,
 # ---------------------------------------------------------------------------
 # Exclusion helpers (data-free)
 # ---------------------------------------------------------------------------
+
 
 def _get_excluded_uids(all_uids, cfg):
     """Build the set of UIDs to exclude, without needing patch data."""
@@ -1279,13 +1390,13 @@ def _get_excluded_uids(all_uids, cfg):
         if path.exists():
             with open(path) as f:
                 data = json.load(f)
-            excluded_uids |= set(data.get('excluded_uids', []))
+            excluded_uids |= set(data.get("excluded_uids", []))
 
     if cfg.excluded_files:
         excluded_set = set(cfg.excluded_files)
         for uid in all_uids:
-            stem = uid.split('::')[0]
-            zarr_name = '_'.join(stem.split('_')[:-1])
+            stem = uid.split("::")[0]
+            zarr_name = "_".join(stem.split("_")[:-1])
             if zarr_name in excluded_set:
                 excluded_uids.add(uid)
 
@@ -1293,8 +1404,8 @@ def _get_excluded_uids(all_uids, cfg):
         csv_path = Path(cfg.quality_csv_path)
         if csv_path.exists():
             qdf = pd.read_csv(csv_path)
-            if 'combined_score' in qdf.columns:
-                bad = qdf.loc[qdf['combined_score'] < cfg.min_quality_score, 'uid']
+            if "combined_score" in qdf.columns:
+                bad = qdf.loc[qdf["combined_score"] < cfg.min_quality_score, "uid"]
                 excluded_uids |= set(bad)
 
     return excluded_uids
@@ -1303,6 +1414,7 @@ def _get_excluded_uids(all_uids, cfg):
 # ---------------------------------------------------------------------------
 # Config-driven dataset builder
 # ---------------------------------------------------------------------------
+
 
 def _build_file_index(zarr_paths, cache_dir, cfg):
     """Build lazy file index for a list of zarr paths.
@@ -1321,17 +1433,25 @@ def _build_file_index(zarr_paths, cache_dir, cfg):
 
         # Canonical (.npz) stem for the uid, regardless of the load format.
         base_fname = _cache_key(
-            zp, cfg.freq1_hz, cfg.freq2_hz, cfg.patch_width, cfg.stride,
-            cfg.max_range_m, cfg.max_range_samples, cfg.vmin, cfg.vmax,
-            norm_method=cfg.norm_method, clip_percentile=cfg.clip_percentile,
-            single_freq=cfg.single_freq, mask_mode=cfg.mask_mode,
-            crop_mode=cfg.crop_mode, crop_padding=cfg.crop_padding,
+            zp,
+            cfg.freq1_hz,
+            cfg.freq2_hz,
+            cfg.patch_width,
+            cfg.stride,
+            cfg.max_range_m,
+            cfg.max_range_samples,
+            cfg.vmin,
+            cfg.vmax,
+            norm_method=cfg.norm_method,
+            clip_percentile=cfg.clip_percentile,
+            single_freq=cfg.single_freq,
+            mask_mode=cfg.mask_mode,
+            crop_mode=cfg.crop_mode,
+            crop_padding=cfg.crop_padding,
         )
         base_stem = Path(base_fname).stem
 
-        file_indices.append([
-            (load_path, i, f'{base_stem}::{i}') for i in range(count)
-        ])
+        file_indices.append([(load_path, i, f"{base_stem}::{i}") for i in range(count)])
 
     all_uids = [uid for fi in file_indices for _, _, uid in fi]
     excluded = _get_excluded_uids(all_uids, cfg)
@@ -1339,13 +1459,13 @@ def _build_file_index(zarr_paths, cache_dir, cfg):
     if excluded:
         n_before = sum(len(fi) for fi in file_indices)
         file_indices = [
-            [(p, i, uid) for p, i, uid in fi if uid not in excluded]
-            for fi in file_indices
+            [(p, i, uid) for p, i, uid in fi if uid not in excluded] for fi in file_indices
         ]
         n_after = sum(len(fi) for fi in file_indices)
         if n_before != n_after:
-            print(f'  Data cleaning: excluded {n_before - n_after} patches '
-                  f'({n_before} → {n_after})')
+            print(
+                f"  Data cleaning: excluded {n_before - n_after} patches ({n_before} → {n_after})"
+            )
 
     return file_indices
 
@@ -1374,8 +1494,9 @@ def build_dataset_for_split(split_name, cfg, zarr_dir=None):
 
     split_files = get_split_files(zarr_dir)
     if split_name not in split_files:
-        raise ValueError(f"Unknown split '{split_name}', "
-                         f"expected one of {list(split_files.keys())}")
+        raise ValueError(
+            f"Unknown split '{split_name}', expected one of {list(split_files.keys())}"
+        )
 
     zarr_paths = split_files[split_name]
     if not zarr_paths:
@@ -1387,23 +1508,24 @@ def build_dataset_for_split(split_name, cfg, zarr_dir=None):
 
     file_indices = _build_file_index(zarr_paths, cache_dir, cfg)
     aug_kwargs = dict(
-        p_hflip=getattr(cfg, 'p_hflip', 0.5),
-        p_noise=getattr(cfg, 'p_gauss_noise', 0.3),
-        p_brightness=getattr(cfg, 'p_brightness', 0.3),
-        p_channel_dropout=getattr(cfg, 'p_channel_dropout', 0.072),
-        p_ping_dropout_zero=getattr(cfg, 'p_ping_dropout_zero', 0.10),
-        p_ping_dropout_shuffle=getattr(cfg, 'p_ping_dropout_shuffle', 0.05),
-        p_ping_dropout_noise=getattr(cfg, 'p_ping_dropout_noise', 0.05),
+        p_hflip=getattr(cfg, "p_hflip", 0.5),
+        p_noise=getattr(cfg, "p_gauss_noise", 0.3),
+        p_brightness=getattr(cfg, "p_brightness", 0.3),
+        p_channel_dropout=getattr(cfg, "p_channel_dropout", 0.072),
+        p_ping_dropout_zero=getattr(cfg, "p_ping_dropout_zero", 0.10),
+        p_ping_dropout_shuffle=getattr(cfg, "p_ping_dropout_shuffle", 0.05),
+        p_ping_dropout_noise=getattr(cfg, "p_ping_dropout_noise", 0.05),
     )
-    transform = get_augmentation_pipeline(**aug_kwargs) if split_name == 'train' else None
+    transform = get_augmentation_pipeline(**aug_kwargs) if split_name == "train" else None
     ds = _index_to_dataset(file_indices, cfg.target_size, transform=transform)
 
     print(f"  {split_name}: {len(ds)} patches from {len(zarr_paths)} files")
     return ds, zarr_paths
 
 
-def _ensure_no_bottom_npz(cache_dir, n_patches, patch_height=2048,
-                          patch_width=256, n_channels=3, seed=0):
+def _ensure_no_bottom_npz(
+    cache_dir, n_patches, patch_height=2048, patch_width=256, n_channels=3, seed=0
+):
     """Generate a small NPZ of synthetic water-column-only patches.
 
     These patches simulate deep water with no visible bottom: low-level
@@ -1421,8 +1543,7 @@ def _ensure_no_bottom_npz(cache_dir, n_patches, patch_height=2048,
         return npz_path, count
 
     rng = np.random.RandomState(seed)
-    patches = np.zeros((n_patches, n_channels, patch_height, patch_width),
-                       dtype=np.float32)
+    patches = np.zeros((n_patches, n_channels, patch_height, patch_width), dtype=np.float32)
     for i in range(n_patches):
         base_level = rng.uniform(0.0, 0.10)
         noise = rng.normal(0, 0.03, (patch_height, patch_width)).astype(np.float32)
@@ -1472,13 +1593,13 @@ def build_datasets_from_config(cfg):
     if cfg.cache_dir is not None:
         _clean_stale_temp(cfg.cache_dir)
 
-    if cfg.split_mode in ('survey', 'random_pool', 'pool'):
-        from deep_learning.training.survey_groups import (
-            get_split_files, get_random_pool_split)
-        if cfg.split_mode == 'survey':
+    if cfg.split_mode in ("survey", "random_pool", "pool"):
+        from deep_learning.training.survey_groups import get_split_files, get_random_pool_split
+
+        if cfg.split_mode == "survey":
             split_files = get_split_files()
             split_label = "Survey split"
-        elif cfg.split_mode == 'random_pool':
+        elif cfg.split_mode == "random_pool":
             # Random file-level split over the same train+val survey pool,
             # matching the survey split's train/val file counts. Held-out
             # calibration/test surveys stay excluded.
@@ -1487,12 +1608,10 @@ def build_datasets_from_config(cfg):
         else:
             # 'pool': same train+val survey pool, but the validation split is
             # val_fraction of the pool rather than the survey val count.
-            split_files = get_random_pool_split(
-                cfg.seed, val_fraction=cfg.val_fraction)
-            split_label = (f"Pool split (seed={cfg.seed}, "
-                           f"val_fraction={cfg.val_fraction})")
-        train_zarr = split_files['train']
-        val_zarr = split_files['val']
+            split_files = get_random_pool_split(cfg.seed, val_fraction=cfg.val_fraction)
+            split_label = f"Pool split (seed={cfg.seed}, val_fraction={cfg.val_fraction})"
+        train_zarr = split_files["train"]
+        val_zarr = split_files["val"]
         all_zarr = train_zarr + val_zarr
 
         if cfg.cache_dir is None:
@@ -1501,35 +1620,35 @@ def build_datasets_from_config(cfg):
         train_idx = _build_file_index(train_zarr, cfg.cache_dir, cfg)
         val_idx = _build_file_index(val_zarr, cfg.cache_dir, cfg)
 
-        n_nb = getattr(cfg, 'n_no_bottom_patches', 0)
+        n_nb = getattr(cfg, "n_no_bottom_patches", 0)
         if n_nb > 0 and cfg.cache_dir is not None:
             nb_path, nb_count = _ensure_no_bottom_npz(
-                cfg.cache_dir, n_nb, patch_width=cfg.patch_width,
-                n_channels=cfg.in_channels)
+                cfg.cache_dir, n_nb, patch_width=cfg.patch_width, n_channels=cfg.in_channels
+            )
             n_train_nb = max(1, int(nb_count * 0.8))
-            train_idx.append([(nb_path, i, f'_no_bottom::{i}')
-                              for i in range(n_train_nb)])
-            val_idx.append([(nb_path, i, f'_no_bottom::{i}')
-                            for i in range(n_train_nb, nb_count)])
+            train_idx.append([(nb_path, i, f"_no_bottom::{i}") for i in range(n_train_nb)])
+            val_idx.append([(nb_path, i, f"_no_bottom::{i}") for i in range(n_train_nb, nb_count)])
 
         aug_kwargs = dict(
-            p_channel_dropout=getattr(cfg, 'p_channel_dropout', 0.072),
-            p_ping_dropout_zero=getattr(cfg, 'p_ping_dropout_zero', 0.10),
-            p_ping_dropout_shuffle=getattr(cfg, 'p_ping_dropout_shuffle', 0.05),
-            p_ping_dropout_noise=getattr(cfg, 'p_ping_dropout_noise', 0.05),
+            p_channel_dropout=getattr(cfg, "p_channel_dropout", 0.072),
+            p_ping_dropout_zero=getattr(cfg, "p_ping_dropout_zero", 0.10),
+            p_ping_dropout_shuffle=getattr(cfg, "p_ping_dropout_shuffle", 0.05),
+            p_ping_dropout_noise=getattr(cfg, "p_ping_dropout_noise", 0.05),
         )
         transform = get_augmentation_pipeline(**aug_kwargs)
-        train_ds = _index_to_dataset(
-            train_idx, cfg.target_size, transform=transform)
-        val_ds = _index_to_dataset(
-            val_idx, cfg.target_size, transform=None)
+        train_ds = _index_to_dataset(train_idx, cfg.target_size, transform=transform)
+        val_ds = _index_to_dataset(val_idx, cfg.target_size, transform=None)
 
-        print(f"  {split_label}: train={len(train_ds)} patches "
-              f"({len(train_zarr)} files), "
-              f"val={len(val_ds)} patches ({len(val_zarr)} files)")
+        print(
+            f"  {split_label}: train={len(train_ds)} patches "
+            f"({len(train_zarr)} files), "
+            f"val={len(val_ds)} patches ({len(val_zarr)} files)"
+        )
         if n_nb > 0:
-            print(f"  Injected {n_nb} synthetic no-bottom patches "
-                  f"(train={n_train_nb}, val={nb_count - n_train_nb})")
+            print(
+                f"  Injected {n_nb} synthetic no-bottom patches "
+                f"(train={n_train_nb}, val={nb_count - n_train_nb})"
+            )
         return train_ds, val_ds, all_zarr
 
     # --- Random file-level split (original behaviour) ---
@@ -1539,15 +1658,15 @@ def build_datasets_from_config(cfg):
     if cfg.raw_dirs:
         zarr_dir = cfg.zarr_cache_dir or Path("zarr_cache")
         converted = prepare_zarr_from_raw_dirs(
-            cfg.raw_dirs, zarr_dir,
+            cfg.raw_dirs,
+            zarr_dir,
             waveform_mode=cfg.waveform_mode,
             encode_mode=cfg.encode_mode,
         )
         zarr_paths.extend(converted)
 
     if not zarr_paths:
-        raise ValueError(
-            "No zarr paths available. Provide zarr_paths or raw_dirs in config.")
+        raise ValueError("No zarr paths available. Provide zarr_paths or raw_dirs in config.")
 
     cache_dir = cfg.cache_dir
 
@@ -1568,44 +1687,49 @@ def build_datasets_from_config(cfg):
             else:
                 train_index.extend(entries)
 
-        n_nb = getattr(cfg, 'n_no_bottom_patches', 0)
+        n_nb = getattr(cfg, "n_no_bottom_patches", 0)
         if n_nb > 0:
             nb_path, nb_count = _ensure_no_bottom_npz(
-                cache_dir, n_nb, patch_width=cfg.patch_width,
-                n_channels=cfg.in_channels)
+                cache_dir, n_nb, patch_width=cfg.patch_width, n_channels=cfg.in_channels
+            )
             n_train_nb = max(1, int(nb_count * 0.8))
             train_index.extend((nb_path, i) for i in range(n_train_nb))
             val_index.extend((nb_path, i) for i in range(n_train_nb, nb_count))
 
         aug_kwargs = dict(
-            p_channel_dropout=getattr(cfg, 'p_channel_dropout', 0.072),
-            p_ping_dropout_zero=getattr(cfg, 'p_ping_dropout_zero', 0.10),
-            p_ping_dropout_shuffle=getattr(cfg, 'p_ping_dropout_shuffle', 0.05),
-            p_ping_dropout_noise=getattr(cfg, 'p_ping_dropout_noise', 0.05),
+            p_channel_dropout=getattr(cfg, "p_channel_dropout", 0.072),
+            p_ping_dropout_zero=getattr(cfg, "p_ping_dropout_zero", 0.10),
+            p_ping_dropout_shuffle=getattr(cfg, "p_ping_dropout_shuffle", 0.05),
+            p_ping_dropout_noise=getattr(cfg, "p_ping_dropout_noise", 0.05),
         )
         transform = get_augmentation_pipeline(**aug_kwargs)
-        train_ds = LazyPatchDataset(
-            train_index, target_size=cfg.target_size, transform=transform)
-        val_ds = LazyPatchDataset(
-            val_index, target_size=cfg.target_size, transform=None)
+        train_ds = LazyPatchDataset(train_index, target_size=cfg.target_size, transform=transform)
+        val_ds = LazyPatchDataset(val_index, target_size=cfg.target_size, transform=None)
 
         n_total = len(train_index) + len(val_index)
-        print(f"  Dataset: {n_total} patches "
-              f"(train={len(train_index)}, val={len(val_index)}) — lazy loading")
+        print(
+            f"  Dataset: {n_total} patches "
+            f"(train={len(train_index)}, val={len(val_index)}) — lazy loading"
+        )
         if n_nb > 0:
-            print(f"  Injected {n_nb} synthetic no-bottom patches "
-                  f"(train={n_train_nb}, val={nb_count - n_train_nb})")
+            print(
+                f"  Injected {n_nb} synthetic no-bottom patches "
+                f"(train={n_train_nb}, val={nb_count - n_train_nb})"
+            )
         return train_ds, val_ds, zarr_paths
 
     # No caching — use the original build_datasets (loads all into memory)
     train_ds, val_ds = build_datasets(
         zarr_paths,
-        freq1_hz=cfg.freq1_hz, freq2_hz=cfg.freq2_hz,
+        freq1_hz=cfg.freq1_hz,
+        freq2_hz=cfg.freq2_hz,
         target_size=cfg.target_size,
-        patch_width=cfg.patch_width, stride=cfg.stride,
+        patch_width=cfg.patch_width,
+        stride=cfg.stride,
         max_range_m=cfg.max_range_m,
         max_range_samples=cfg.max_range_samples,
-        vmin=cfg.vmin, vmax=cfg.vmax,
+        vmin=cfg.vmin,
+        vmax=cfg.vmax,
         val_fraction=cfg.val_fraction,
         seed=cfg.seed,
     )

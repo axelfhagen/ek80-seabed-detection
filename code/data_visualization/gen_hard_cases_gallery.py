@@ -18,6 +18,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -35,17 +36,21 @@ from raw_sensor_integration.visualization import ECHOGRAM_CMAP
 
 ZARR_DIR = PROJECT_ROOT / "Datasets" / "echopype_zarr"
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "hard_cases_gallery"
-CKPT = (PROJECT_ROOT / "code" / "checkpoints"
-        / "exp_20260525_220040_baseline_random_split_2"
-        / "smp_unet_resnet34_best.pth")
+CKPT = (
+    PROJECT_ROOT
+    / "code"
+    / "checkpoints"
+    / "exp_20260525_220040_baseline_random_split_2"
+    / "smp_unet_resnet34_best.pth"
+)
 
 FREQ1, FREQ2 = 38000, 200000
 TARGET = (512, 512)
 PATCH_W, STRIDE = 512, 256
 VMIN, VMAX = -80.0, -34.0
 
-N_CANDIDATES = 80   # files scanned (sampled evenly across the archive)
-N_PANELS = 6        # hardest files shown (2 rows x 3 cols)
+N_CANDIDATES = 80  # files scanned (sampled evenly across the archive)
+N_PANELS = 6  # hardest files shown (2 rows x 3 cols)
 DIV_THRESH_M = 5.0  # a ping "diverges" when |U-Net - reference| exceeds this
 MIN_VALID_FRAC = 0.5
 
@@ -63,9 +68,9 @@ def load_model(device):
 def analyse_file(model, device, zarr_path):
     """Return per-ping reference/U-Net depths (m) and hardness stats, or None."""
     sv_ch, _gt_mask, gt_idx, range_arr = load_file_data(
-        str(zarr_path), FREQ1, FREQ2, vmin=VMIN, vmax=VMAX)
-    prob = predict_full_echogram(model, sv_ch, TARGET, device,
-                                 patch_width=PATCH_W, stride=STRIDE)
+        str(zarr_path), FREQ1, FREQ2, vmin=VMIN, vmax=VMAX
+    )
+    prob = predict_full_echogram(model, sv_ch, TARGET, device, patch_width=PATCH_W, stride=STRIDE)
     unet_idx = extract_bottom_line(prob)
 
     n = min(len(gt_idx), len(unet_idx))
@@ -88,8 +93,13 @@ def analyse_file(model, device, zarr_path):
     # Hardness: sustained disagreement (fraction of diverging pings), with the
     # 75th-percentile magnitude as a tie-breaker so single spikes do not win.
     stats["hardness"] = stats["frac_div"] + 0.02 * stats["p75_div"]
-    return {"file": zarr_path.name, "ref_d": ref_d, "unet_d": unet_d,
-            "range_max": float(range_arr[-1]), **stats}
+    return {
+        "file": zarr_path.name,
+        "ref_d": ref_d,
+        "unet_d": unet_d,
+        "range_max": float(range_arr[-1]),
+        **stats,
+    }
 
 
 def collect(model, device, cache_path, recompute):
@@ -113,8 +123,10 @@ def collect(model, device, cache_path, recompute):
             print(f"[{i}/{len(files)}] skip {zp.stem} (too few valid pings)")
             continue
         records.append(rec)
-        print(f"[{i}/{len(files)}] {zp.stem}  frac_div={rec['frac_div']:.2f} "
-              f"median={rec['median_div']:.1f}m  max={rec['max_div']:.1f}m")
+        print(
+            f"[{i}/{len(files)}] {zp.stem}  frac_div={rec['frac_div']:.2f} "
+            f"median={rec['median_div']:.1f}m  max={rec['max_div']:.1f}m"
+        )
     np.savez(cache_path, records=np.array(records, dtype=object))
     print(f"Cached {len(records)} records -> {cache_path.name}")
     return records
@@ -125,11 +137,17 @@ def render(records, out_path):
     apply_thesis_style()
     fig, axes = plt.subplots(2, 3, figsize=(22, 12))
     fig.suptitle("Hardest real echograms for the U-Net", y=0.99)
-    fig.text(0.45, 0.95,
-             "Files with the largest disagreement from the classical reference: "
-             "the U-Net tracks it through steep slopes and canyons, diverging "
-             "mainly in open water with no true seabed",
-             ha="center", va="top", fontsize=14, color="grey")
+    fig.text(
+        0.45,
+        0.95,
+        "Files with the largest disagreement from the classical reference: "
+        "the U-Net tracks it through steep slopes and canyons, diverging "
+        "mainly in open water with no true seabed",
+        ha="center",
+        va="top",
+        fontsize=14,
+        color="grey",
+    )
 
     im = None
     for ax, rec in zip(axes.ravel(), records):
@@ -139,9 +157,15 @@ def render(records, out_path):
         extent = [0, n_pings, disp_r[-1], disp_r[0]]
         row_step = max(1, disp_sv.shape[0] // 800)
         col_step = max(1, disp_sv.shape[1] // 1000)
-        im = ax.imshow(disp_sv[::row_step, ::col_step], aspect="auto",
-                       cmap=ECHOGRAM_CMAP, vmin=VMIN, vmax=VMAX,
-                       extent=extent, interpolation="nearest")
+        im = ax.imshow(
+            disp_sv[::row_step, ::col_step],
+            aspect="auto",
+            cmap=ECHOGRAM_CMAP,
+            vmin=VMIN,
+            vmax=VMAX,
+            extent=extent,
+            interpolation="nearest",
+        )
         x = np.arange(len(rec["ref_d"]))
         ax.plot(x, rec["ref_d"], color="cyan", lw=1.6)
         ax.plot(x, rec["unet_d"], color="red", lw=1.1, ls="--")
@@ -151,17 +175,21 @@ def render(records, out_path):
             ax.set_ylim(min(bot * 1.3, disp_r[-1]), 0)
         ax.set_xlabel("ping")
         ax.set_ylabel("depth (m)")
-        ax.set_title(rec["file"].replace(".zarr", "").replace("D", "", 1),
-                     fontsize=14)
-        ax.text(0.015, 0.04,
-                f"diverging pings {rec['frac_div']*100:.0f}%\n"
-                f"median |Δ| {rec['median_div']:.1f} m   max {rec['max_div']:.0f} m",
-                transform=ax.transAxes, fontsize=11, va="bottom", ha="left",
-                color="white",
-                bbox=dict(boxstyle="round,pad=0.3", fc="black", alpha=0.45,
-                          ec="none"))
+        ax.set_title(rec["file"].replace(".zarr", "").replace("D", "", 1), fontsize=14)
+        ax.text(
+            0.015,
+            0.04,
+            f"diverging pings {rec['frac_div'] * 100:.0f}%\n"
+            f"median |Δ| {rec['median_div']:.1f} m   max {rec['max_div']:.0f} m",
+            transform=ax.transAxes,
+            fontsize=11,
+            va="bottom",
+            ha="left",
+            color="white",
+            bbox=dict(boxstyle="round,pad=0.3", fc="black", alpha=0.45, ec="none"),
+        )
 
-    for ax in axes.ravel()[len(records):]:
+    for ax in axes.ravel()[len(records) :]:
         ax.axis("off")
 
     handles = [
@@ -175,13 +203,20 @@ def render(records, out_path):
         cax = fig.add_axes([0.92, 0.30, 0.015, 0.40])
         cbar = fig.colorbar(im, cax=cax)
         style_colorbar(cbar, label=r"$S_v$ (dB re 1 m$^{-1}$)")
-    fig.legend(handles=handles, loc="lower center", ncol=2, fontsize=16,
-               bbox_to_anchor=(0.45, 0.025))
-    fig.text(0.45, 0.005,
-             "Source: code/data_visualization/gen_hard_cases_gallery.py  |  "
-             f"hardest {N_PANELS} of {N_CANDIDATES} sampled files, ranked by "
-             f"fraction of pings diverging >{DIV_THRESH_M:.0f} m",
-             ha="center", va="bottom", fontsize=11, color="grey")
+    fig.legend(
+        handles=handles, loc="lower center", ncol=2, fontsize=16, bbox_to_anchor=(0.45, 0.025)
+    )
+    fig.text(
+        0.45,
+        0.005,
+        "Source: code/data_visualization/gen_hard_cases_gallery.py  |  "
+        f"hardest {N_PANELS} of {N_CANDIDATES} sampled files, ranked by "
+        f"fraction of pings diverging >{DIV_THRESH_M:.0f} m",
+        ha="center",
+        va="bottom",
+        fontsize=11,
+        color="grey",
+    )
     savefig(fig, out_path, dpi=200)
     plt.close(fig)
     print(f"Wrote {out_path}")
@@ -190,6 +225,7 @@ def render(records, out_path):
 
 def write_readme(records):
     from datetime import datetime
+
     files = ", ".join(r["file"].replace(".zarr", "") for r in records)
     (OUTPUT_DIR / "_README.md").write_text(
         "# Hard Cases Gallery\n\n"
@@ -203,7 +239,8 @@ def write_readme(records):
         "open water that has no true seabed return.\n\n"
         f"Selected files: {files}\n\n"
         "Source: code/data_visualization/gen_hard_cases_gallery.py\n\n"
-        f"Created: {datetime.now().isoformat(timespec='seconds')}\n")
+        f"Created: {datetime.now().isoformat(timespec='seconds')}\n"
+    )
 
 
 def main():

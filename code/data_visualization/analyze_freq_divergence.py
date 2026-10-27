@@ -10,6 +10,7 @@ stacks 38 kHz on top and 200 kHz below for direct comparison.
 
 Output: Figures/freq_divergence/
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,6 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -34,7 +36,7 @@ from project_paths import DATA_ROOT
 
 FREQ1 = 38_000
 FREQ2 = 200_000
-SURFACE_FRAC = 0.15          # ignore the top of the range (saturated near-field)
+SURFACE_FRAC = 0.15  # ignore the top of the range (saturated near-field)
 RAW_DIRS = [
     DATA_ROOT / "test_raw",
     DATA_ROOT / "test_raw_2",
@@ -55,10 +57,8 @@ def has_both_freqs(raw_path):
 
 def load_pair(raw_path, max_pings):
     """Return aligned (sv1_db, sv2_db, norm1, norm2) or None on failure."""
-    data1 = load_raw(raw_path, frequency=FREQ1, max_pings=max_pings,
-                     include_gps=False)
-    data2 = load_raw(raw_path, frequency=FREQ2, max_pings=max_pings,
-                     include_gps=False)
+    data1 = load_raw(raw_path, frequency=FREQ1, max_pings=max_pings, include_gps=False)
+    data2 = load_raw(raw_path, frequency=FREQ2, max_pings=max_pings, include_gps=False)
     min_r = min(data1.n_samples, data2.n_samples)
     min_p = min(data1.sv_db.shape[1], data2.sv_db.shape[1])
     sv1 = data1.sv_db[:min_r, :min_p]
@@ -67,10 +67,12 @@ def load_pair(raw_path, max_pings):
     finite = np.concatenate([sv1[np.isfinite(sv1)], sv2[np.isfinite(sv2)]])
     vmin = float(np.percentile(finite, 2))
     vmax = float(np.percentile(finite, 98))
-    norm1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax,
-                               fill_nan=0.0).astype(np.float32)
-    norm2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax,
-                               fill_nan=0.0).astype(np.float32)
+    norm1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
+    norm2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
     return sv1, sv2, norm1, norm2
 
 
@@ -100,8 +102,7 @@ def compute_metrics(sv1, sv2, norm1, norm2):
     # Contrast of the 200 kHz channel sub-surface.
     std200 = float(np.nanstd(b))
 
-    return dict(corr=corr, mean_abs_diff=mean_abs_diff,
-                seabed_incoherence=coherence, std200=std200)
+    return dict(corr=corr, mean_abs_diff=mean_abs_diff, seabed_incoherence=coherence, std200=std200)
 
 
 def collect(raw_files, max_pings):
@@ -115,10 +116,12 @@ def collect(raw_files, max_pings):
             m["name"] = rp.stem
             rows.append(m)
             cache[str(rp)] = (norm1, norm2)
-            print(f"[{i+1}/{len(raw_files)}] {rp.stem}  "
-                  f"corr={m['corr']:.3f}  mad={m['mean_abs_diff']:.3f}")
+            print(
+                f"[{i + 1}/{len(raw_files)}] {rp.stem}  "
+                f"corr={m['corr']:.3f}  mad={m['mean_abs_diff']:.3f}"
+            )
         except Exception as e:
-            print(f"[{i+1}/{len(raw_files)}] {rp.stem}  SKIP ({e})")
+            print(f"[{i + 1}/{len(raw_files)}] {rp.stem}  SKIP ({e})")
     return pd.DataFrame(rows), cache
 
 
@@ -146,10 +149,20 @@ def plot_scatter(df, corr_thresh, out_path):
     apply_thesis_style()
     fig, ax = plt.subplots(figsize=(10, 8))
     good = df["corr"] >= corr_thresh
-    ax.scatter(df.loc[good, "corr"], df.loc[good, "mean_abs_diff"],
-               c="#228833", s=40, label=f"agree (corr>={corr_thresh:.2f})")
-    ax.scatter(df.loc[~good, "corr"], df.loc[~good, "mean_abs_diff"],
-               c="#cc3311", s=40, label="diverge (200 kHz noise)")
+    ax.scatter(
+        df.loc[good, "corr"],
+        df.loc[good, "mean_abs_diff"],
+        c="#228833",
+        s=40,
+        label=f"agree (corr>={corr_thresh:.2f})",
+    )
+    ax.scatter(
+        df.loc[~good, "corr"],
+        df.loc[~good, "mean_abs_diff"],
+        c="#cc3311",
+        s=40,
+        label="diverge (200 kHz noise)",
+    )
     ax.axvline(corr_thresh, color="grey", ls="--", lw=1.5)
     ax.set_xlabel("38 vs 200 kHz correlation")
     ax.set_ylabel("Mean absolute normalized difference")
@@ -168,14 +181,31 @@ def _stacked_cell(ax, norm1, norm2):
     combined = np.vstack([norm1, sep, norm2])
     cmap = plt.get_cmap("viridis").copy()
     cmap.set_bad("white")
-    ax.imshow(combined, aspect="auto", cmap=cmap, vmin=0, vmax=1,
-              interpolation="nearest")
+    ax.imshow(combined, aspect="auto", cmap=cmap, vmin=0, vmax=1, interpolation="nearest")
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.text(0.01, 0.97, "38", transform=ax.transAxes, va="top", ha="left",
-            color="white", fontsize=11, fontweight="bold")
-    ax.text(0.01, 0.47, "200", transform=ax.transAxes, va="top", ha="left",
-            color="white", fontsize=11, fontweight="bold")
+    ax.text(
+        0.01,
+        0.97,
+        "38",
+        transform=ax.transAxes,
+        va="top",
+        ha="left",
+        color="white",
+        fontsize=11,
+        fontweight="bold",
+    )
+    ax.text(
+        0.01,
+        0.47,
+        "200",
+        transform=ax.transAxes,
+        va="top",
+        ha="left",
+        color="white",
+        fontsize=11,
+        fontweight="bold",
+    )
 
 
 def plot_grid(subset, cache, title, out_path):
@@ -186,7 +216,7 @@ def plot_grid(subset, cache, title, out_path):
         _stacked_cell(ax, norm1, norm2)
         ax.set_title(f"{row['name']}\ncorr={row['corr']:.2f}", fontsize=11)
     # Blank any unused axes.
-    for ax in axes.ravel()[len(subset):]:
+    for ax in axes.ravel()[len(subset) :]:
         ax.axis("off")
     fig.suptitle(title)
     fig.tight_layout(rect=[0, 0, 1, 0.97])
@@ -211,11 +241,16 @@ def write_readme(corr_thresh, n_total, n_diverge):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--max-files", type=int, default=None,
-                    help="Cap number of files (for quick dev runs).")
+    ap.add_argument(
+        "--max-files", type=int, default=None, help="Cap number of files (for quick dev runs)."
+    )
     ap.add_argument("--max-pings", type=int, default=800)
-    ap.add_argument("--corr-thresh", type=float, default=None,
-                    help="Override correlation threshold (default: data-driven).")
+    ap.add_argument(
+        "--corr-thresh",
+        type=float,
+        default=None,
+        help="Override correlation threshold (default: data-driven).",
+    )
     ap.add_argument("--output-dir", type=str, default=None)
     args = ap.parse_args()
 
@@ -255,8 +290,7 @@ def main():
     else:
         corr_thresh = 0.4
     n_diverge = int((df["corr"] < corr_thresh).sum())
-    print(f"Correlation threshold = {corr_thresh:.3f} "
-          f"-> {n_diverge}/{len(df)} files diverge")
+    print(f"Correlation threshold = {corr_thresh:.3f} -> {n_diverge}/{len(df)} files diverge")
 
     plot_distributions(df, OUTPUT_DIR / "distributions.png")
     plot_scatter(df, corr_thresh, OUTPUT_DIR / "scatter_clusters.png")
@@ -264,12 +298,18 @@ def main():
     # Extremes: 16 most-diverging (lowest corr) and 16 most-agreeing (highest).
     diverge = df.head(16)
     agree = df.dropna(subset=["corr"]).tail(16).iloc[::-1]
-    plot_grid(diverge, cache,
-              "Largest divergence: 200 kHz is noise (38 top, 200 bottom)",
-              OUTPUT_DIR / "grid_bigdiff.png")
-    plot_grid(agree, cache,
-              "Negligible divergence: channels agree (38 top, 200 bottom)",
-              OUTPUT_DIR / "grid_negligible.png")
+    plot_grid(
+        diverge,
+        cache,
+        "Largest divergence: 200 kHz is noise (38 top, 200 bottom)",
+        OUTPUT_DIR / "grid_bigdiff.png",
+    )
+    plot_grid(
+        agree,
+        cache,
+        "Negligible divergence: channels agree (38 top, 200 bottom)",
+        OUTPUT_DIR / "grid_negligible.png",
+    )
 
     write_readme(corr_thresh, len(df), n_diverge)
     print(f"Done. Outputs in {OUTPUT_DIR}")

@@ -35,14 +35,12 @@ RUNS = [
     {
         "title": "Standard U-Net (ResNet-34)",
         "subtitle": "30-epoch training run",
-        "history": PROJECT_ROOT
-        / "code/checkpoints/chunk_arch_sweep_2/training_history.json",
+        "history": PROJECT_ROOT / "code/checkpoints/chunk_arch_sweep_2/training_history.json",
     },
     {
         "title": "EfficientNet-B0 U-Net",
         "subtitle": "52-epoch encoder-sweep run",
-        "history": PROJECT_ROOT
-        / "code/checkpoints/chunk_encoder_sweep_3/training_history.json",
+        "history": PROJECT_ROOT / "code/checkpoints/chunk_encoder_sweep_3/training_history.json",
     },
 ]
 

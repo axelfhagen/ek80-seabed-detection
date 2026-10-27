@@ -12,6 +12,7 @@ Also generates individual echogram PNGs for each file if they don't exist yet.
 Usage:
     python code/infer_test_raw.py --raw-dir $DATA_ROOT/test_raw_2
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,6 +26,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -90,17 +92,18 @@ def prepare_raw_channels(raw_path, max_pings=2000):
     vmin = float(np.percentile(np.concatenate([finite1, finite2]), 2))
     vmax = float(np.percentile(np.concatenate([finite1, finite2]), 98))
 
-    norm1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax,
-                               fill_nan=0.0).astype(np.float32)
-    norm2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax,
-                               fill_nan=0.0).astype(np.float32)
+    norm1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
+    norm2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
     diff = (norm1 - norm2).astype(np.float32)
     sv_channels = np.stack([norm1, norm2, diff], axis=0)
     return sv_channels, sv1, sv2, range_arr
 
 
-def ensure_calibrated_zarr(raw_path, zarr_dir, waveform_mode="BB",
-                           encode_mode="complex"):
+def ensure_calibrated_zarr(raw_path, zarr_dir, waveform_mode="BB", encode_mode="complex"):
     """Convert a .raw file to a calibrated Sv zarr (cached). Returns the Path.
 
     The conversion (echopype ``compute_Sv``: TVG, absorption, gain, beam
@@ -115,15 +118,21 @@ def ensure_calibrated_zarr(raw_path, zarr_dir, waveform_mode="BB",
         print(f"  Using cached calibrated zarr: {zarr_path}")
         return zarr_path
     print(f"  Calibrating {raw_path.name} -> {zarr_path.name} via echopype ...")
-    raw_to_zarr(raw_path, output_path=zarr_path,
-                waveform_mode=waveform_mode, encode_mode=encode_mode)
+    raw_to_zarr(
+        raw_path, output_path=zarr_path, waveform_mode=waveform_mode, encode_mode=encode_mode
+    )
     return zarr_path
 
 
-def prepare_calibrated_channels(raw_path, zarr_dir=DEFAULT_ZARR_CACHE,
-                                max_range_m=None,
-                                vmin=TRAIN_VMIN, vmax=TRAIN_VMAX,
-                                waveform_mode="BB", encode_mode="complex"):
+def prepare_calibrated_channels(
+    raw_path,
+    zarr_dir=DEFAULT_ZARR_CACHE,
+    max_range_m=None,
+    vmin=TRAIN_VMIN,
+    vmax=TRAIN_VMAX,
+    waveform_mode="BB",
+    encode_mode="complex",
+):
     """Build model channels from calibrated Sv with the training fixed clip.
 
     Unlike ``prepare_raw_channels`` (uncalibrated power, per-file pooled
@@ -133,8 +142,7 @@ def prepare_calibrated_channels(raw_path, zarr_dir=DEFAULT_ZARR_CACHE,
     pipeline (``echo_dataset.prepare_patches_from_zarr``) instead of skewing
     the input distribution at inference time.
     """
-    zarr_path = ensure_calibrated_zarr(raw_path, zarr_dir,
-                                       waveform_mode, encode_mode)
+    zarr_path = ensure_calibrated_zarr(raw_path, zarr_dir, waveform_mode, encode_mode)
     d1 = load_zarr(str(zarr_path), frequency=FREQ1, max_range_m=max_range_m)
     d2 = load_zarr(str(zarr_path), frequency=FREQ2, max_range_m=max_range_m)
 
@@ -143,10 +151,12 @@ def prepare_calibrated_channels(raw_path, zarr_dir=DEFAULT_ZARR_CACHE,
     sv2 = d2.sv_db[:min_r]
     range_arr = d1.range_array[:min_r]
 
-    norm1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax,
-                               fill_nan=0.0).astype(np.float32)
-    norm2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax,
-                               fill_nan=0.0).astype(np.float32)
+    norm1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
+    norm2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
     diff = (norm1 - norm2).astype(np.float32)
     sv_channels = np.stack([norm1, norm2, diff], axis=0)
     return sv_channels, sv1, sv2, range_arr
@@ -181,8 +191,9 @@ def generate_echogram(raw_path, out_dir, max_pings=1000):
             ax.set_title(f"{ch}\n(all NaN)")
             continue
         vmin, vmax = np.percentile(finite, [2, 98])
-        im = ax.imshow(power_db, aspect="auto", cmap="viridis",
-                       vmin=vmin, vmax=vmax, origin="upper")
+        im = ax.imshow(
+            power_db, aspect="auto", cmap="viridis", vmin=vmin, vmax=vmax, origin="upper"
+        )
         plt.colorbar(im, ax=ax, label="Power (dB)")
         freq_label = ch.split()[-1] if " " in ch else ch
         ax.set_title(f"{freq_label}\n{n_pings_ch} pings, {n_samples} samples")
@@ -218,8 +229,15 @@ def plot_3x3_grid(results, mode, title, save_path):
         extent = [0, n_pings, range_arr[-1], range_arr[0]]
 
         if mode == "hard":
-            ax.imshow(echogram, aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                      origin="upper", extent=extent)
+            ax.imshow(
+                echogram,
+                aspect="auto",
+                cmap="viridis",
+                vmin=0,
+                vmax=1,
+                origin="upper",
+                extent=extent,
+            )
             pred_binary = (res["prediction"] >= 0.5).astype(np.uint8)
             pred_bottom = extract_bottom_line(pred_binary, threshold=0.5)
             valid = pred_bottom >= 0
@@ -229,8 +247,15 @@ def plot_3x3_grid(results, mode, title, save_path):
                 ax.plot(pings_p, depths_p, color="red", linewidth=1.0, alpha=0.9)
             ax.set_title(res["name"], fontsize=9)
         else:
-            ax.imshow(res["prediction"], aspect="auto", cmap="RdYlBu_r",
-                      vmin=0, vmax=1, origin="upper", extent=extent)
+            ax.imshow(
+                res["prediction"],
+                aspect="auto",
+                cmap="RdYlBu_r",
+                vmin=0,
+                vmax=1,
+                origin="upper",
+                extent=extent,
+            )
             pred_bottom = extract_bottom_line(res["prediction"], threshold=0.5)
             valid = pred_bottom >= 0
             if valid.any():
@@ -272,14 +297,19 @@ def main():
     parser.add_argument("--max-pings", type=int, default=2000)
     parser.add_argument("--device", default=None)
     parser.add_argument("--skip-echograms", action="store_true")
-    parser.add_argument("--calibrate", action="store_true",
-                        help="Convert raw files to calibrated Sv via echopype "
-                             "(TVG + absorption) and use the training fixed "
-                             "[-80,-34] clip, instead of uncalibrated power "
-                             "with a pooled percentile clip.")
-    parser.add_argument("--zarr-cache", default=DEFAULT_ZARR_CACHE,
-                        help="Where calibrated zarr stores are cached "
-                             "(only used with --calibrate).")
+    parser.add_argument(
+        "--calibrate",
+        action="store_true",
+        help="Convert raw files to calibrated Sv via echopype "
+        "(TVG + absorption) and use the training fixed "
+        "[-80,-34] clip, instead of uncalibrated power "
+        "with a pooled percentile clip.",
+    )
+    parser.add_argument(
+        "--zarr-cache",
+        default=DEFAULT_ZARR_CACHE,
+        help="Where calibrated zarr stores are cached (only used with --calibrate).",
+    )
     args = parser.parse_args()
 
     project_root = str(Path(__file__).resolve().parents[1])
@@ -340,36 +370,41 @@ def main():
             if args.calibrate:
                 zarr_cache = os.path.join(project_root, args.zarr_cache)
                 sv_channels, sv1, sv2, range_arr = prepare_calibrated_channels(
-                    str(rf), zarr_dir=zarr_cache)
+                    str(rf), zarr_dir=zarr_cache
+                )
             else:
                 sv_channels, sv1, sv2, range_arr = prepare_raw_channels(
-                    str(rf), max_pings=args.max_pings)
+                    str(rf), max_pings=args.max_pings
+                )
             print(f"  Shape: {sv_channels.shape}")
 
             prediction = predict_full_echogram(
-                model, sv_channels, TARGET_SIZE, device,
-                patch_width=PATCH_WIDTH, stride=STRIDE)
+                model, sv_channels, TARGET_SIZE, device, patch_width=PATCH_WIDTH, stride=STRIDE
+            )
 
             pred_bottom = extract_bottom_line(prediction, threshold=0.5)
             n_detected = np.sum(pred_bottom >= 0)
             print(f"  Bottom detected in {n_detected}/{len(pred_bottom)} pings")
 
-            all_results.append({
-                "name": fname,
-                "sv_channels": sv_channels,
-                "prediction": prediction,
-                "range_arr": range_arr,
-            })
+            all_results.append(
+                {
+                    "name": fname,
+                    "sv_channels": sv_channels,
+                    "prediction": prediction,
+                    "range_arr": range_arr,
+                }
+            )
         except Exception as e:
             print(f"  ERROR: {e}")
             import traceback
+
             traceback.print_exc()
 
     # Step 4: generate 3x3 grid plots
     print(f"\n=== Generating 3x3 grids ({len(all_results)} files) ===")
     batch_size = 9
     for batch_idx in range(0, len(all_results), batch_size):
-        batch = all_results[batch_idx:batch_idx + batch_size]
+        batch = all_results[batch_idx : batch_idx + batch_size]
         batch_num = batch_idx // batch_size + 1
         total_batches = (len(all_results) + batch_size - 1) // batch_size
 
@@ -381,8 +416,7 @@ def main():
         soft_path = os.path.join(grid_dir, f"grid_soft_batch{batch_num:02d}.png")
         plot_3x3_grid(batch, "soft", title, soft_path)
 
-    print(f"\nDone! {len(all_results)} files processed, "
-          f"output in {args.output_dir}")
+    print(f"\nDone! {len(all_results)} files processed, output in {args.output_dir}")
 
 
 if __name__ == "__main__":

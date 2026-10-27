@@ -58,7 +58,7 @@ def load_resume_state(cfg: PipelineConfig, model, optimizer, scaler, device, his
     resume_path = resolve_checkpoint_path(cfg.resume, prefer_last=not cfg.eval_only)
 
     ckpt = torch.load(resume_path, map_location=device, weights_only=False)
-    model.load_state_dict(ckpt['model_state_dict'])
+    model.load_state_dict(ckpt["model_state_dict"])
 
     # Eval-only never touches the optimizer, and its frozen-encoder param
     # groups won't match a checkpoint trained with the encoder unfrozen, so
@@ -66,23 +66,26 @@ def load_resume_state(cfg: PipelineConfig, model, optimizer, scaler, device, his
     if not cfg.eval_only:
         # If the run had already unfrozen the encoder before it stopped, mirror
         # that state so the optimizer param groups line up before loading.
-        if (cfg.unfreeze_after is not None
-                and ckpt['epoch'] >= cfg.unfreeze_after):
+        if cfg.unfreeze_after is not None and ckpt["epoch"] >= cfg.unfreeze_after:
             model.unfreeze_encoder()
             param_groups = [
-                {'params': [p for p in model.get_encoder_params() if p.requires_grad],
-                 'lr': cfg.encoder_lr},
-                {'params': [p for p in model.get_decoder_params() if p.requires_grad],
-                 'lr': cfg.decoder_lr},
+                {
+                    "params": [p for p in model.get_encoder_params() if p.requires_grad],
+                    "lr": cfg.encoder_lr,
+                },
+                {
+                    "params": [p for p in model.get_decoder_params() if p.requires_grad],
+                    "lr": cfg.decoder_lr,
+                },
             ]
             optimizer = torch.optim.AdamW(param_groups, weight_decay=cfg.weight_decay)
 
-        optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+        optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
         # Older checkpoints predate AMP-scaler checkpointing — restore only when
         # both the live scaler and a saved state exist.
-        if scaler is not None and ckpt.get('scaler_state_dict') is not None:
-            scaler.load_state_dict(ckpt['scaler_state_dict'])
+        if scaler is not None and ckpt.get("scaler_state_dict") is not None:
+            scaler.load_state_dict(ckpt["scaler_state_dict"])
 
         # load_state_dict above also restored the saved per-group LRs, clobbering
         # any CLI override. When asked, re-apply the configured LRs so the resume
@@ -91,13 +94,12 @@ def load_resume_state(cfg: PipelineConfig, model, optimizer, scaler, device, his
         if cfg.reset_lr_on_resume:
             group_lrs = [cfg.encoder_lr, cfg.decoder_lr]
             for group, lr in zip(optimizer.param_groups, group_lrs):
-                group['lr'] = lr
-            print(f"  reset LR on resume: encoder_lr={cfg.encoder_lr}, "
-                  f"decoder_lr={cfg.decoder_lr}")
-    resume_val_iou = ckpt.get('val_iou', 0.0)
+                group["lr"] = lr
+            print(f"  reset LR on resume: encoder_lr={cfg.encoder_lr}, decoder_lr={cfg.decoder_lr}")
+    resume_val_iou = ckpt.get("val_iou", 0.0)
     best_val_iou = resume_val_iou
-    best_epoch = ckpt['epoch']
-    start_epoch = ckpt['epoch'] + 1
+    best_epoch = ckpt["epoch"]
+    start_epoch = ckpt["epoch"] + 1
 
     # Reload prior training curve if present, so the saved history stays
     # continuous across the resume boundary. Truncate to ``start_epoch`` so the
@@ -121,11 +123,13 @@ def load_resume_state(cfg: PipelineConfig, model, optimizer, scaler, device, his
     # left it shorter, realign the counter down to the curve length. The model
     # and optimizer weights stay valid — only the epoch label shifts — so
     # bookkeeping is consistent from here on.
-    n_hist = len(history.get('val_loss', []))
+    n_hist = len(history.get("val_loss", []))
     if n_hist != start_epoch:
-        print(f"  WARN: training_history.json has {n_hist} epochs but the "
-              f"checkpoint is at epoch {start_epoch} — realigning the epoch "
-              f"counter to the curve length to keep bookkeeping consistent.")
+        print(
+            f"  WARN: training_history.json has {n_hist} epochs but the "
+            f"checkpoint is at epoch {start_epoch} — realigning the epoch "
+            f"counter to the curve length to keep bookkeeping consistent."
+        )
         start_epoch = n_hist
         best_epoch = min(best_epoch, start_epoch - 1)
 
@@ -133,5 +137,5 @@ def load_resume_state(cfg: PipelineConfig, model, optimizer, scaler, device, his
     print(f"  checkpoint epoch {best_epoch + 1} (val_iou={resume_val_iou:.4f})")
     print(f"  continuing from epoch {start_epoch + 1}/{cfg.num_epochs}")
 
-    scheduler_state = ckpt.get('scheduler_state_dict')
+    scheduler_state = ckpt.get("scheduler_state_dict")
     return optimizer, best_val_iou, best_epoch, start_epoch, scheduler_state

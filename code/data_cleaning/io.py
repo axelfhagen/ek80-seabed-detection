@@ -19,10 +19,10 @@ def load_patch_by_uid(uid, patch_dir):
     patch : ndarray (3, H, W)
     mask  : ndarray (H, W)
     """
-    stem, idx_str = uid.split('::')
+    stem, idx_str = uid.split("::")
     idx = int(idx_str)
-    data = np.load(Path(patch_dir) / f'{stem}.npz')
-    return data['patches'][idx], data['masks'][idx]
+    data = np.load(Path(patch_dir) / f"{stem}.npz")
+    return data["patches"][idx], data["masks"][idx]
 
 
 def load_quality_df(csv_path):
@@ -35,8 +35,8 @@ def save_exclusion_list(uids, path):
 
     Format: {"excluded_uids": ["uid1", "uid2", ...]}
     """
-    with open(path, 'w') as f:
-        json.dump({'excluded_uids': sorted(uids)}, f, indent=2)
+    with open(path, "w") as f:
+        json.dump({"excluded_uids": sorted(uids)}, f, indent=2)
 
 
 def load_exclusion_list(path):
@@ -49,4 +49,4 @@ def load_exclusion_list(path):
         return set()
     with open(path) as f:
         data = json.load(f)
-    return set(data.get('excluded_uids', []))
+    return set(data.get("excluded_uids", []))

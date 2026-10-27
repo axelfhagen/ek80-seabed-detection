@@ -12,6 +12,7 @@ bottom label is treated as the reference, matching ``eval_hake_test_raw.py``.
 Per-file nonconformity scores are cached, so the GPU/IO pass is paid once and
 all split-size sweeps are cheap.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,6 +30,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 warnings.filterwarnings("ignore")
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import torch
@@ -67,10 +69,7 @@ METHODS = {
 
 
 def raw_stems(limit: int | None = None) -> list[str]:
-    stems = [
-        p.stem for p in sorted(RAW_DIR.glob("*.raw"))
-        if not p.name.startswith("._")
-    ]
+    stems = [p.stem for p in sorted(RAW_DIR.glob("*.raw")) if not p.name.startswith("._")]
     return stems[:limit] if limit else stems
 
 
@@ -106,12 +105,7 @@ def score_one_file(stem: str, model, device: str, recompute: bool = False) -> Pa
         local_scores = calibrate_locally_weighted(pred_d, ref_d, sigma, epsilon=EPSILON)
         profile_scores = calibrate_profile([prob], [res["label_mask"]])
         pu, pl, pw = predict_profile_band(prob, range_crop, 0.5)
-        valid_profile = (
-            np.isfinite(pu)
-            & np.isfinite(pl)
-            & np.isfinite(ref_d)
-            & (ref_d > 0)
-        )
+        valid_profile = np.isfinite(pu) & np.isfinite(pl) & np.isfinite(ref_d) & (ref_d > 0)
         profile_widths = pw[valid_profile]
         valid_local = (
             np.isfinite(pred_d)
@@ -268,46 +262,48 @@ def run_primary_split(scores_by_file, files, n_calib, seed, alpha, n_boot, basto
         q_hat = conformal_quantile(calib_scores, alpha)
         calib_eval = eval_method(scores_by_file, calib, method, q_hat)
         test_eval = eval_method(scores_by_file, test, method, q_hat)
-        ci_lo, ci_hi = bootstrap_file_ci(
-            scores_by_file, test, method, q_hat, rng, n_boot=n_boot
+        ci_lo, ci_hi = bootstrap_file_ci(scores_by_file, test, method, q_hat, rng, n_boot=n_boot)
+        rows.append(
+            {
+                "source": "hake_recalibrated",
+                "method": method,
+                "q_hat": q_hat,
+                "calib_files": len(calib),
+                "test_files": len(test),
+                "calib_coverage": calib_eval["coverage"],
+                "test_coverage": test_eval["coverage"],
+                "test_ci_lo": ci_lo,
+                "test_ci_hi": ci_hi,
+                "test_n": test_eval["n"],
+                "test_file_mean": test_eval["file_mean"],
+                "test_file_sd": test_eval["file_sd"],
+                "test_median_width_m": test_eval["median_width_m"],
+                "test_mean_width_m": test_eval["mean_width_m"],
+            }
         )
-        rows.append({
-            "source": "hake_recalibrated",
-            "method": method,
-            "q_hat": q_hat,
-            "calib_files": len(calib),
-            "test_files": len(test),
-            "calib_coverage": calib_eval["coverage"],
-            "test_coverage": test_eval["coverage"],
-            "test_ci_lo": ci_lo,
-            "test_ci_hi": ci_hi,
-            "test_n": test_eval["n"],
-            "test_file_mean": test_eval["file_mean"],
-            "test_file_sd": test_eval["file_sd"],
-            "test_median_width_m": test_eval["median_width_m"],
-            "test_mean_width_m": test_eval["mean_width_m"],
-        })
         if method in basto_q:
             z = eval_method(scores_by_file, test, method, basto_q[method])
             zlo, zhi = bootstrap_file_ci(
                 scores_by_file, test, method, basto_q[method], rng, n_boot=n_boot
             )
-            rows.append({
-                "source": "basto_zero_shot",
-                "method": method,
-                "q_hat": basto_q[method],
-                "calib_files": 0,
-                "test_files": len(test),
-                "calib_coverage": float("nan"),
-                "test_coverage": z["coverage"],
-                "test_ci_lo": zlo,
-                "test_ci_hi": zhi,
-                "test_n": z["n"],
-                "test_file_mean": z["file_mean"],
-                "test_file_sd": z["file_sd"],
-                "test_median_width_m": z["median_width_m"],
-                "test_mean_width_m": z["mean_width_m"],
-            })
+            rows.append(
+                {
+                    "source": "basto_zero_shot",
+                    "method": method,
+                    "q_hat": basto_q[method],
+                    "calib_files": 0,
+                    "test_files": len(test),
+                    "calib_coverage": float("nan"),
+                    "test_coverage": z["coverage"],
+                    "test_ci_lo": zlo,
+                    "test_ci_hi": zhi,
+                    "test_n": z["n"],
+                    "test_file_mean": z["file_mean"],
+                    "test_file_sd": z["file_sd"],
+                    "test_median_width_m": z["median_width_m"],
+                    "test_mean_width_m": z["mean_width_m"],
+                }
+            )
     return calib, test, rows
 
 
@@ -323,19 +319,21 @@ def run_size_sweep(scores_by_file, files, sizes, repeats, seed, alpha):
                     continue
                 q_hat = conformal_quantile(c, alpha)
                 e = eval_method(scores_by_file, test, method, q_hat)
-                rows.append({
-                    "n_calib": len(calib),
-                    "repeat": r,
-                    "seed": split_seed,
-                    "method": method,
-                    "q_hat": q_hat,
-                    "coverage": e["coverage"],
-                    "test_files": len(test),
-                    "test_n": e["n"],
-                    "file_mean": e["file_mean"],
-                    "file_sd": e["file_sd"],
-                    "median_width_m": e["median_width_m"],
-                })
+                rows.append(
+                    {
+                        "n_calib": len(calib),
+                        "repeat": r,
+                        "seed": split_seed,
+                        "method": method,
+                        "q_hat": q_hat,
+                        "coverage": e["coverage"],
+                        "test_files": len(test),
+                        "test_n": e["n"],
+                        "file_mean": e["file_mean"],
+                        "file_sd": e["file_sd"],
+                        "median_width_m": e["median_width_m"],
+                    }
+                )
     return rows
 
 
@@ -386,7 +384,9 @@ def plot_sweep(rows, save_path: Path, alpha: float):
     for method in METHODS:
         means, lo, hi = [], [], []
         for n in sizes:
-            vals = np.array([r["coverage"] for r in rows if r["method"] == method and r["n_calib"] == n])
+            vals = np.array(
+                [r["coverage"] for r in rows if r["method"] == method and r["n_calib"] == n]
+            )
             means.append(float(np.nanmean(vals)))
             lo.append(float(np.nanpercentile(vals, 10)))
             hi.append(float(np.nanpercentile(vals, 90)))
@@ -420,10 +420,9 @@ def write_readme(
     def fmt(x):
         return "nan" if not np.isfinite(x) else f"{x:.3f}"
 
-    primary = [
-        r for r in rows
-        if r["source"] == "hake_recalibrated" and r["method"] == "constant"
-    ][0]
+    primary = [r for r in rows if r["source"] == "hake_recalibrated" and r["method"] == "constant"][
+        0
+    ]
     zero = next(
         (r for r in rows if r["source"] == "basto_zero_shot" and r["method"] == "constant"),
         None,
@@ -438,13 +437,16 @@ def write_readme(
         )
     sweep_summary = []
     for n in sorted({r["n_calib"] for r in sweep_rows}):
-        vals = [r["coverage"] for r in sweep_rows if r["method"] == "constant" and r["n_calib"] == n]
+        vals = [
+            r["coverage"] for r in sweep_rows if r["method"] == "constant" and r["n_calib"] == n
+        ]
         sweep_summary.append(
             f"  n_calib={n}: constant-width mean coverage {np.nanmean(vals):.3f} "
             f"(10-90% {np.nanpercentile(vals, 10):.3f}-{np.nanpercentile(vals, 90):.3f})"
         )
 
-    save_path.write_text(f"""# Hake in-situ conformal recalibration
+    save_path.write_text(
+        f"""# Hake in-situ conformal recalibration
 
 conformal  hake  recalibration  split-conformal  coverage
 
@@ -462,20 +464,27 @@ Data: {len(files)} scored Hake files from {RAW_DIR}; primary split uses
 Bastoe zero-shot cache: {basto_cache if basto_cache else "not available"}.
 
 Headline constant-width result:
-  Hake recalibrated q={primary['q_hat']:.3f} m, held-out coverage
-  {primary['test_coverage']:.3f} over {primary['test_n']} pings
-  ({primary['test_files']} files), file-bootstrap 95% CI
-  [{primary['test_ci_lo']:.3f}, {primary['test_ci_hi']:.3f}].
-""" + (
-        f"  Bastoe-fitted q={zero['q_hat']:.3f} m gives held-out Hake coverage "
-        f"{zero['test_coverage']:.3f} on the same test files.\n"
-        if zero else ""
-    ) + """
+  Hake recalibrated q={primary["q_hat"]:.3f} m, held-out coverage
+  {primary["test_coverage"]:.3f} over {primary["test_n"]} pings
+  ({primary["test_files"]} files), file-bootstrap 95% CI
+  [{primary["test_ci_lo"]:.3f}, {primary["test_ci_hi"]:.3f}].
+"""
+        + (
+            f"  Bastoe-fitted q={zero['q_hat']:.3f} m gives held-out Hake coverage "
+            f"{zero['test_coverage']:.3f} on the same test files.\n"
+            if zero
+            else ""
+        )
+        + """
 Primary split all methods:
-""" + "\n".join(lines) + """
+"""
+        + "\n".join(lines)
+        + """
 
 Calibration-size sensitivity, constant-width:
-""" + "\n".join(sweep_summary) + """
+"""
+        + "\n".join(sweep_summary)
+        + """
 
 Outputs:
   primary_results.csv
@@ -483,7 +492,8 @@ Outputs:
   primary_coverage.png
   calibration_size_sweep.png
   cache/*_scores.npz
-""")
+"""
+    )
 
 
 def main():
@@ -511,7 +521,9 @@ def main():
     print(f"Checkpoint: {Path(args.checkpoint).parent.name}")
 
     if args.from_cache:
-        paths = [CACHE_DIR / f"{s}_scores.npz" for s in stems if (CACHE_DIR / f"{s}_scores.npz").exists()]
+        paths = [
+            CACHE_DIR / f"{s}_scores.npz" for s in stems if (CACHE_DIR / f"{s}_scores.npz").exists()
+        ]
     else:
         model = load_model(args.checkpoint, device)
         paths = build_score_cache(stems, model, device, recompute=args.recompute_cache)

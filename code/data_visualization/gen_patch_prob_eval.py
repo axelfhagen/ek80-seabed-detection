@@ -20,6 +20,7 @@ Usage:
         --display rgb --selection hardest \
         --output-dir Figures/patch_prob_eval/v4_rgb_hard
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,6 +32,7 @@ import numpy as np
 import torch
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -46,17 +48,13 @@ from deep_learning.training.survey_groups import SURVEYS, SPLITS
 CACHE_DIR = PROJECT_ROOT / "Datasets" / "patch_cache"
 # Survey-split checkpoint that holds out feb_2025 + jun_2025 (does NOT train on
 # the test surveys), so test-patch metrics reflect true generalization.
-DEFAULT_CHECKPOINT = (
-    PROJECT_ROOT
-    / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
-)
+DEFAULT_CHECKPOINT = PROJECT_ROOT / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "patch_prob_eval" / "v2"
 
 
 def split_prefixes(split):
     """Date-prefix tuple for a canonical survey split ('test', 'val', ...)."""
-    return tuple(p for survey in SPLITS[split]
-                 for p in SURVEYS[survey]["date_prefixes"])
+    return tuple(p for survey in SPLITS[split] for p in SURVEYS[survey]["date_prefixes"])
 
 
 def load_model(checkpoint_path, device):
@@ -74,8 +72,7 @@ def predict_patches(model, patches, device, batch_size=8):
     """patches: (N, 3, 512, 512) float32 -> predictions (N, 512, 512)."""
     preds = []
     for start in range(0, len(patches), batch_size):
-        batch_np = np.array(patches[start:start + batch_size],
-                            dtype=np.float32, copy=True)
+        batch_np = np.array(patches[start : start + batch_size], dtype=np.float32, copy=True)
         inp = torch.from_numpy(batch_np).to(device)
         logits = model(inp)
         batch_pred = torch.sigmoid(logits)[:, 0].cpu().numpy().astype(np.float32)
@@ -122,11 +119,14 @@ def sample_patches(patch_files, n_patches, prefer_bottom, rng):
 
         picked = idxs[0]
         survey = pf.name.split(".")[0]
-        selected.append((
-            survey, int(picked),
-            np.asarray(patches[picked], dtype=np.float32),
-            np.asarray(masks[picked], dtype=np.uint8),
-        ))
+        selected.append(
+            (
+                survey,
+                int(picked),
+                np.asarray(patches[picked], dtype=np.float32),
+                np.asarray(masks[picked], dtype=np.uint8),
+            )
+        )
         fi += 1
         if fi >= len(files) and prefer_bottom:
             break
@@ -135,14 +135,16 @@ def sample_patches(patch_files, n_patches, prefer_bottom, rng):
 
 def channels_to_rgb_composite(patch_chw):
     """Map normalized [38 kHz, 200 kHz, diff] channels to display RGB."""
+
     def to01(channel):
         return np.clip((channel + 1.0) * 0.5, 0.0, 1.0)
-    return np.stack([to01(patch_chw[0]), to01(patch_chw[1]),
-                     to01(patch_chw[2])], axis=-1)
+
+    return np.stack([to01(patch_chw[0]), to01(patch_chw[1]), to01(patch_chw[2])], axis=-1)
 
 
-def candidate_indices(masks, max_per_file, prefer_bottom, rng,
-                      min_mask_frac=0.05, max_mask_frac=0.95):
+def candidate_indices(
+    masks, max_per_file, prefer_bottom, rng, min_mask_frac=0.05, max_mask_frac=0.95
+):
     """Candidate patch indices for hard-case mining."""
     n = masks.shape[0]
     if n == 0:
@@ -165,9 +167,17 @@ def sort_key_for_hard_case(metric):
     return iou_sort, -mae_sort
 
 
-def mine_hard_patches(patch_files, n_patches, prefer_bottom, rng, model, device,
-                      candidates_per_file=8, max_candidates=128,
-                      batch_size=8):
+def mine_hard_patches(
+    patch_files,
+    n_patches,
+    prefer_bottom,
+    rng,
+    model,
+    device,
+    candidates_per_file=8,
+    max_candidates=128,
+    batch_size=8,
+):
     """Score candidate patches and return the worst model/label disagreements."""
     scored = []
     files = list(patch_files)
@@ -175,8 +185,7 @@ def mine_hard_patches(patch_files, n_patches, prefer_bottom, rng, model, device,
     if not files:
         mine_hard_patches.last_scored = 0
         return []
-    per_file = max(1, min(candidates_per_file,
-                          int(np.ceil(max_candidates / len(files)))))
+    per_file = max(1, min(candidates_per_file, int(np.ceil(max_candidates / len(files)))))
     seen = 0
     for pf in files:
         if seen >= max_candidates:
@@ -194,13 +203,12 @@ def mine_hard_patches(patch_files, n_patches, prefer_bottom, rng, model, device,
         survey = pf.name.split(".")[0]
         patch_batch = np.asarray(patches[idxs], dtype=np.float32)
         mask_batch = np.asarray(masks[idxs], dtype=np.uint8)
-        pred_batch = predict_patches(model, patch_batch, device,
-                                     batch_size=batch_size)
-        for picked, patch, mask, pred in zip(idxs, patch_batch, mask_batch,
-                                             pred_batch):
+        pred_batch = predict_patches(model, patch_batch, device, batch_size=batch_size)
+        for picked, patch, mask, pred in zip(idxs, patch_batch, mask_batch, pred_batch):
             metric = compute_metrics(mask, pred)
-            scored.append((sort_key_for_hard_case(metric), survey, int(picked),
-                           patch, mask, pred, metric))
+            scored.append(
+                (sort_key_for_hard_case(metric), survey, int(picked), patch, mask, pred, metric)
+            )
             seen += 1
             if seen % 25 == 0:
                 print(f"Scored {seen} candidate patches")
@@ -241,48 +249,53 @@ def compute_metrics(mask, prediction):
     pred_line = extract_bottom_line(prediction, 0.5)
     # No metres for patches: report bottom-line error in samples (pixels).
     errs = bottom_depth_error(pred_line, gt_line, np.arange(h))
-    return dict(iou=iou, dice=dice,
-                mae_px=float(np.mean(errs)) if errs.size else float("nan"),
-                median_px=float(np.median(errs)) if errs.size else float("nan"),
-                gt_line=gt_line, pred_line=pred_line)
+    return dict(
+        iou=iou,
+        dice=dice,
+        mae_px=float(np.mean(errs)) if errs.size else float("nan"),
+        median_px=float(np.median(errs)) if errs.size else float("nan"),
+        gt_line=gt_line,
+        pred_line=pred_line,
+    )
 
 
 def _overlay(ax, gt_line, pred_line, h):
     for line, color, lw in ((gt_line, "cyan", 2.6), (pred_line, "red", 1.8)):
         v = line >= 0
         if v.any():
-            ax.plot(np.where(v)[0], np.clip(line[v], 0, h - 1),
-                    color=color, linewidth=lw, alpha=0.9)
+            ax.plot(
+                np.where(v)[0], np.clip(line[v], 0, h - 1), color=color, linewidth=lw, alpha=0.9
+            )
 
 
-def plot_single(survey, idx, patch, mask, pred, m, save_path,
-                display_mode="38khz"):
+def plot_single(survey, idx, patch, mask, pred, m, save_path, display_mode="38khz"):
     h, w = pred.shape
     fig, axes = plt.subplots(1, 2, figsize=(15, 7))
     if display_mode == "rgb":
-        axes[0].imshow(channels_to_rgb_composite(patch), aspect="auto",
-                       origin="upper")
+        axes[0].imshow(channels_to_rgb_composite(patch), aspect="auto", origin="upper")
         axes[0].set_title("RGB input composite with reference label and prediction")
     else:
-        axes[0].imshow(patch[0], aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                       origin="upper")
+        axes[0].imshow(patch[0], aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper")
         axes[0].set_title("38 kHz input Sv with reference label and prediction")
     _overlay(axes[0], m["gt_line"], m["pred_line"], h)
-    im = axes[1].imshow(pred, aspect="auto", cmap="RdYlBu_r", vmin=0, vmax=1,
-                        origin="upper")
+    im = axes[1].imshow(pred, aspect="auto", cmap="RdYlBu_r", vmin=0, vmax=1, origin="upper")
     _overlay(axes[1], m["gt_line"], m["pred_line"], h)
     axes[1].set_title("U-Net bottom probability")
-    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04),
-                   label="P(bottom)")
+    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04), label="P(bottom)")
     for ax in axes:
         ax.set_xlabel("Ping")
         ax.set_ylabel("Range (sample)")
     leg = fig.legend(
-        handles=[Line2D([0], [0], color="cyan", lw=2.6, label="Classical detector (reference label)"),
-                 Line2D([0], [0], color="red", lw=1.8, label="U-Net prediction")],
-        loc="lower center", ncol=2, framealpha=0.9, bbox_to_anchor=(0.5, -0.13),
-        title=f"IoU {m['iou']:.3f}    Dice {m['dice']:.3f}    "
-              f"bottom MAE {m['mae_px']:.1f} samples")
+        handles=[
+            Line2D([0], [0], color="cyan", lw=2.6, label="Classical detector (reference label)"),
+            Line2D([0], [0], color="red", lw=1.8, label="U-Net prediction"),
+        ],
+        loc="lower center",
+        ncol=2,
+        framealpha=0.9,
+        bbox_to_anchor=(0.5, -0.13),
+        title=f"IoU {m['iou']:.3f}    Dice {m['dice']:.3f}    bottom MAE {m['mae_px']:.1f} samples",
+    )
     leg.get_title().set_fontsize(14)
     fig.suptitle(f"Held-out test patch: {survey} p{idx}", y=1.02)
     savefig(fig, save_path)
@@ -298,39 +311,50 @@ def plot_summary_grid(items, save_path, display_mode="38khz"):
     for ax, (survey, idx, patch, mask, pred, m) in zip(axes_flat, items):
         h = patch.shape[1]
         if display_mode == "rgb":
-            ax.imshow(channels_to_rgb_composite(patch), aspect="auto",
-                      origin="upper")
+            ax.imshow(channels_to_rgb_composite(patch), aspect="auto", origin="upper")
         else:
-            ax.imshow(patch[0], aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                      origin="upper")
+            ax.imshow(patch[0], aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper")
         _overlay(ax, m["gt_line"], m["pred_line"], h)
-        ax.set_title(f"{survey} p{idx}\nIoU {m['iou']:.2f} | MAE {m['mae_px']:.1f} samp",
-                     fontsize=13)
+        ax.set_title(
+            f"{survey} p{idx}\nIoU {m['iou']:.2f} | MAE {m['mae_px']:.1f} samp", fontsize=13
+        )
         ax.set_xlabel("Ping")
         ax.set_ylabel("Range (sample)")
     for j in range(n, len(axes_flat)):
         axes_flat[j].set_visible(False)
-    fig.legend(handles=[Line2D([0], [0], color="cyan", lw=2.6, label="Classical detector (reference label)"),
-                        Line2D([0], [0], color="red", lw=1.8, label="U-Net prediction")],
-               loc="lower center", ncol=2, framealpha=0.9, bbox_to_anchor=(0.5, -0.01))
+    fig.legend(
+        handles=[
+            Line2D([0], [0], color="cyan", lw=2.6, label="Classical detector (reference label)"),
+            Line2D([0], [0], color="red", lw=1.8, label="U-Net prediction"),
+        ],
+        loc="lower center",
+        ncol=2,
+        framealpha=0.9,
+        bbox_to_anchor=(0.5, -0.01),
+    )
     fig.suptitle("Test patches: classical-detector label vs U-Net prediction", y=1.005)
     fig.tight_layout(rect=[0, 0.02, 1, 0.99])
     savefig(fig, save_path)
     plt.close(fig)
 
 
-def write_readme(out_dir, checkpoint, split, items, display_mode, selection,
-                 candidates_scored=None):
+def write_readme(
+    out_dir, checkpoint, split, items, display_mode, selection, candidates_scored=None
+):
     lines = "\n".join(
         f"  {survey} p{idx}: IoU {m['iou']:.2f}, bottom MAE {m['mae_px']:.1f} samples"
-        for survey, idx, _, _, _, m in items)
+        for survey, idx, _, _, _, m in items
+    )
     if display_mode == "rgb":
-        left_panel = ("RGB composite of the normalized three input channels "
-                      "(red=38 kHz, green=200 kHz, blue=38-200 kHz diff)")
+        left_panel = (
+            "RGB composite of the normalized three input channels "
+            "(red=38 kHz, green=200 kHz, blue=38-200 kHz diff)"
+        )
     else:
         left_panel = "38 kHz input Sv"
-    candidate_line = (f"Candidate patches scored: {candidates_scored}\n"
-                      if candidates_scored is not None else "")
+    candidate_line = (
+        f"Candidate patches scored: {candidates_scored}\n" if candidates_scored is not None else ""
+    )
     (out_dir / "_README.md").write_text(f"""# Patch probability evaluation ({out_dir.name})
 
 patches  test-set  probability  inference  classical-label
@@ -348,7 +372,7 @@ held-out '{split}' survey split with a checkpoint not trained on those surveys
 (genuine generalization), and metrics moved out of the title into the legend.
 
 Model: {Path(checkpoint).relative_to(PROJECT_ROOT)}
-Split: {split} ({', '.join(SPLITS[split])})
+Split: {split} ({", ".join(SPLITS[split])})
 Display: {display_mode}
 Selection: {selection}
 {candidate_line}Source: code/data_visualization/gen_patch_prob_eval.py
@@ -366,20 +390,44 @@ def main():
     ap.add_argument("--output-dir", default=str(OUTPUT_DIR))
     ap.add_argument("--device", default=None)
     ap.add_argument("--n", type=int, default=8, help="number of patches to render")
-    ap.add_argument("--split", default="test", choices=list(SPLITS),
-                    help="canonical survey split to sample patches from")
-    ap.add_argument("--all-patches", action="store_true",
-                    help="sample randomly instead of preferring clear-interface patches")
-    ap.add_argument("--display", default="38khz", choices=["38khz", "rgb"],
-                    help="left-panel display: single 38 kHz channel or RGB composite")
-    ap.add_argument("--selection", default="sample", choices=["sample", "hardest"],
-                    help="sample patches or mine low-IoU/high-error hard cases")
-    ap.add_argument("--candidates-per-file", type=int, default=8,
-                    help="max candidate patches per file for --selection hardest")
-    ap.add_argument("--max-candidates", type=int, default=128,
-                    help="max total candidates scored for --selection hardest")
-    ap.add_argument("--batch-size", type=int, default=8,
-                    help="inference batch size for --selection hardest")
+    ap.add_argument(
+        "--split",
+        default="test",
+        choices=list(SPLITS),
+        help="canonical survey split to sample patches from",
+    )
+    ap.add_argument(
+        "--all-patches",
+        action="store_true",
+        help="sample randomly instead of preferring clear-interface patches",
+    )
+    ap.add_argument(
+        "--display",
+        default="38khz",
+        choices=["38khz", "rgb"],
+        help="left-panel display: single 38 kHz channel or RGB composite",
+    )
+    ap.add_argument(
+        "--selection",
+        default="sample",
+        choices=["sample", "hardest"],
+        help="sample patches or mine low-IoU/high-error hard cases",
+    )
+    ap.add_argument(
+        "--candidates-per-file",
+        type=int,
+        default=8,
+        help="max candidate patches per file for --selection hardest",
+    )
+    ap.add_argument(
+        "--max-candidates",
+        type=int,
+        default=128,
+        help="max total candidates scored for --selection hardest",
+    )
+    ap.add_argument(
+        "--batch-size", type=int, default=8, help="inference batch size for --selection hardest"
+    )
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
@@ -391,25 +439,31 @@ def main():
     model = load_model(args.checkpoint, device)
 
     prefixes = split_prefixes(args.split)
-    patch_files = sorted(p for p in Path(args.cache_dir).glob("*.512x512.patches.npy")
-                         if p.name.startswith(prefixes))
+    patch_files = sorted(
+        p for p in Path(args.cache_dir).glob("*.512x512.patches.npy") if p.name.startswith(prefixes)
+    )
     if not patch_files:
         raise SystemExit(
-            f"No '{args.split}'-split patches (prefixes {prefixes}) in {args.cache_dir}")
+            f"No '{args.split}'-split patches (prefixes {prefixes}) in {args.cache_dir}"
+        )
     print(f"Found {len(patch_files)} cached '{args.split}'-split patch files")
 
     rng = np.random.default_rng(args.seed)
     if args.selection == "hardest":
         items = mine_hard_patches(
-            patch_files, args.n, prefer_bottom=not args.all_patches, rng=rng,
-            model=model, device=device,
+            patch_files,
+            args.n,
+            prefer_bottom=not args.all_patches,
+            rng=rng,
+            model=model,
+            device=device,
             candidates_per_file=args.candidates_per_file,
             max_candidates=args.max_candidates,
-            batch_size=args.batch_size)
+            batch_size=args.batch_size,
+        )
         print(f"Selected {len(items)} hard patches")
     else:
-        picked = sample_patches(patch_files, args.n,
-                                prefer_bottom=not args.all_patches, rng=rng)
+        picked = sample_patches(patch_files, args.n, prefer_bottom=not args.all_patches, rng=rng)
         print(f"Selected {len(picked)} patches")
         items = []
         for survey, idx, patch, mask in picked:
@@ -418,21 +472,35 @@ def main():
             items.append((survey, idx, patch, mask, pred, m))
 
     for i, (survey, idx, patch, mask, pred, m) in enumerate(items, 1):
-        print(f"[{i}/{len(items)}] {survey} p{idx}  IoU {m['iou']:.3f}  "
-              f"Dice {m['dice']:.3f}  MAE {m['mae_px']:.1f} samp")
-        plot_single(survey, idx, patch, mask, pred, m,
-                    out_dir / f"{survey}_p{idx}_eval.png",
-                    display_mode=args.display)
+        print(
+            f"[{i}/{len(items)}] {survey} p{idx}  IoU {m['iou']:.3f}  "
+            f"Dice {m['dice']:.3f}  MAE {m['mae_px']:.1f} samp"
+        )
+        plot_single(
+            survey,
+            idx,
+            patch,
+            mask,
+            pred,
+            m,
+            out_dir / f"{survey}_p{idx}_eval.png",
+            display_mode=args.display,
+        )
 
     if items:
-        plot_summary_grid(items, out_dir / "summary_grid.png",
-                          display_mode=args.display)
+        plot_summary_grid(items, out_dir / "summary_grid.png", display_mode=args.display)
         candidates_scored = None
         if args.selection == "hardest":
             candidates_scored = getattr(mine_hard_patches, "last_scored", None)
-        write_readme(out_dir, args.checkpoint, args.split, items,
-                     display_mode=args.display, selection=args.selection,
-                     candidates_scored=candidates_scored)
+        write_readme(
+            out_dir,
+            args.checkpoint,
+            args.split,
+            items,
+            display_mode=args.display,
+            selection=args.selection,
+            candidates_scored=candidates_scored,
+        )
     print(f"\nDone. {len(items)} patches -> {out_dir}")
 
 

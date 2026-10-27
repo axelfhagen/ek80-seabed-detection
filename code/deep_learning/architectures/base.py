@@ -19,8 +19,7 @@ class SegmentationModel(ABC, nn.Module):
     """
 
     @abstractmethod
-    def forward(self, x):
-        ...
+    def forward(self, x): ...
 
     @abstractmethod
     def get_encoder_params(self) -> list[nn.Parameter]:

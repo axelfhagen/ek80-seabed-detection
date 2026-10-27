@@ -13,16 +13,28 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 PATCH_METRIC_COLS = [
-    'zero_frac', 'dynamic_range', 'water_col_mean', 'water_col_std',
-    'bottom_coverage', 'bottom_smoothness', 'bottom_frac',
-    'bottom_depth_range', 'bottom_gradient_max',
-    'boundary_contrast', 'freq_coherence',
+    "zero_frac",
+    "dynamic_range",
+    "water_col_mean",
+    "water_col_std",
+    "bottom_coverage",
+    "bottom_smoothness",
+    "bottom_frac",
+    "bottom_depth_range",
+    "bottom_gradient_max",
+    "boundary_contrast",
+    "freq_coherence",
 ]
 
 MASK_METRIC_COLS = [
-    'bottom_continuity', 'bottom_curvature', 'mask_edge_intensity',
-    'cross_freq_bottom_diff', 'below_bottom_decay', 'above_bottom_cv',
-    'mask_connectivity', 'bottom_snr',
+    "bottom_continuity",
+    "bottom_curvature",
+    "mask_edge_intensity",
+    "cross_freq_bottom_diff",
+    "below_bottom_decay",
+    "above_bottom_cv",
+    "mask_connectivity",
+    "bottom_snr",
 ]
 
 ALL_METRIC_COLS = PATCH_METRIC_COLS + MASK_METRIC_COLS
@@ -33,28 +45,28 @@ ALL_METRIC_COLS = PATCH_METRIC_COLS + MASK_METRIC_COLS
 # ---------------------------------------------------------------------------
 
 PATCH_METRIC_DIRECTION = {
-    'zero_frac':          'lower_is_better',
-    'dynamic_range':      'higher_is_better',
-    'water_col_mean':     'lower_is_better',
-    'water_col_std':      'lower_is_better',
-    'bottom_coverage':    'higher_is_better',
-    'bottom_smoothness':  'lower_is_better',
-    'bottom_frac':        'neutral',
-    'bottom_depth_range': 'lower_is_better',
-    'bottom_gradient_max': 'lower_is_better',
-    'boundary_contrast':  'higher_is_better',
-    'freq_coherence':     'higher_is_better',
+    "zero_frac": "lower_is_better",
+    "dynamic_range": "higher_is_better",
+    "water_col_mean": "lower_is_better",
+    "water_col_std": "lower_is_better",
+    "bottom_coverage": "higher_is_better",
+    "bottom_smoothness": "lower_is_better",
+    "bottom_frac": "neutral",
+    "bottom_depth_range": "lower_is_better",
+    "bottom_gradient_max": "lower_is_better",
+    "boundary_contrast": "higher_is_better",
+    "freq_coherence": "higher_is_better",
 }
 
 MASK_METRIC_DIRECTION = {
-    'bottom_continuity':      'higher_is_better',
-    'bottom_curvature':       'lower_is_better',
-    'mask_edge_intensity':    'higher_is_better',
-    'cross_freq_bottom_diff': 'lower_is_better',
-    'below_bottom_decay':     'lower_is_better',
-    'above_bottom_cv':        'lower_is_better',
-    'mask_connectivity':      'lower_is_better',
-    'bottom_snr':             'higher_is_better',
+    "bottom_continuity": "higher_is_better",
+    "bottom_curvature": "lower_is_better",
+    "mask_edge_intensity": "higher_is_better",
+    "cross_freq_bottom_diff": "lower_is_better",
+    "below_bottom_decay": "lower_is_better",
+    "above_bottom_cv": "lower_is_better",
+    "mask_connectivity": "lower_is_better",
+    "bottom_snr": "higher_is_better",
 }
 
 
@@ -63,34 +75,35 @@ MASK_METRIC_DIRECTION = {
 # ---------------------------------------------------------------------------
 
 PATCH_METRIC_WEIGHTS = {
-    'zero_frac':          1.0,
-    'dynamic_range':      1.0,
-    'water_col_mean':     0.5,
-    'water_col_std':      0.5,
-    'bottom_coverage':    0.0,   # constant 1.0 in current dataset
-    'bottom_smoothness':  1.5,
-    'bottom_frac':        0.5,
-    'bottom_depth_range': 1.0,
-    'bottom_gradient_max': 1.0,
-    'boundary_contrast':  2.0,
-    'freq_coherence':     1.0,
+    "zero_frac": 1.0,
+    "dynamic_range": 1.0,
+    "water_col_mean": 0.5,
+    "water_col_std": 0.5,
+    "bottom_coverage": 0.0,  # constant 1.0 in current dataset
+    "bottom_smoothness": 1.5,
+    "bottom_frac": 0.5,
+    "bottom_depth_range": 1.0,
+    "bottom_gradient_max": 1.0,
+    "boundary_contrast": 2.0,
+    "freq_coherence": 1.0,
 }
 
 MASK_METRIC_WEIGHTS = {
-    'bottom_continuity':      0.0,   # constant 1.0 in current dataset
-    'bottom_curvature':       1.5,
-    'mask_edge_intensity':    2.0,
-    'cross_freq_bottom_diff': 1.5,
-    'below_bottom_decay':     1.0,
-    'above_bottom_cv':        0.5,
-    'mask_connectivity':      0.0,   # constant 1 in current dataset
-    'bottom_snr':             2.0,
+    "bottom_continuity": 0.0,  # constant 1.0 in current dataset
+    "bottom_curvature": 1.5,
+    "mask_edge_intensity": 2.0,
+    "cross_freq_bottom_diff": 1.5,
+    "below_bottom_decay": 1.0,
+    "above_bottom_cv": 0.5,
+    "mask_connectivity": 0.0,  # constant 1 in current dataset
+    "bottom_snr": 2.0,
 }
 
 
 # ---------------------------------------------------------------------------
 # Rank normalisation
 # ---------------------------------------------------------------------------
+
 
 def rank_normalise(series, direction):
     """Rank-normalise a series to [0, 1] where 1 = best quality.
@@ -104,19 +117,20 @@ def rank_normalise(series, direction):
     -------
     ranked : pd.Series in [0, 1]
     """
-    ranked = series.rank(pct=True, na_option='bottom')
-    if direction == 'lower_is_better':
+    ranked = series.rank(pct=True, na_option="bottom")
+    if direction == "lower_is_better":
         ranked = 1.0 - ranked
-    elif direction == 'neutral':
+    elif direction == "neutral":
         median = series.median()
         dist = (series - median).abs()
-        ranked = 1.0 - dist.rank(pct=True, na_option='bottom')
+        ranked = 1.0 - dist.rank(pct=True, na_option="bottom")
     return ranked
 
 
 # ---------------------------------------------------------------------------
 # Composite scores
 # ---------------------------------------------------------------------------
+
 
 def _weighted_composite(df, metric_cols, directions, weights):
     """Compute a weighted rank-normalised composite score."""
@@ -141,9 +155,7 @@ def compute_patch_quality_score(df):
 
     Returns a Series aligned with df's index, values in [0, 1].
     """
-    return _weighted_composite(
-        df, PATCH_METRIC_COLS, PATCH_METRIC_DIRECTION, PATCH_METRIC_WEIGHTS
-    )
+    return _weighted_composite(df, PATCH_METRIC_COLS, PATCH_METRIC_DIRECTION, PATCH_METRIC_WEIGHTS)
 
 
 def compute_mask_quality_score(df):
@@ -151,9 +163,7 @@ def compute_mask_quality_score(df):
 
     Returns a Series aligned with df's index, values in [0, 1].
     """
-    return _weighted_composite(
-        df, MASK_METRIC_COLS, MASK_METRIC_DIRECTION, MASK_METRIC_WEIGHTS
-    )
+    return _weighted_composite(df, MASK_METRIC_COLS, MASK_METRIC_DIRECTION, MASK_METRIC_WEIGHTS)
 
 
 def compute_combined_score(df, patch_weight=0.5, mask_weight=0.5):
@@ -167,8 +177,7 @@ def compute_combined_score(df, patch_weight=0.5, mask_weight=0.5):
     return (patch_weight * patch_score + mask_weight * mask_score) / total
 
 
-def classify_tiers(df, reject_threshold=0.20, accept_threshold=0.60,
-                   score_col='combined_score'):
+def classify_tiers(df, reject_threshold=0.20, accept_threshold=0.60, score_col="combined_score"):
     """Classify patches into reject / review / accept tiers.
 
     Parameters
@@ -183,7 +192,7 @@ def classify_tiers(df, reject_threshold=0.20, accept_threshold=0.60,
     tiers : pd.Series of str ('reject', 'review', 'accept')
     """
     scores = df[score_col]
-    tiers = pd.Series('review', index=df.index)
-    tiers[scores < reject_threshold] = 'reject'
-    tiers[scores >= accept_threshold] = 'accept'
+    tiers = pd.Series("review", index=df.index)
+    tiers[scores < reject_threshold] = "reject"
+    tiers[scores >= accept_threshold] = "accept"
     return tiers

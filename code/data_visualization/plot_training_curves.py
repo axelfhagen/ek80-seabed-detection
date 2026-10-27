@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -74,8 +75,16 @@ def plot_transfer_val_iou():
         m = MODELS[name]
         ax.plot(e, v, "-", color=m["color"], label=m["label"], lw=2.2)
         best = int(np.argmax(v))
-        ax.plot(best + 1, v[best], "o", color=m["color"], ms=9,
-                markeredgecolor="black", markeredgewidth=0.8, zorder=5)
+        ax.plot(
+            best + 1,
+            v[best],
+            "o",
+            color=m["color"],
+            ms=9,
+            markeredgecolor="black",
+            markeredgewidth=0.8,
+            zorder=5,
+        )
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Validation IoU")
     ax.set_xlim(left=0)
@@ -96,17 +105,21 @@ def plot_convergence_loss_iou():
         tl, vl = np.asarray(h["train_loss"]), np.asarray(h["val_loss"])
         ti, vi = np.asarray(h["train_iou"]), np.asarray(h["val_iou"])
         e = epochs(tl)
-        ax_loss.plot(e, tl, "-", color=m["color"], lw=2.2,
-                     label=f"{m['label']} (train)")
-        ax_loss.plot(e, vl, "--", color=m["color"], lw=2.2,
-                     label=f"{m['label']} (val)")
-        ax_iou.plot(e, ti, "-", color=m["color"], lw=2.2,
-                    label=f"{m['label']} (train)")
-        ax_iou.plot(e, vi, "--", color=m["color"], lw=2.2,
-                    label=f"{m['label']} (val)")
+        ax_loss.plot(e, tl, "-", color=m["color"], lw=2.2, label=f"{m['label']} (train)")
+        ax_loss.plot(e, vl, "--", color=m["color"], lw=2.2, label=f"{m['label']} (val)")
+        ax_iou.plot(e, ti, "-", color=m["color"], lw=2.2, label=f"{m['label']} (train)")
+        ax_iou.plot(e, vi, "--", color=m["color"], lw=2.2, label=f"{m['label']} (val)")
         best = int(np.argmax(vi))
-        ax_iou.plot(best + 1, vi[best], "o", color=m["color"], ms=9,
-                    markeredgecolor="black", markeredgewidth=0.8, zorder=5)
+        ax_iou.plot(
+            best + 1,
+            vi[best],
+            "o",
+            color=m["color"],
+            ms=9,
+            markeredgecolor="black",
+            markeredgewidth=0.8,
+            zorder=5,
+        )
 
     ax_loss.set_xlabel("Epoch")
     ax_loss.set_ylabel("Loss (Dice + BCE)")
@@ -136,9 +149,11 @@ def main():
         h = load_history(name)
         vi = np.asarray(h["val_iou"])
         best = int(np.argmax(vi))
-        print(f"{name:9s} epochs={len(vi):3d} best_val_iou={vi[best]:.4f} "
-              f"@epoch {best + 1}  final_train_loss={h['train_loss'][-1]:.4f} "
-              f"final_val_loss={h['val_loss'][-1]:.4f}")
+        print(
+            f"{name:9s} epochs={len(vi):3d} best_val_iou={vi[best]:.4f} "
+            f"@epoch {best + 1}  final_train_loss={h['train_loss'][-1]:.4f} "
+            f"final_val_loss={h['val_loss'][-1]:.4f}"
+        )
     print(f"Figures -> {OUTPUT_DIR}")
 
 

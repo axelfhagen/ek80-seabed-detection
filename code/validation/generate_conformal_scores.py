@@ -41,26 +41,37 @@ if _project_root not in sys.path:
 from project_paths import REPO_ROOT  # noqa: E402
 
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import torch  # noqa: E402
 
 from data_visualization.thesis_style import (  # noqa: E402
-    apply_thesis_style, FIGSIZE_STD, FIGSIZE_HALF, savefig,
-    REFERENCE_BOTTOM_COLOR, UNET_PREDICTION_COLOR,
+    apply_thesis_style,
+    FIGSIZE_STD,
+    FIGSIZE_HALF,
+    savefig,
+    REFERENCE_BOTTOM_COLOR,
+    UNET_PREDICTION_COLOR,
 )
 from validation.conformal import (  # noqa: E402
-    conformal_quantile, conformal_quantile_two_sided,
-    calibrate_depth, calibrate_depth_signed,
-    calibrate_locally_weighted, calibrate_locally_weighted_signed,
+    conformal_quantile,
+    conformal_quantile_two_sided,
+    calibrate_depth,
+    calibrate_depth_signed,
+    calibrate_locally_weighted,
+    calibrate_locally_weighted_signed,
     calibrate_cqr,
-    predict_depth_band, predict_depth_band_signed,
-    predict_locally_weighted_band, predict_locally_weighted_band_signed,
+    predict_depth_band,
+    predict_depth_band_signed,
+    predict_locally_weighted_band,
+    predict_locally_weighted_band_signed,
     predict_cqr_band,
 )
 from validation.uncertainty import bottom_uncertainty_band  # noqa: E402
 from validation.generate_conformal_adaptive import (  # noqa: E402
-    process_file, get_split,
+    process_file,
+    get_split,
 )
 from validation.generate_conformal_plot import load_model, CHECKPOINT  # noqa: E402
 
@@ -70,40 +81,41 @@ ALPHA = 0.10
 RNG_SEED = 0
 EPSILON = 0.5
 MAX_PINGS = 6000
-SIGMA_LO_T, SIGMA_HI_T = 0.25, 0.75   # transition thresholds for sigma + CQR
+SIGMA_LO_T, SIGMA_HI_T = 0.25, 0.75  # transition thresholds for sigma + CQR
 ALPHAS = np.arange(0.01, 0.51, 0.01)
 
 # Method registry: key -> (label, asymmetric?, adaptive?, colour, marker)
 METHODS = {
-    'abs_constant':    ('Absolute, constant',     False, False, '#ff7f0e', 'o'),
-    'signed_constant': ('Signed, constant',       True,  False, '#d62728', 's'),
-    'abs_local':       ('Absolute, locally-wtd',  False, True,  '#2ca02c', '^'),
-    'signed_local':    ('Signed, locally-wtd',    True,  True,  '#9467bd', 'v'),
-    'cqr':             ('CQR (profile quantiles)', True,  True,  '#1f77b4', 'D'),
+    "abs_constant": ("Absolute, constant", False, False, "#ff7f0e", "o"),
+    "signed_constant": ("Signed, constant", True, False, "#d62728", "s"),
+    "abs_local": ("Absolute, locally-wtd", False, True, "#2ca02c", "^"),
+    "signed_local": ("Signed, locally-wtd", True, True, "#9467bd", "v"),
+    "cqr": ("CQR (profile quantiles)", True, True, "#1f77b4", "D"),
 }
-ORDER = ['abs_constant', 'signed_constant', 'abs_local', 'signed_local', 'cqr']
+ORDER = ["abs_constant", "signed_constant", "abs_local", "signed_local", "cqr"]
 
 # Echogram overlay colours: reference label cyan, U-Net prediction red.
 C_GT = REFERENCE_BOTTOM_COLOR
 C_PRED = UNET_PREDICTION_COLOR
-C_BAND = '#ff7f0e'
+C_BAND = "#ff7f0e"
 
 
 # ── Per-file features ───────────────────────────────────────────────────
 def summarize(result):
     """Per-ping 1-D arrays used by every score; the 2-D arrays are dropped."""
-    prob = result['prediction']
-    ra = result['range_array']
+    prob = result["prediction"]
+    ra = result["range_array"]
     # bottom_uncertainty_band returns (deep-edge p>=hi_t, shallow-edge p>=lo_t, width)
     d_deep, d_shallow, width = bottom_uncertainty_band(
-        prob, ra, lower_t=SIGMA_LO_T, upper_t=SIGMA_HI_T)
+        prob, ra, lower_t=SIGMA_LO_T, upper_t=SIGMA_HI_T
+    )
     return {
-        'name': result['name'],
-        'pred_depths': np.asarray(result['pred_depths'], dtype=np.float64),
-        'gt_depths': np.asarray(result['gt_depths'], dtype=np.float64),
-        'sigma': np.asarray(width, dtype=np.float64),
-        'cqr_lo': np.asarray(d_shallow, dtype=np.float64),   # shallow edge
-        'cqr_hi': np.asarray(d_deep, dtype=np.float64),      # deep edge
+        "name": result["name"],
+        "pred_depths": np.asarray(result["pred_depths"], dtype=np.float64),
+        "gt_depths": np.asarray(result["gt_depths"], dtype=np.float64),
+        "sigma": np.asarray(width, dtype=np.float64),
+        "cqr_lo": np.asarray(d_shallow, dtype=np.float64),  # shallow edge
+        "cqr_hi": np.asarray(d_deep, dtype=np.float64),  # deep edge
     }
 
 
@@ -116,21 +128,27 @@ def pool(summaries):
     """
     pred, gt, sigma, lo, hi = [], [], [], [], []
     for s in summaries:
-        p, g = s['pred_depths'], s['gt_depths']
-        v = (np.isfinite(p) & np.isfinite(g) & (p > 0) & (g > 0)
-             & np.isfinite(s['sigma'])
-             & np.isfinite(s['cqr_lo']) & np.isfinite(s['cqr_hi']))
+        p, g = s["pred_depths"], s["gt_depths"]
+        v = (
+            np.isfinite(p)
+            & np.isfinite(g)
+            & (p > 0)
+            & (g > 0)
+            & np.isfinite(s["sigma"])
+            & np.isfinite(s["cqr_lo"])
+            & np.isfinite(s["cqr_hi"])
+        )
         pred.append(p[v])
         gt.append(g[v])
-        sigma.append(np.maximum(s['sigma'][v], EPSILON))
-        lo.append(s['cqr_lo'][v])
-        hi.append(s['cqr_hi'][v])
+        sigma.append(np.maximum(s["sigma"][v], EPSILON))
+        lo.append(s["cqr_lo"][v])
+        hi.append(s["cqr_hi"][v])
     return {
-        'pred': np.concatenate(pred),
-        'gt': np.concatenate(gt),
-        'sigma': np.concatenate(sigma),
-        'cqr_lo': np.concatenate(lo),
-        'cqr_hi': np.concatenate(hi),
+        "pred": np.concatenate(pred),
+        "gt": np.concatenate(gt),
+        "sigma": np.concatenate(sigma),
+        "cqr_lo": np.concatenate(lo),
+        "cqr_hi": np.concatenate(hi),
     }
 
 
@@ -138,35 +156,34 @@ def pool(summaries):
 def calib_scores(d):
     """Calibration scores per method from a pooled dict."""
     return {
-        'abs_constant':    calibrate_depth(d['pred'], d['gt']),
-        'signed_constant': calibrate_depth_signed(d['pred'], d['gt']),
-        'abs_local':       calibrate_locally_weighted(
-            d['pred'], d['gt'], d['sigma'], epsilon=EPSILON),
-        'signed_local':    calibrate_locally_weighted_signed(
-            d['pred'], d['gt'], d['sigma'], epsilon=EPSILON),
-        'cqr':             calibrate_cqr(d['cqr_lo'], d['cqr_hi'], d['gt']),
+        "abs_constant": calibrate_depth(d["pred"], d["gt"]),
+        "signed_constant": calibrate_depth_signed(d["pred"], d["gt"]),
+        "abs_local": calibrate_locally_weighted(d["pred"], d["gt"], d["sigma"], epsilon=EPSILON),
+        "signed_local": calibrate_locally_weighted_signed(
+            d["pred"], d["gt"], d["sigma"], epsilon=EPSILON
+        ),
+        "cqr": calibrate_cqr(d["cqr_lo"], d["cqr_hi"], d["gt"]),
     }
 
 
 def covered_mask(method, d, alpha, cs):
     """Per-ping boolean coverage on a pooled test dict at level alpha."""
-    pred, gt, sig = d['pred'], d['gt'], d['sigma']
-    if method == 'abs_constant':
+    pred, gt, sig = d["pred"], d["gt"], d["sigma"]
+    if method == "abs_constant":
         q = conformal_quantile(cs[method], alpha)
         u, l = predict_depth_band(pred, q)
-    elif method == 'signed_constant':
+    elif method == "signed_constant":
         q_lo, q_hi = conformal_quantile_two_sided(cs[method], alpha)
         u, l = predict_depth_band_signed(pred, q_lo, q_hi)
-    elif method == 'abs_local':
+    elif method == "abs_local":
         q = conformal_quantile(cs[method], alpha)
         u, l, _ = predict_locally_weighted_band(pred, sig, q, epsilon=EPSILON)
-    elif method == 'signed_local':
+    elif method == "signed_local":
         q_lo, q_hi = conformal_quantile_two_sided(cs[method], alpha)
-        u, l, _ = predict_locally_weighted_band_signed(
-            pred, sig, q_lo, q_hi, epsilon=EPSILON)
-    elif method == 'cqr':
+        u, l, _ = predict_locally_weighted_band_signed(pred, sig, q_lo, q_hi, epsilon=EPSILON)
+    elif method == "cqr":
         q = conformal_quantile(cs[method], alpha)
-        u, l, _ = predict_cqr_band(d['cqr_lo'], d['cqr_hi'], q)
+        u, l, _ = predict_cqr_band(d["cqr_lo"], d["cqr_hi"], q)
     else:
         raise ValueError(method)
     return (gt >= u) & (gt <= l), (l - u)
@@ -184,23 +201,21 @@ def plot_coverage(calib, test, save_path):
     cs = calib_scores(calib)
     nominal = 1 - ALPHAS
     fig, ax = plt.subplots(figsize=FIGSIZE_HALF)
-    ax.plot([0.5, 1.0], [0.5, 1.0], 'k--', linewidth=1.5, alpha=0.5,
-            label='Ideal')
-    ax.fill_between(nominal, nominal - 0.05, nominal + 0.05,
-                    alpha=0.08, color='gray')
+    ax.plot([0.5, 1.0], [0.5, 1.0], "k--", linewidth=1.5, alpha=0.5, label="Ideal")
+    ax.fill_between(nominal, nominal - 0.05, nominal + 0.05, alpha=0.08, color="gray")
     for m in ORDER:
         label, _, _, colour, marker = METHODS[m]
-        emp = np.array([covered_mask(m, test, a, cs)[0].mean()
-                        for a in ALPHAS])
-        ax.plot(nominal, emp, '-', marker=marker, markersize=3, linewidth=1.6,
-                color=colour, label=label)
-    ax.set_xlabel('Nominal coverage (1 - alpha)')
-    ax.set_ylabel('Empirical coverage (pooled test pings)')
-    ax.set_title('Conformity-score coverage calibration')
+        emp = np.array([covered_mask(m, test, a, cs)[0].mean() for a in ALPHAS])
+        ax.plot(
+            nominal, emp, "-", marker=marker, markersize=3, linewidth=1.6, color=colour, label=label
+        )
+    ax.set_xlabel("Nominal coverage (1 - alpha)")
+    ax.set_ylabel("Empirical coverage (pooled test pings)")
+    ax.set_title("Conformity-score coverage calibration")
     ax.set_xlim(0.48, 1.02)
     ax.set_ylim(0.48, 1.02)
-    ax.set_aspect('equal')
-    ax.legend(loc='lower right', fontsize=9)
+    ax.set_aspect("equal")
+    ax.legend(loc="lower right", fontsize=9)
     ax.grid(True, alpha=0.3)
     savefig(fig, save_path)
     plt.close(fig)
@@ -217,21 +232,22 @@ def plot_summary_bars(calib, test, alpha, save_path):
         bw.append(w)
     x = np.arange(len(ORDER))
     fig, axes = plt.subplots(1, 2, figsize=(FIGSIZE_STD[0] + 2, 5))
-    axes[0].bar(x, cov, color=colours, edgecolor='black', linewidth=0.6)
-    axes[0].axhline(1 - alpha, color='black', linestyle='--', linewidth=1.6,
-                    label=f'target {1 - alpha:.2f}')
+    axes[0].bar(x, cov, color=colours, edgecolor="black", linewidth=0.6)
+    axes[0].axhline(
+        1 - alpha, color="black", linestyle="--", linewidth=1.6, label=f"target {1 - alpha:.2f}"
+    )
     axes[0].set_ylim(0.80, 1.0)
-    axes[0].set_ylabel('Empirical coverage')
-    axes[0].set_title(f'Coverage at alpha = {alpha}')
+    axes[0].set_ylabel("Empirical coverage")
+    axes[0].set_title(f"Coverage at alpha = {alpha}")
     axes[0].legend(fontsize=10)
-    axes[1].bar(x, bw, color=colours, edgecolor='black', linewidth=0.6)
-    axes[1].set_ylabel('Mean band width (m)')
-    axes[1].set_title('Mean band width (efficiency)')
+    axes[1].bar(x, bw, color=colours, edgecolor="black", linewidth=0.6)
+    axes[1].set_ylabel("Mean band width (m)")
+    axes[1].set_title("Mean band width (efficiency)")
     for ax in axes:
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, rotation=35, ha='right', fontsize=10)
-        ax.grid(True, axis='y', alpha=0.3)
-    fig.suptitle('Conformity scores: coverage vs efficiency', y=1.02)
+        ax.set_xticklabels(labels, rotation=35, ha="right", fontsize=10)
+        ax.grid(True, axis="y", alpha=0.3)
+    fig.suptitle("Conformity scores: coverage vs efficiency", y=1.02)
     fig.tight_layout()
     savefig(fig, save_path)
     plt.close(fig)
@@ -250,26 +266,26 @@ def plot_score_distributions(calib, alpha, save_path):
         s = s[np.isfinite(s)]
         lo_x = np.percentile(s, 0.5)
         hi_x = np.percentile(s, 99.5)
-        ax.hist(s, bins=60, range=(lo_x, hi_x), color=colour, alpha=0.7,
-                edgecolor='white')
+        ax.hist(s, bins=60, range=(lo_x, hi_x), color=colour, alpha=0.7, edgecolor="white")
         if asym:
             q_lo, q_hi = conformal_quantile_two_sided(cs[m], alpha)
-            ax.axvline(q_lo, color='black', linewidth=1.8, linestyle='--',
-                       label=f'q_lo = {q_lo:.2f}')
-            ax.axvline(q_hi, color='black', linewidth=1.8, linestyle='-',
-                       label=f'q_hi = {q_hi:.2f}')
-            ax.axvline(0.0, color='gray', linewidth=1.0, alpha=0.6)
+            ax.axvline(
+                q_lo, color="black", linewidth=1.8, linestyle="--", label=f"q_lo = {q_lo:.2f}"
+            )
+            ax.axvline(
+                q_hi, color="black", linewidth=1.8, linestyle="-", label=f"q_hi = {q_hi:.2f}"
+            )
+            ax.axvline(0.0, color="gray", linewidth=1.0, alpha=0.6)
         else:
             q = conformal_quantile(cs[m], alpha)
-            ax.axvline(q, color='black', linewidth=1.8, linestyle='--',
-                       label=f'q = {q:.2f}')
+            ax.axvline(q, color="black", linewidth=1.8, linestyle="--", label=f"q = {q:.2f}")
         ax.set_title(label)
-        ax.set_xlabel('Score')
-        ax.set_ylabel('Count')
+        ax.set_xlabel("Score")
+        ax.set_ylabel("Count")
         ax.legend(fontsize=9)
         ax.grid(True, alpha=0.3)
-    axes[-1].axis('off')
-    fig.suptitle(f'Calibration score distributions (alpha = {alpha})', y=1.0)
+    axes[-1].axis("off")
+    fig.suptitle(f"Calibration score distributions (alpha = {alpha})", y=1.0)
     fig.tight_layout()
     savefig(fig, save_path)
     plt.close(fig)
@@ -284,41 +300,52 @@ def plot_asymmetry(calib, alpha, save_path):
     |q_lo| != |q_hi| are exactly the directional bias the symmetric bands
     cannot represent.
     """
-    signed = calibrate_depth_signed(calib['pred'], calib['gt'])
+    signed = calibrate_depth_signed(calib["pred"], calib["gt"])
     signed_l = calibrate_locally_weighted_signed(
-        calib['pred'], calib['gt'], calib['sigma'], epsilon=EPSILON)
+        calib["pred"], calib["gt"], calib["sigma"], epsilon=EPSILON
+    )
     q_lo_c, q_hi_c = conformal_quantile_two_sided(signed, alpha)
     q_lo_l, q_hi_l = conformal_quantile_two_sided(signed_l, alpha)
 
     fig, axes = plt.subplots(1, 2, figsize=(FIGSIZE_STD[0] + 2, 5))
     panels = [
-        (axes[0], signed, q_lo_c, q_hi_c, 'Signed residual: gt - pred (m)',
-         'Signed constant score', '#d62728'),
-        (axes[1], signed_l, q_lo_l, q_hi_l, 'Signed normalised: (gt - pred)/sigma',
-         'Signed locally-weighted score', '#9467bd'),
+        (
+            axes[0],
+            signed,
+            q_lo_c,
+            q_hi_c,
+            "Signed residual: gt - pred (m)",
+            "Signed constant score",
+            "#d62728",
+        ),
+        (
+            axes[1],
+            signed_l,
+            q_lo_l,
+            q_hi_l,
+            "Signed normalised: (gt - pred)/sigma",
+            "Signed locally-weighted score",
+            "#9467bd",
+        ),
     ]
     for ax, s, q_lo, q_hi, xlabel, title, colour in panels:
         s = s[np.isfinite(s)]
         rng = (np.percentile(s, 0.5), np.percentile(s, 99.5))
-        ax.hist(s, bins=70, range=rng, color=colour, alpha=0.7,
-                edgecolor='white')
+        ax.hist(s, bins=70, range=rng, color=colour, alpha=0.7, edgecolor="white")
         med = float(np.median(s))
-        ax.axvline(0.0, color='gray', linewidth=1.2, alpha=0.7,
-                   label='zero (no bias)')
-        ax.axvline(med, color='black', linewidth=1.6, linestyle=':',
-                   label=f'median = {med:+.2f}')
-        ax.axvline(q_lo, color='black', linewidth=1.8, linestyle='--',
-                   label=f'q_lo = {q_lo:+.2f}')
-        ax.axvline(q_hi, color='black', linewidth=1.8, linestyle='-',
-                   label=f'q_hi = {q_hi:+.2f}')
+        ax.axvline(0.0, color="gray", linewidth=1.2, alpha=0.7, label="zero (no bias)")
+        ax.axvline(med, color="black", linewidth=1.6, linestyle=":", label=f"median = {med:+.2f}")
+        ax.axvline(q_lo, color="black", linewidth=1.8, linestyle="--", label=f"q_lo = {q_lo:+.2f}")
+        ax.axvline(q_hi, color="black", linewidth=1.8, linestyle="-", label=f"q_hi = {q_hi:+.2f}")
         asym = abs(q_hi) - abs(q_lo)
-        ax.set_title(f'{title}\n|q_hi|-|q_lo| = {asym:+.2f}')
+        ax.set_title(f"{title}\n|q_hi|-|q_lo| = {asym:+.2f}")
         ax.set_xlabel(xlabel)
-        ax.set_ylabel('Count')
+        ax.set_ylabel("Count")
         ax.legend(fontsize=9)
         ax.grid(True, alpha=0.3)
-    fig.suptitle('Non-symmetric scores: directional bias and asymmetric '
-                 f'quantiles (alpha = {alpha})', y=1.02)
+    fig.suptitle(
+        f"Non-symmetric scores: directional bias and asymmetric quantiles (alpha = {alpha})", y=1.02
+    )
     fig.tight_layout()
     savefig(fig, save_path)
     plt.close(fig)
@@ -334,11 +361,11 @@ def _winsor_ymax(arr, pct=97.0, pad=1.25):
 def plot_example(feat, calib, alpha, save_path):
     """Echogram with each method's band drawn on its own stacked panel."""
     cs = calib_scores(calib)
-    sv = feat['sv_channel']
-    ra = feat['range_array']
-    pred = np.asarray(feat['pred_depths'], dtype=np.float64)
-    gt = np.asarray(feat['gt_depths'], dtype=np.float64)
-    sig = np.maximum(feat['sigma'], EPSILON)
+    sv = feat["sv_channel"]
+    ra = feat["range_array"]
+    pred = np.asarray(feat["pred_depths"], dtype=np.float64)
+    gt = np.asarray(feat["gt_depths"], dtype=np.float64)
+    sig = np.maximum(feat["sigma"], EPSILON)
     n_range, n_pings = sv.shape
     pings = np.arange(n_pings)
     extent = [0, n_pings, ra[-1], ra[0]]
@@ -347,22 +374,21 @@ def plot_example(feat, calib, alpha, save_path):
 
     bands = {}
     for m in ORDER:
-        if m == 'abs_constant':
+        if m == "abs_constant":
             q = conformal_quantile(cs[m], alpha)
             u, l = predict_depth_band(pred, q)
-        elif m == 'signed_constant':
+        elif m == "signed_constant":
             q_lo, q_hi = conformal_quantile_two_sided(cs[m], alpha)
             u, l = predict_depth_band_signed(pred, q_lo, q_hi)
-        elif m == 'abs_local':
+        elif m == "abs_local":
             q = conformal_quantile(cs[m], alpha)
             u, l, _ = predict_locally_weighted_band(pred, sig, q, epsilon=EPSILON)
-        elif m == 'signed_local':
+        elif m == "signed_local":
             q_lo, q_hi = conformal_quantile_two_sided(cs[m], alpha)
-            u, l, _ = predict_locally_weighted_band_signed(
-                pred, sig, q_lo, q_hi, epsilon=EPSILON)
+            u, l, _ = predict_locally_weighted_band_signed(pred, sig, q_lo, q_hi, epsilon=EPSILON)
         else:  # cqr
             q = conformal_quantile(cs[m], alpha)
-            u, l, _ = predict_cqr_band(feat['cqr_lo'], feat['cqr_hi'], q)
+            u, l, _ = predict_cqr_band(feat["cqr_lo"], feat["cqr_hi"], q)
         bands[m] = (u, l)
 
     nrow = len(ORDER)
@@ -371,24 +397,17 @@ def plot_example(feat, calib, alpha, save_path):
         label, _, _, colour, _ = METHODS[m]
         u, l = bands[m]
         vb = np.isfinite(u) & np.isfinite(l)
-        ax.imshow(sv, aspect='auto', cmap='viridis', vmin=0, vmax=1,
-                  origin='upper', extent=extent)
-        ax.fill_between(pings[vb], u[vb], l[vb], alpha=0.35, color=colour,
-                        zorder=3)
-        ax.plot(pings[vpred], pred[vpred], color=C_PRED, linewidth=1.0,
-                zorder=5)
-        ax.plot(pings[vgt], gt[vgt], color=C_GT, linewidth=1.0, linestyle='--',
-                alpha=0.9, zorder=6)
-        cov = float(((gt >= u) & (gt <= l) & vgt)[vgt].mean()) if vgt.any() \
-            else float('nan')
-        ax.set_ylabel('Depth (m)')
+        ax.imshow(sv, aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper", extent=extent)
+        ax.fill_between(pings[vb], u[vb], l[vb], alpha=0.35, color=colour, zorder=3)
+        ax.plot(pings[vpred], pred[vpred], color=C_PRED, linewidth=1.0, zorder=5)
+        ax.plot(pings[vgt], gt[vgt], color=C_GT, linewidth=1.0, linestyle="--", alpha=0.9, zorder=6)
+        cov = float(((gt >= u) & (gt <= l) & vgt)[vgt].mean()) if vgt.any() else float("nan")
+        ax.set_ylabel("Depth (m)")
         ax.set_ylim(ra[-1], ra[0])
-        ax.set_title(f'{label}  (file coverage = {cov:.1%})', fontsize=11,
-                     loc='left')
-    axes[-1].set_xlabel('Ping index')
+        ax.set_title(f"{label}  (file coverage = {cov:.1%})", fontsize=11, loc="left")
+    axes[-1].set_xlabel("Ping index")
     axes[0].set_xlim(0, n_pings)
-    fig.suptitle(f'Conformal bands by score: {feat["name"]} '
-                 f'(alpha = {alpha})', y=1.005)
+    fig.suptitle(f"Conformal bands by score: {feat['name']} (alpha = {alpha})", y=1.005)
     fig.tight_layout()
     savefig(fig, save_path)
     plt.close(fig)
@@ -397,21 +416,21 @@ def plot_example(feat, calib, alpha, save_path):
 
 # ── Main ─────────────────────────────────────────────────────────────────
 def select_device(arg):
-    if arg != 'auto':
+    if arg != "auto":
         return arg
-    return 'cuda' if torch.cuda.is_available() else 'cpu'
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--n-calib', type=int, default=60)
-    ap.add_argument('--n-test', type=int, default=60)
-    ap.add_argument('--max-plot-files', type=int, default=4)
-    ap.add_argument('--max-pings', type=int, default=MAX_PINGS)
-    ap.add_argument('--alpha', type=float, default=ALPHA)
-    ap.add_argument('--seed', type=int, default=RNG_SEED)
-    ap.add_argument('--device', default='auto')
-    ap.add_argument('--output-dir', default=str(OUTPUT_DIR))
+    ap.add_argument("--n-calib", type=int, default=60)
+    ap.add_argument("--n-test", type=int, default=60)
+    ap.add_argument("--max-plot-files", type=int, default=4)
+    ap.add_argument("--max-pings", type=int, default=MAX_PINGS)
+    ap.add_argument("--alpha", type=float, default=ALPHA)
+    ap.add_argument("--seed", type=int, default=RNG_SEED)
+    ap.add_argument("--device", default="auto")
+    ap.add_argument("--output-dir", default=str(OUTPUT_DIR))
     args = ap.parse_args()
 
     apply_thesis_style()
@@ -421,8 +440,10 @@ def main():
     print(f"Device: {device}", flush=True)
 
     calib_files, test_files = get_split(args.n_calib, args.n_test, args.seed)
-    print(f"Split (seed={args.seed}): {len(calib_files)} calib / "
-          f"{len(test_files)} test files", flush=True)
+    print(
+        f"Split (seed={args.seed}): {len(calib_files)} calib / {len(test_files)} test files",
+        flush=True,
+    )
 
     print(f"\nLoading model {CHECKPOINT.name} ...", flush=True)
     model = load_model(CHECKPOINT, device)
@@ -430,12 +451,11 @@ def main():
     print("\n-- Calibration files --", flush=True)
     calib_summ = []
     for zp in calib_files:
-        print(f"  {zp.stem} ...", end=' ', flush=True)
+        print(f"  {zp.stem} ...", end=" ", flush=True)
         try:
             r = process_file(zp, model, device, args.max_pings)
             calib_summ.append(summarize(r))
-            print(f"({int(np.isfinite(r['pred_depths']).sum())} pings)",
-                  flush=True)
+            print(f"({int(np.isfinite(r['pred_depths']).sum())} pings)", flush=True)
             del r
             gc.collect()
         except Exception as e:
@@ -443,27 +463,29 @@ def main():
 
     print("\n-- Test files --", flush=True)
     test_summ = []
-    plot_pool = []   # (terrain_std, feat_dict)
+    plot_pool = []  # (terrain_std, feat_dict)
     for zp in test_files:
-        print(f"  {zp.stem} ...", end=' ', flush=True)
+        print(f"  {zp.stem} ...", end=" ", flush=True)
         try:
             r = process_file(zp, model, device, args.max_pings)
             s = summarize(r)
             test_summ.append(s)
-            gd = s['gt_depths']
+            gd = s["gt_depths"]
             v = np.isfinite(gd) & (gd > 0)
             terrain = float(np.std(gd[v])) if v.sum() >= 1000 else -1.0
-            print(f"({int(np.isfinite(s['pred_depths']).sum())} pings, "
-                  f"depth std {terrain:.1f} m)", flush=True)
+            print(
+                f"({int(np.isfinite(s['pred_depths']).sum())} pings, depth std {terrain:.1f} m)",
+                flush=True,
+            )
             feat = {
-                'name': s['name'],
-                'pred_depths': s['pred_depths'],
-                'gt_depths': s['gt_depths'],
-                'sigma': s['sigma'],
-                'cqr_lo': s['cqr_lo'],
-                'cqr_hi': s['cqr_hi'],
-                'sv_channel': r['sv_channel'],
-                'range_array': r['range_array'],
+                "name": s["name"],
+                "pred_depths": s["pred_depths"],
+                "gt_depths": s["gt_depths"],
+                "sigma": s["sigma"],
+                "cqr_lo": s["cqr_lo"],
+                "cqr_hi": s["cqr_hi"],
+                "sv_channel": r["sv_channel"],
+                "range_array": r["range_array"],
             }
             if len(plot_pool) < args.max_plot_files:
                 plot_pool.append((terrain, feat))
@@ -481,15 +503,15 @@ def main():
 
     calib = pool(calib_summ)
     test = pool(test_summ)
-    print(f"\nPooled: {calib['pred'].size} calib / {test['pred'].size} test "
-          f"pings", flush=True)
+    print(f"\nPooled: {calib['pred'].size} calib / {test['pred'].size} test pings", flush=True)
 
     # ── Evaluation table ──────────────────────────────────────────────
     print(f"\n== Coverage / width at alpha = {args.alpha} ==", flush=True)
-    metrics = [f"alpha={args.alpha}",
-               f"n_calib_files={len(calib_files)} n_test_files={len(test_files)}",
-               f"pooled_calib_pings={calib['pred'].size} "
-               f"pooled_test_pings={test['pred'].size}"]
+    metrics = [
+        f"alpha={args.alpha}",
+        f"n_calib_files={len(calib_files)} n_test_files={len(test_files)}",
+        f"pooled_calib_pings={calib['pred'].size} pooled_test_pings={test['pred'].size}",
+    ]
     cs = calib_scores(calib)
     for m in ORDER:
         cov, bw = evaluate(m, calib, test, args.alpha)
@@ -498,25 +520,23 @@ def main():
             qrepr = f"q_lo={q_lo:.4f} q_hi={q_hi:.4f}"
         else:
             qrepr = f"q={conformal_quantile(cs[m], args.alpha):.4f}"
-        line = (f"{m}: coverage={cov:.4f} mean_band_m={bw:.3f} {qrepr}")
+        line = f"{m}: coverage={cov:.4f} mean_band_m={bw:.3f} {qrepr}"
         print(f"  {line}", flush=True)
         metrics.append(line)
 
     # ── Plots ──────────────────────────────────────────────────────────
     print("\n== Plots ==", flush=True)
-    plot_coverage(calib, test, outdir / 'coverage_calibration.pdf')
-    plot_summary_bars(calib, test, args.alpha, outdir / 'summary_bars.pdf')
-    plot_score_distributions(calib, args.alpha,
-                             outdir / 'score_distributions.pdf')
-    plot_asymmetry(calib, args.alpha, outdir / 'asymmetry_diagnostic.pdf')
+    plot_coverage(calib, test, outdir / "coverage_calibration.pdf")
+    plot_summary_bars(calib, test, args.alpha, outdir / "summary_bars.pdf")
+    plot_score_distributions(calib, args.alpha, outdir / "score_distributions.pdf")
+    plot_asymmetry(calib, args.alpha, outdir / "asymmetry_diagnostic.pdf")
     for feat in plot_feats:
-        plot_example(feat, calib, args.alpha,
-                     outdir / f'bands_example_{feat["name"]}.png')
+        plot_example(feat, calib, args.alpha, outdir / f"bands_example_{feat['name']}.png")
 
-    (outdir / 'metrics.txt').write_text('\n'.join(metrics) + '\n')
+    (outdir / "metrics.txt").write_text("\n".join(metrics) + "\n")
     print(f"\nSaved metrics to {outdir / 'metrics.txt'}", flush=True)
     print("Done!", flush=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

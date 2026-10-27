@@ -8,15 +8,14 @@ amplitude stability at each depth, we build a stability map that
 highlights the bottom.
 """
 
-
 import numpy as np
 
 from .dp import detect_bottom_dp
 
 
-def compute_temporal_stability(power_db: np.ndarray,
-                               window: int = 11,
-                               min_index: int = 0) -> np.ndarray:
+def compute_temporal_stability(
+    power_db: np.ndarray, window: int = 11, min_index: int = 0
+) -> np.ndarray:
     """
     Build a temporal stability map from ping-to-ping amplitude variation.
 
@@ -47,12 +46,11 @@ def compute_temporal_stability(power_db: np.ndarray,
         j_hi = min(n_pings, j + half + 1)
         window_data = power_db[min_index:, j_lo:j_hi]
 
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             mean_val = np.nanmean(window_data, axis=1)
             std_val = np.nanstd(window_data, axis=1)
             # Coefficient of variation (avoid division by zero)
-            cv = np.where(np.abs(mean_val) > 1e-10,
-                          std_val / np.abs(mean_val), 1.0)
+            cv = np.where(np.abs(mean_val) > 1e-10, std_val / np.abs(mean_val), 1.0)
 
         # Invert: low CV = high stability
         # Clip CV to [0, 1] range before inverting
@@ -111,7 +109,9 @@ def detect_bottom_temporal(
 
     # Compute temporal stability map
     stability = compute_temporal_stability(
-        power_db, window=stability_window, min_index=min_index,
+        power_db,
+        window=stability_window,
+        min_index=min_index,
     )
 
     # Use DP with the stability map as a phase_confidence-like bonus.
@@ -121,7 +121,8 @@ def detect_bottom_temporal(
     stability_scaled = (beta / 3.0) * stability  # normalise to phase_weight=3 default
 
     return detect_bottom_dp(
-        power_db, range_array,
+        power_db,
+        range_array,
         smoothness=smoothness,
         minimum_range=minimum_range,
         backstep_db=backstep_db,

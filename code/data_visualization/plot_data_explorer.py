@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,16 +41,18 @@ RESULTS_CSV = PROJECT_ROOT / "code" / "deep_learning" / "training" / "results.cs
 GPS_OVERVIEW_CSV = PROJECT_ROOT / "Figures" / "gps_overview" / "gps_overview_data.csv"
 
 # Large fonts for thesis figures
-plt.rcParams.update({
-    "axes.titlesize": 16,
-    "axes.labelsize": 14,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "legend.fontsize": 12,
-    "figure.titlesize": 18,
-    "savefig.dpi": 150,
-    "savefig.bbox": "tight",
-})
+plt.rcParams.update(
+    {
+        "axes.titlesize": 16,
+        "axes.labelsize": 14,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
+        "legend.fontsize": 12,
+        "figure.titlesize": 18,
+        "savefig.dpi": 150,
+        "savefig.bbox": "tight",
+    }
+)
 
 # ── caches ────────────────────────────────────────────────────────────────
 
@@ -110,7 +113,8 @@ def build_file_index(force: bool = False) -> pd.DataFrame:
         info = _load_zarr_light(p)
         if info is None:
             continue
-        lat = info["lat"]; lon = info["lon"]
+        lat = info["lat"]
+        lon = info["lon"]
         row = {
             "file": p.stem,
             "t0": info["t0"],
@@ -120,8 +124,10 @@ def build_file_index(force: bool = False) -> pd.DataFrame:
         }
         if lat is not None and np.isfinite(lat).any():
             row.update(
-                lat_min=float(np.nanmin(lat)), lat_max=float(np.nanmax(lat)),
-                lon_min=float(np.nanmin(lon)), lon_max=float(np.nanmax(lon)),
+                lat_min=float(np.nanmin(lat)),
+                lat_max=float(np.nanmax(lat)),
+                lon_min=float(np.nanmin(lon)),
+                lon_max=float(np.nanmax(lon)),
                 lat_mid=float(np.nanmedian(lat)),
                 lon_mid=float(np.nanmedian(lon)),
             )
@@ -157,15 +163,22 @@ def fig_route_with_depth(file_index: pd.DataFrame | None = None, max_files: int 
         except Exception:
             continue
         if "bottom_range" not in dsd.data_vars:
-            dsd.close(); ds_full.close(); continue
+            dsd.close()
+            ds_full.close()
+            continue
         if "latitude" not in ds_full.coords and "latitude" not in ds_full.data_vars:
-            dsd.close(); ds_full.close(); continue
+            dsd.close()
+            ds_full.close()
+            continue
         bottom_range = np.asarray(dsd.bottom_range.values)
         lat = np.asarray(ds_full.latitude.values)
         lon = np.asarray(ds_full.longitude.values)
-        dsd.close(); ds_full.close()
+        dsd.close()
+        ds_full.close()
         n = min(len(lat), len(bottom_range))
-        lat = lat[:n]; lon = lon[:n]; depth = bottom_range[:n]
+        lat = lat[:n]
+        lon = lon[:n]
+        depth = bottom_range[:n]
         mask = np.isfinite(lat) & np.isfinite(lon) & np.isfinite(depth) & (depth > 0)
         if mask.sum() < 5:
             continue
@@ -180,8 +193,17 @@ def fig_route_with_depth(file_index: pd.DataFrame | None = None, max_files: int 
         all_d = np.concatenate([d for _, _, d in bottom_data])
         vmin, vmax = np.percentile(all_d, [2, 98])
         for lon, lat, depth in bottom_data:
-            sc = ax.scatter(lon, lat, c=depth, cmap="viridis_r", s=1.5,
-                            vmin=vmin, vmax=vmax, alpha=0.85, edgecolors="none")
+            sc = ax.scatter(
+                lon,
+                lat,
+                c=depth,
+                cmap="viridis_r",
+                s=1.5,
+                vmin=vmin,
+                vmax=vmax,
+                alpha=0.85,
+                edgecolors="none",
+            )
         cb = plt.colorbar(sc, ax=ax, shrink=0.85, pad=0.02)
         cb.set_label("Detected bottom depth (m)")
         ax.set_title(f"Ferry route coloured by detected bottom depth ({len(bottom_data)} files)")
@@ -205,7 +227,8 @@ def fig_route_with_speed(file_index: pd.DataFrame | None = None, max_files: int 
         except Exception:
             continue
         if "latitude" not in ds.coords and "latitude" not in ds.data_vars:
-            ds.close(); continue
+            ds.close()
+            continue
         lat = np.asarray(ds.latitude.values)
         lon = np.asarray(ds.longitude.values)
         t = pd.to_datetime(ds.ping_time.values)
@@ -213,11 +236,16 @@ def fig_route_with_speed(file_index: pd.DataFrame | None = None, max_files: int 
         mask = np.isfinite(lat) & np.isfinite(lon)
         if mask.sum() < 10:
             continue
-        lat = lat[mask]; lon = lon[mask]; t = t[mask]
+        lat = lat[mask]
+        lon = lon[mask]
+        t = t[mask]
         # Speed: haversine distance / dt (knots)
         dlat = np.deg2rad(np.diff(lat))
         dlon = np.deg2rad(np.diff(lon))
-        a = np.sin(dlat / 2) ** 2 + np.cos(np.deg2rad(lat[:-1])) * np.cos(np.deg2rad(lat[1:])) * np.sin(dlon / 2) ** 2
+        a = (
+            np.sin(dlat / 2) ** 2
+            + np.cos(np.deg2rad(lat[:-1])) * np.cos(np.deg2rad(lat[1:])) * np.sin(dlon / 2) ** 2
+        )
         d_m = 6371000.0 * 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
         dt_s = np.diff(t).astype("timedelta64[ms]").astype(float) / 1000.0
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -238,8 +266,14 @@ def fig_route_with_speed(file_index: pd.DataFrame | None = None, max_files: int 
         speeds = np.concatenate(all_speeds)
         vmin = float(np.percentile(speeds, 2))
         vmax = float(np.percentile(speeds, 98))
-        lc = LineCollection(segs, array=speeds, cmap="turbo", linewidths=1.4,
-                            norm=Normalize(vmin=vmin, vmax=vmax), alpha=0.85)
+        lc = LineCollection(
+            segs,
+            array=speeds,
+            cmap="turbo",
+            linewidths=1.4,
+            norm=Normalize(vmin=vmin, vmax=vmax),
+            alpha=0.85,
+        )
         ax.add_collection(lc)
         ax.autoscale()
         cb = plt.colorbar(lc, ax=ax, shrink=0.85, pad=0.02)
@@ -263,18 +297,22 @@ def fig_heading_rose(file_index: pd.DataFrame | None = None, max_files: int = 10
         except Exception:
             continue
         if "latitude" not in ds.coords and "latitude" not in ds.data_vars:
-            ds.close(); continue
+            ds.close()
+            continue
         lat = np.asarray(ds.latitude.values)
         lon = np.asarray(ds.longitude.values)
         ds.close()
         m = np.isfinite(lat) & np.isfinite(lon)
-        lat = lat[m]; lon = lon[m]
+        lat = lat[m]
+        lon = lon[m]
         if len(lat) < 5:
             continue
         # subsample to avoid quasi-zero deltas
         step = max(1, len(lat) // 200)
-        lat = lat[::step]; lon = lon[::step]
-        lat1 = np.deg2rad(lat[:-1]); lat2 = np.deg2rad(lat[1:])
+        lat = lat[::step]
+        lon = lon[::step]
+        lat1 = np.deg2rad(lat[:-1])
+        lat2 = np.deg2rad(lat[1:])
         dlon = np.deg2rad(lon[1:] - lon[:-1])
         x = np.sin(dlon) * np.cos(lat2)
         y = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(dlon)
@@ -294,9 +332,15 @@ def fig_heading_rose(file_index: pd.DataFrame | None = None, max_files: int = 10
         counts, edges = np.histogram(bearings, bins=bins)
         widths = np.deg2rad(np.diff(edges))
         centers = np.deg2rad(0.5 * (edges[:-1] + edges[1:]))
-        ax.bar(centers, counts, width=widths, bottom=0,
-               edgecolor="white", linewidth=0.4,
-               color=plt.cm.cividis(counts / max(counts.max(), 1)))
+        ax.bar(
+            centers,
+            counts,
+            width=widths,
+            bottom=0,
+            edgecolor="white",
+            linewidth=0.4,
+            color=plt.cm.cividis(counts / max(counts.max(), 1)),
+        )
         ax.set_title(f"Vessel-heading rose (n={len(bearings):,} segments)", pad=24)
     else:
         ax.set_title("No headings available")
@@ -318,23 +362,33 @@ def fig_crossings_overlay(file_index: pd.DataFrame | None = None, max_files: int
         except Exception:
             continue
         if "latitude" not in ds_full.coords and "latitude" not in ds_full.data_vars:
-            ds_full.close(); dsd.close(); continue
+            ds_full.close()
+            dsd.close()
+            continue
         if "bottom_range" not in dsd.data_vars:
-            ds_full.close(); dsd.close(); continue
+            ds_full.close()
+            dsd.close()
+            continue
         lat = np.asarray(ds_full.latitude.values)
         lon = np.asarray(ds_full.longitude.values)
         depth = np.asarray(dsd.bottom_range.values)
         t0 = pd.Timestamp(ds_full.ping_time.values[0])
-        ds_full.close(); dsd.close()
+        ds_full.close()
+        dsd.close()
         n = min(len(lat), len(depth))
-        lat = lat[:n]; lon = lon[:n]; depth = depth[:n]
+        lat = lat[:n]
+        lon = lon[:n]
+        depth = depth[:n]
         m = np.isfinite(lat) & np.isfinite(lon) & np.isfinite(depth) & (depth > 0)
         if m.sum() < 20:
             continue
         lat, lon, depth = lat[m], lon[m], depth[m]
         dlat = np.deg2rad(np.diff(lat))
         dlon = np.deg2rad(np.diff(lon))
-        a = np.sin(dlat / 2) ** 2 + np.cos(np.deg2rad(lat[:-1])) * np.cos(np.deg2rad(lat[1:])) * np.sin(dlon / 2) ** 2
+        a = (
+            np.sin(dlat / 2) ** 2
+            + np.cos(np.deg2rad(lat[:-1])) * np.cos(np.deg2rad(lat[1:])) * np.sin(dlon / 2) ** 2
+        )
         seg_m = 6371000.0 * 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
         dist = np.concatenate([[0], np.cumsum(seg_m)]) / 1000.0
         traces.append((t0, dist, depth))
@@ -345,7 +399,7 @@ def fig_crossings_overlay(file_index: pd.DataFrame | None = None, max_files: int
     else:
         # Colour by date (hour-of-year)
         t0_series = pd.to_datetime([t for t, _, _ in traces])
-        ord_arr = (t0_series.values.astype("datetime64[ns]").astype(np.int64))
+        ord_arr = t0_series.values.astype("datetime64[ns]").astype(np.int64)
         denom = max(int(ord_arr.max() - ord_arr.min()), 1)
         ord_norm = (ord_arr - ord_arr.min()) / denom
         cmap = plt.cm.plasma
@@ -356,8 +410,9 @@ def fig_crossings_overlay(file_index: pd.DataFrame | None = None, max_files: int
         cb = plt.colorbar(sm, ax=ax, pad=0.01)
         cb.set_label("Earliest ←—  recording date  —→ latest")
         cb.set_ticks([0, 1])
-        cb.set_ticklabels([t0_series.min().strftime("%Y-%m-%d"),
-                           t0_series.max().strftime("%Y-%m-%d")])
+        cb.set_ticklabels(
+            [t0_series.min().strftime("%Y-%m-%d"), t0_series.max().strftime("%Y-%m-%d")]
+        )
         ax.set_title(f"Bottom depth along every crossing  ({len(traces)} files)")
     ax.set_xlabel("Along-track distance (km)")
     ax.set_ylabel("Detected bottom depth (m)")
@@ -394,9 +449,13 @@ def fig_gps_interval(file_index: pd.DataFrame | None = None, max_files: int = 80
     if intervals.size:
         med = np.median(intervals) * 1000.0
         lo, hi = np.percentile(intervals * 1000.0, [0.5, 99.5])
-        axes[0].hist(intervals * 1000.0, bins=80,
-                     range=(max(lo - 10, 0), hi + 10),
-                     color="C0", edgecolor="white")
+        axes[0].hist(
+            intervals * 1000.0,
+            bins=80,
+            range=(max(lo - 10, 0), hi + 10),
+            color="C0",
+            edgecolor="white",
+        )
         axes[0].axvline(med, color="k", linestyle="--", linewidth=1, alpha=0.8)
         axes[0].set_xlabel("Ping interval (ms)")
         axes[0].set_ylabel("Count")
@@ -436,13 +495,29 @@ def fig_calendar_heatmap(file_index: pd.DataFrame) -> None:
         grid[y, doys] = sub.values
 
     fig, ax = plt.subplots(figsize=(15, 1.5 + 0.6 * len(years)))
-    pcm = ax.imshow(grid, aspect="auto", cmap="YlGnBu",
-                    norm=LogNorm(vmin=max(grid[grid > 0].min(), 1), vmax=max(grid.max(), 2)))
+    pcm = ax.imshow(
+        grid,
+        aspect="auto",
+        cmap="YlGnBu",
+        norm=LogNorm(vmin=max(grid[grid > 0].min(), 1), vmax=max(grid.max(), 2)),
+    )
     ax.set_yticks(range(len(years)))
     ax.set_yticklabels(years)
     month_starts = [pd.Timestamp(year=2024, month=m, day=1).dayofyear - 1 for m in range(1, 13)]
-    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    month_names = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ]
     ax.set_xticks(month_starts)
     ax.set_xticklabels(month_names)
     cb = plt.colorbar(pcm, ax=ax, pad=0.01)
@@ -504,9 +579,16 @@ def fig_quality_violins() -> None:
     if not QUALITY_CSV.exists():
         return
     df = pd.read_csv(QUALITY_CSV)
-    metrics = ["dynamic_range", "zero_frac", "water_col_std",
-               "water_col_mean", "bottom_smoothness",
-               "bottom_gradient_max", "boundary_contrast", "freq_coherence"]
+    metrics = [
+        "dynamic_range",
+        "zero_frac",
+        "water_col_std",
+        "water_col_mean",
+        "bottom_smoothness",
+        "bottom_gradient_max",
+        "boundary_contrast",
+        "freq_coherence",
+    ]
     metrics = [m for m in metrics if m in df.columns]
     fig, axes = plt.subplots(2, 4, figsize=(17, 9))
     for ax, m in zip(axes.flat, metrics):
@@ -531,8 +613,9 @@ def fig_quality_correlation() -> None:
     if not QUALITY_CSV.exists():
         return
     df = pd.read_csv(QUALITY_CSV)
-    cols = [c for c in df.columns
-            if c not in {"uid", "npz_file", "patch_idx", "source_zarr", "height"}]
+    cols = [
+        c for c in df.columns if c not in {"uid", "npz_file", "patch_idx", "source_zarr", "height"}
+    ]
     sub = df[cols].select_dtypes(include=[np.number]).dropna()
     # Drop constant columns (e.g. bottom_coverage is always 1.0)
     sub = sub.loc[:, sub.nunique() > 1]
@@ -547,9 +630,15 @@ def fig_quality_correlation() -> None:
     for i in range(len(cols)):
         for j in range(len(cols)):
             txt = f"{corr[i, j]:+.2f}"
-            ax.text(j, i, txt, ha="center", va="center",
-                    color="white" if abs(corr[i, j]) > 0.5 else "black",
-                    fontsize=9)
+            ax.text(
+                j,
+                i,
+                txt,
+                ha="center",
+                va="center",
+                color="white" if abs(corr[i, j]) > 0.5 else "black",
+                fontsize=9,
+            )
     cb = plt.colorbar(pcm, ax=ax, pad=0.02, shrink=0.85)
     cb.set_label("Pearson correlation")
     ax.set_title("Patch-quality metric correlations")
@@ -568,9 +657,7 @@ def fig_quality_scatter() -> None:
     x = df["boundary_contrast"].values
     y = df["dynamic_range"].values
     m = np.isfinite(x) & np.isfinite(y)
-    hb = ax.hexbin(x[m], y[m],
-                   gridsize=50, cmap="viridis", mincnt=1,
-                   bins="log")
+    hb = ax.hexbin(x[m], y[m], gridsize=50, cmap="viridis", mincnt=1, bins="log")
     cb = plt.colorbar(hb, ax=ax, pad=0.02)
     cb.set_label("log10 patch count")
     ax.set_xlabel("Boundary contrast (bottom edge sharpness)")
@@ -593,12 +680,14 @@ def fig_sv_profile(max_files: int = 80) -> None:
         except Exception:
             continue
         if "Sv" not in ds.data_vars:
-            ds.close(); continue
+            ds.close()
+            continue
         # Find channel frequencies
         if "frequency_nominal" in ds:
             freqs = ds.frequency_nominal.values
         else:
-            ds.close(); continue
+            ds.close()
+            continue
         # echo_range may be 2D per ping — use mean
         echo = ds.echo_range.isel(channel=0).values
         rng = np.nanmean(echo, axis=0) if echo.ndim == 2 else echo
@@ -618,7 +707,7 @@ def fig_sv_profile(max_files: int = 80) -> None:
         ds.close()
     for f, ax in freq_axes.items():
         ax.invert_yaxis()
-        ax.set_title(f"{f//1000} kHz  (n = {counts[f]} files)")
+        ax.set_title(f"{f // 1000} kHz  (n = {counts[f]} files)")
         ax.set_xlabel("Mean Sv (dB re 1 m⁻¹)")
         ax.grid(alpha=0.3)
     axes[0].set_ylabel("Depth (m)")
@@ -630,8 +719,7 @@ def fig_sv_profile(max_files: int = 80) -> None:
 def fig_sv_ridgeline(max_files: int = 40) -> None:
     """Ridgeline of Sv distributions across depth bins (38 kHz)."""
     files = list_echopype_zarrs(limit=max_files)
-    depth_bins = [(0, 10), (10, 30), (30, 60), (60, 100), (100, 150),
-                  (150, 200), (200, 280)]
+    depth_bins = [(0, 10), (10, 30), (30, 60), (60, 100), (100, 150), (150, 200), (200, 280)]
     samples = {b: [] for b in depth_bins}
     for p in files:
         try:
@@ -639,13 +727,14 @@ def fig_sv_ridgeline(max_files: int = 40) -> None:
         except Exception:
             continue
         if "Sv" not in ds.data_vars:
-            ds.close(); continue
+            ds.close()
+            continue
         echo = ds.echo_range.isel(channel=0).values
         rng = np.nanmean(echo, axis=0) if echo.ndim == 2 else echo
         sv = ds.Sv.isel(channel=0).values  # 38k
         step = max(1, sv.shape[0] // 200)
         sv_sub = sv[::step]
-        for (lo, hi) in depth_bins:
+        for lo, hi in depth_bins:
             mask = (rng >= lo) & (rng < hi)
             if mask.sum() == 0:
                 continue
@@ -667,14 +756,14 @@ def fig_sv_ridgeline(max_files: int = 40) -> None:
         if len(data) < 50:
             continue
         from scipy.stats import gaussian_kde
+
         kde = gaussian_kde(data, bw_method=0.3)
         y = kde(x)
         y = y / y.max() * 0.9
         c = cmap(i / max(n - 1, 1))
         ax.fill_between(x, i, i + y, color=c, alpha=0.6, linewidth=0)
         ax.plot(x, i + y, color="k", linewidth=0.7)
-        ax.text(-93, i + 0.2, f"{b[0]}–{b[1]} m",
-                ha="right", va="bottom", fontsize=12)
+        ax.text(-93, i + 0.2, f"{b[0]}–{b[1]} m", ha="right", va="bottom", fontsize=12)
     ax.set_yticks([])
     ax.set_xlim(-95, -15)
     ax.set_xlabel("Sv at 38 kHz (dB re 1 m⁻¹)")
@@ -694,15 +783,19 @@ def fig_freq_difference(max_files: int = 25) -> None:
         except Exception:
             continue
         if "Sv" not in ds.data_vars or "frequency_nominal" not in ds:
-            ds.close(); continue
+            ds.close()
+            continue
         freqs = list(ds.frequency_nominal.values.astype(int))
         if 38000 not in freqs or 200000 not in freqs:
-            ds.close(); continue
-        i38 = freqs.index(38000); i200 = freqs.index(200000)
+            ds.close()
+            continue
+        i38 = freqs.index(38000)
+        i200 = freqs.index(200000)
         sv38 = ds.Sv.isel(channel=i38).values
         sv200 = ds.Sv.isel(channel=i200).values
         n = min(sv38.shape[1], sv200.shape[1])
-        sv38 = sv38[:, :n]; sv200 = sv200[:, :n]
+        sv38 = sv38[:, :n]
+        sv200 = sv200[:, :n]
         # subsample
         step_p = max(1, sv38.shape[0] // 300)
         step_r = max(1, n // 300)
@@ -715,7 +808,8 @@ def fig_freq_difference(max_files: int = 25) -> None:
 
     fig, ax = plt.subplots(figsize=(10, 9))
     if s38:
-        s38 = np.concatenate(s38); s200 = np.concatenate(s200)
+        s38 = np.concatenate(s38)
+        s200 = np.concatenate(s200)
         hb = ax.hexbin(s38, s200, gridsize=80, cmap="magma", mincnt=1, bins="log")
         ax.plot([-90, -10], [-90, -10], "w--", linewidth=1.5, alpha=0.7, label="y = x")
         cb = plt.colorbar(hb, ax=ax, pad=0.02)
@@ -724,7 +818,8 @@ def fig_freq_difference(max_files: int = 25) -> None:
         ax.set_title(f"38 kHz vs 200 kHz Sv  (n = {len(s38):,} samples)")
     ax.set_xlabel("Sv at 38 kHz (dB)")
     ax.set_ylabel("Sv at 200 kHz (dB)")
-    ax.set_xlim(-90, -10); ax.set_ylim(-90, -10)
+    ax.set_xlim(-90, -10)
+    ax.set_ylim(-90, -10)
     ax.set_aspect("equal")
     ax.grid(alpha=0.3)
     fig.savefig(OUT / "14_freq_difference.png")
@@ -744,7 +839,8 @@ def fig_bottom_depth_dist(max_files: int = 80) -> None:
         except Exception:
             continue
         if "bottom_range" not in dsd.data_vars or "time" not in dsd.coords:
-            dsd.close(); continue
+            dsd.close()
+            continue
         d = np.asarray(dsd.bottom_range.values)
         t = pd.to_datetime(dsd.time.values)
         dsd.close()
@@ -752,8 +848,7 @@ def fig_bottom_depth_dist(max_files: int = 80) -> None:
         if m.sum() == 0:
             continue
         step = max(1, m.sum() // 1000)
-        rows.append(pd.DataFrame({"depth": d[m][::step],
-                                  "month": t[m][::step].month}))
+        rows.append(pd.DataFrame({"depth": d[m][::step], "month": t[m][::step].month}))
     df = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
     fig, ax = plt.subplots(figsize=(12, 7))
     if df.empty:
@@ -764,17 +859,20 @@ def fig_bottom_depth_dist(max_files: int = 80) -> None:
         cmap = plt.cm.twilight_shifted
         x = np.linspace(df["depth"].min(), df["depth"].max(), 400)
         from scipy.stats import gaussian_kde
+
         for i, m in enumerate(months):
             sub = df[df["month"] == m]["depth"].values
             if len(sub) < 30:
                 continue
             kde = gaussian_kde(sub, bw_method=0.25)
-            y = kde(x); y = y / y.max() * 0.9
+            y = kde(x)
+            y = y / y.max() * 0.9
             c = cmap(m / 12)
             ax.fill_between(x, i, i + y, color=c, alpha=0.6, linewidth=0)
             ax.plot(x, i + y, color="k", linewidth=0.6)
-            ax.text(df["depth"].min() - 5, i + 0.3, f"Mo {m:02d}",
-                    ha="right", va="bottom", fontsize=11)
+            ax.text(
+                df["depth"].min() - 5, i + 0.3, f"Mo {m:02d}", ha="right", va="bottom", fontsize=11
+            )
         ax.set_yticks([])
         ax.set_xlabel("Bottom depth (m)")
         ax.set_title(f"Bottom-depth distribution by month  ({len(df):,} pings)")
@@ -812,7 +910,7 @@ def fig_training_curves() -> None:
     grid = np.full((len(hist), max_ep), np.nan)
     for r, (_, h) in enumerate(hist.items()):
         v = h.get("val_iou", [])
-        grid[r, :len(v)] = v
+        grid[r, : len(v)] = v
     med = np.nanmedian(grid, axis=0)
     p25 = np.nanpercentile(grid, 25, axis=0)
     p75 = np.nanpercentile(grid, 75, axis=0)
@@ -842,12 +940,16 @@ def fig_experiment_leaderboard() -> None:
     if df.empty:
         return
     fig, ax = plt.subplots(figsize=(13, 8))
-    sc = ax.scatter(df["wall_time_sec"] / 60.0,
-                    df["eval_mean_iou"],
-                    s=10 + 10 * df["n_epochs_completed"].fillna(1),
-                    c=df["eval_mean_bottom_error_m"].fillna(df["eval_mean_bottom_error_m"].median()),
-                    cmap="coolwarm",
-                    alpha=0.85, edgecolors="black", linewidth=0.5)
+    sc = ax.scatter(
+        df["wall_time_sec"] / 60.0,
+        df["eval_mean_iou"],
+        s=10 + 10 * df["n_epochs_completed"].fillna(1),
+        c=df["eval_mean_bottom_error_m"].fillna(df["eval_mean_bottom_error_m"].median()),
+        cmap="coolwarm",
+        alpha=0.85,
+        edgecolors="black",
+        linewidth=0.5,
+    )
     cb = plt.colorbar(sc, ax=ax, pad=0.02)
     cb.set_label("Mean bottom-depth error (m)")
     ax.set_xscale("log")
@@ -857,11 +959,15 @@ def fig_experiment_leaderboard() -> None:
     ax.grid(alpha=0.3)
     # annotate best
     best = df.loc[df["eval_mean_iou"].idxmax()]
-    ax.annotate(f"best: IoU={best['eval_mean_iou']:.3f}",
-                xy=(best["wall_time_sec"] / 60.0, best["eval_mean_iou"]),
-                xytext=(20, -30), textcoords="offset points",
-                arrowprops=dict(arrowstyle="->", color="black"),
-                fontsize=12, fontweight="bold")
+    ax.annotate(
+        f"best: IoU={best['eval_mean_iou']:.3f}",
+        xy=(best["wall_time_sec"] / 60.0, best["eval_mean_iou"]),
+        xytext=(20, -30),
+        textcoords="offset points",
+        arrowprops=dict(arrowstyle="->", color="black"),
+        fontsize=12,
+        fontweight="bold",
+    )
     fig.savefig(OUT / "17_experiment_leaderboard.png")
     plt.close(fig)
 
@@ -882,7 +988,8 @@ def fig_train_val_correlation() -> None:
     ax.plot([0.85, 1], [0.85, 1], "k--", linewidth=1, alpha=0.6, label="y = x")
     ax.set_xlabel("Train IoU")
     ax.set_ylabel("Val IoU")
-    ax.set_xlim(0.85, 1.0); ax.set_ylim(0.85, 1.0)
+    ax.set_xlim(0.85, 1.0)
+    ax.set_ylim(0.85, 1.0)
     ax.set_aspect("equal")
     ax.set_title(f"Train vs Val IoU per epoch  ({len(hist)} experiments)")
     ax.legend()
@@ -920,10 +1027,10 @@ NEEDS_FILE_INDEX = {"calendar", "diel", "cumulative"}
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", nargs="*", default=None,
-                        help="subset of figure names to generate")
-    parser.add_argument("--skip", nargs="*", default=None,
-                        help="figure names to skip")
+    parser.add_argument(
+        "--only", nargs="*", default=None, help="subset of figure names to generate"
+    )
+    parser.add_argument("--skip", nargs="*", default=None, help="figure names to skip")
     args = parser.parse_args()
 
     todo = list(FIGURES.keys())

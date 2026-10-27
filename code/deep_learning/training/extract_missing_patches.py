@@ -15,6 +15,7 @@ Usage:
     python code/deep_learning/training/extract_missing_patches.py
     python code/deep_learning/training/extract_missing_patches.py --splits calibration
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,8 +34,9 @@ from deep_learning.echo_dataset import ensure_cached
 
 # Canonical extraction convention — must match experiment_grid._COMMON and
 # the params used for the existing train/val caches.
-def canonical_config(cache_dir: Path, mask_mode: str = "below",
-                     line_thickness: int = 3) -> PipelineConfig:
+def canonical_config(
+    cache_dir: Path, mask_mode: str = "below", line_thickness: int = 3
+) -> PipelineConfig:
     return PipelineConfig(
         freq1_hz=38_000,
         freq2_hz=200_000,
@@ -58,28 +60,43 @@ def canonical_config(cache_dir: Path, mask_mode: str = "below",
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--splits", nargs="+", default=["calibration", "test"],
-                    help="Which canonical splits to extract.")
-    ap.add_argument("--cache-dir", type=Path,
-                    default=Path("Datasets/patch_cache"))
-    ap.add_argument("--zarr-dir", type=Path, default=None,
-                    help="Override zarr directory (default: survey_groups.ZARR_DIR).")
-    ap.add_argument("--mask-mode", type=str, default="below",
-                    choices=["below", "line"],
-                    help="'below' region fill or 'line' bottom boundary.")
-    ap.add_argument("--line-thickness", type=int, default=3,
-                    help="Boundary line height in pixels (mask-mode line).")
+    ap.add_argument(
+        "--splits",
+        nargs="+",
+        default=["calibration", "test"],
+        help="Which canonical splits to extract.",
+    )
+    ap.add_argument("--cache-dir", type=Path, default=Path("Datasets/patch_cache"))
+    ap.add_argument(
+        "--zarr-dir",
+        type=Path,
+        default=None,
+        help="Override zarr directory (default: survey_groups.ZARR_DIR).",
+    )
+    ap.add_argument(
+        "--mask-mode",
+        type=str,
+        default="below",
+        choices=["below", "line"],
+        help="'below' region fill or 'line' bottom boundary.",
+    )
+    ap.add_argument(
+        "--line-thickness",
+        type=int,
+        default=3,
+        help="Boundary line height in pixels (mask-mode line).",
+    )
     args = ap.parse_args()
 
-    cfg = canonical_config(args.cache_dir, mask_mode=args.mask_mode,
-                           line_thickness=args.line_thickness)
+    cfg = canonical_config(
+        args.cache_dir, mask_mode=args.mask_mode, line_thickness=args.line_thickness
+    )
     split_files = get_split_files(args.zarr_dir)
 
     zarr_paths = []
     for split in args.splits:
         if split not in split_files:
-            raise ValueError(f"Unknown split '{split}', "
-                             f"expected one of {list(split_files)}")
+            raise ValueError(f"Unknown split '{split}', expected one of {list(split_files)}")
         zarr_paths.extend(split_files[split])
     zarr_paths = sorted(set(zarr_paths))
 
@@ -92,7 +109,7 @@ def main():
     print(f"Mask mode: {args.mask_mode} (thickness={args.line_thickness})")
     print(f"Cache dir: {args.cache_dir}")
     print(f"Total files in splits: {len(zarr_paths)}")
-    print(f"This task ({task_id+1}/{task_count}): {len(shard)} files")
+    print(f"This task ({task_id + 1}/{task_count}): {len(shard)} files")
     print("-" * 60)
 
     extracted = empty = failed = 0

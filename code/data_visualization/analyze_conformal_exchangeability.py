@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,8 +40,7 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
-from data_visualization.thesis_style import (
-    apply_thesis_style, savefig, LEGEND_SIZE)
+from data_visualization.thesis_style import apply_thesis_style, savefig, LEGEND_SIZE
 from validation.conformal import conformal_quantile, evaluate_coverage
 from deep_learning.training.survey_groups import SURVEYS, SPLITS
 
@@ -49,8 +49,15 @@ OUTPUT_DIR = PROJECT_ROOT / "Figures" / "conformal_exchangeability"
 
 # Chronological survey order, used on every axis.
 SURVEY_ORDER = [
-    "dec_2023", "jan_2024", "apr_2024", "jul_2024", "sep_2024",
-    "oct_2024", "jan_2025", "feb_2025", "jun_2025",
+    "dec_2023",
+    "jan_2024",
+    "apr_2024",
+    "jul_2024",
+    "sep_2024",
+    "oct_2024",
+    "jan_2025",
+    "feb_2025",
+    "jun_2025",
 ]
 
 # Map each survey to its split role and a colour.
@@ -115,12 +122,16 @@ def main():
             c, _, _ = evaluate_coverage(pred, gt, q_hat[a])
             cov.append(c)
         offset = (k - 0.5) * width
-        ax.bar(x + offset, cov, width,
-                      color="#4c78a8" if k == 0 else "#f58518",
-                      edgecolor="black", linewidth=0.6,
-                      label=f"{lvl} target")
-        ax.axhline(1 - a, color="#4c78a8" if k == 0 else "#f58518",
-                   ls="--", lw=1.5)
+        ax.bar(
+            x + offset,
+            cov,
+            width,
+            color="#4c78a8" if k == 0 else "#f58518",
+            edgecolor="black",
+            linewidth=0.6,
+            label=f"{lvl} target",
+        )
+        ax.axhline(1 - a, color="#4c78a8" if k == 0 else "#f58518", ls="--", lw=1.5)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=45, ha="right")
     ax.set_ylabel("Realized coverage")
@@ -147,12 +158,9 @@ def main():
                 file_col.append(ROLE_COLOR["test"])
     file_cov = np.array(file_cov)
     jitter = (np.random.RandomState(0).rand(len(file_cov)) - 0.5) * 0.25
-    ax.scatter(jitter, file_cov, s=90, c=file_col, edgecolor="black",
-               linewidth=0.6, zorder=3)
-    ax.axhline(1 - a_main, color="#4c78a8", ls="--", lw=2,
-               label="90% target")
-    ax.axhline(file_cov.mean(), color="black", ls=":", lw=2,
-               label=f"mean = {file_cov.mean():.3f}")
+    ax.scatter(jitter, file_cov, s=90, c=file_col, edgecolor="black", linewidth=0.6, zorder=3)
+    ax.axhline(1 - a_main, color="#4c78a8", ls="--", lw=2, label="90% target")
+    ax.axhline(file_cov.mean(), color="black", ls=":", lw=2, label=f"mean = {file_cov.mean():.3f}")
 
     # Leave-one-file-out q_hat coefficient of variation on calibration survey.
     loo_q = []
@@ -168,13 +176,18 @@ def main():
     ax.set_ylabel("Per-file realized coverage")
     ax.set_ylim(min(0.5, file_cov.min() - 0.05), 1.02)
     ax.set_title("Test files as the unit (90% band)")
-    ax.text(0.02, 0.04,
-            f"leave-one-file-out q CV = {100 * cv:.1f}%\n"
-            f"per-file coverage sd = {file_cov.std():.3f}\n"
-            f"n files = {len(file_cov)}",
-            transform=ax.transAxes, fontsize=LEGEND_SIZE - 2,
-            va="bottom", ha="left",
-            bbox=dict(boxstyle="round", fc="white", ec="0.5"))
+    ax.text(
+        0.02,
+        0.04,
+        f"leave-one-file-out q CV = {100 * cv:.1f}%\n"
+        f"per-file coverage sd = {file_cov.std():.3f}\n"
+        f"n files = {len(file_cov)}",
+        transform=ax.transAxes,
+        fontsize=LEGEND_SIZE - 2,
+        va="bottom",
+        ha="left",
+        bbox=dict(boxstyle="round", fc="white", ec="0.5"),
+    )
     ax.legend(fontsize=LEGEND_SIZE - 2, loc="lower right")
 
     # --- Panel (c): covariate descriptors per survey ------------------------
@@ -192,8 +205,16 @@ def main():
     med = np.array(med)
     yerr = np.vstack([med - np.array(q1), np.array(q3) - med])
     colors = [ROLE_COLOR[SPLIT_OF[s]] for s in SURVEY_ORDER]
-    ax.bar(x, med, color=colors, edgecolor="black", linewidth=0.6,
-           yerr=yerr, capsize=4, error_kw={"elinewidth": 1.5})
+    ax.bar(
+        x,
+        med,
+        color=colors,
+        edgecolor="black",
+        linewidth=0.6,
+        yerr=yerr,
+        capsize=4,
+        error_kw={"elinewidth": 1.5},
+    )
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=45, ha="right")
     ax.set_ylabel("Median abs. depth error (m)")
@@ -201,20 +222,24 @@ def main():
     ax.get_xticklabels()[ci].set_fontweight("bold")
     # Twin axis for the central depth range.
     ax2 = ax.twinx()
-    ax2.plot(x, dlo, "o-", color="#54278f", lw=1.8, ms=6,
-             label="10th pct depth")
-    ax2.plot(x, dhi, "s--", color="#54278f", lw=1.8, ms=6,
-             label="90th pct depth")
+    ax2.plot(x, dlo, "o-", color="#54278f", lw=1.8, ms=6, label="10th pct depth")
+    ax2.plot(x, dhi, "s--", color="#54278f", lw=1.8, ms=6, label="90th pct depth")
     ax2.set_ylabel("Bottom depth (m)", color="#54278f")
     ax2.tick_params(axis="y", labelcolor="#54278f")
     ax2.spines["top"].set_visible(False)
     ax2.legend(fontsize=LEGEND_SIZE - 4, loc="upper left")
     # Split-role legend.
-    handles = [plt.Rectangle((0, 0), 1, 1, fc=ROLE_COLOR[r], ec="black")
-               for r in ["train", "val", "calibration", "test"]]
-    ax.legend(handles, [ROLE_LABEL[r] for r in
-                        ["train", "val", "calibration", "test"]],
-              fontsize=LEGEND_SIZE - 4, loc="upper right", ncol=2)
+    handles = [
+        plt.Rectangle((0, 0), 1, 1, fc=ROLE_COLOR[r], ec="black")
+        for r in ["train", "val", "calibration", "test"]
+    ]
+    ax.legend(
+        handles,
+        [ROLE_LABEL[r] for r in ["train", "val", "calibration", "test"]],
+        fontsize=LEGEND_SIZE - 4,
+        loc="upper right",
+        ncol=2,
+    )
 
     fig.tight_layout()
     savefig(fig, OUTPUT_DIR / "conformal_exchangeability.pdf")
@@ -226,10 +251,8 @@ def main():
         pred, gt, _, _ = data[s]
         c90, _, _ = evaluate_coverage(pred, gt, q_hat[0.10])
         c95, _, _ = evaluate_coverage(pred, gt, q_hat[0.05])
-        print(f"  {SURVEYS[s]['label']:<10s} [{SPLIT_OF[s]:<11s}] "
-              f"cov90={c90:.3f} cov95={c95:.3f}")
-    print(f"leave-one-file-out q CV = {100 * cv:.1f}%, "
-          f"per-file coverage sd = {file_cov.std():.3f}")
+        print(f"  {SURVEYS[s]['label']:<10s} [{SPLIT_OF[s]:<11s}] cov90={c90:.3f} cov95={c95:.3f}")
+    print(f"leave-one-file-out q CV = {100 * cv:.1f}%, per-file coverage sd = {file_cov.std():.3f}")
     print(f"Wrote {OUTPUT_DIR / 'conformal_exchangeability.pdf'}")
 
 

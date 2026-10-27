@@ -33,11 +33,11 @@ OUTPUT_DIR = REPO_ROOT / "Figures" / "data_split"
 
 # Okabe-Ito colourblind-safe palette, one colour per split role.
 ROLE_COLOR = {
-    "train": "#0072B2",   # blue
-    "val": "#E69F00",     # orange
-    "calib": "#009E73",   # green
-    "test": "#D55E00",    # vermillion
-    "hake": "#999999",    # grey, isolated
+    "train": "#0072B2",  # blue
+    "val": "#E69F00",  # orange
+    "calib": "#009E73",  # green
+    "test": "#D55E00",  # vermillion
+    "hake": "#999999",  # grey, isolated
 }
 ROLE_LABEL = {
     "train": "Training",
@@ -66,10 +66,10 @@ PERIODS = [
 BOX_H = 1.18
 BOX_LABEL_FONTSIZE = 16
 BOX_VOLUME_FONTSIZE = 13
-GAP = 0.16           # gap between adjacent timeline boxes
+GAP = 0.16  # gap between adjacent timeline boxes
 ISOLATION_GAP = 1.1  # extra gap before the isolated hake box
-HAKE_W = 1.3         # fixed width for the isolated hake box (not on GB scale)
-MIN_BOX_W = 0.62     # width of the smallest period, keeps its label legible
+HAKE_W = 1.3  # fixed width for the isolated hake box (not on GB scale)
+MIN_BOX_W = 0.62  # width of the smallest period, keeps its label legible
 
 # Width scale: width = WIDTH_SCALE * sqrt(GB), fixed so the smallest period
 # reaches MIN_BOX_W.
@@ -82,14 +82,16 @@ def _box_width(gb):
 
 def _text_color(hex_color):
     """Black or white text depending on background luminance."""
-    r, g, b = (int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    r, g, b = (int(hex_color[i : i + 2], 16) / 255 for i in (1, 3, 5))
     lum = 0.299 * r + 0.587 * g + 0.114 * b
     return "white" if lum < 0.55 else "black"
 
 
 def _box(ax, x, y, w, h, color, label, gb_label=None, dashed=False):
     patch = FancyBboxPatch(
-        (x, y), w, h,
+        (x, y),
+        w,
+        h,
         boxstyle="round,pad=0.02,rounding_size=0.08",
         linewidth=2.0,
         edgecolor="black" if not dashed else "0.3",
@@ -101,13 +103,36 @@ def _box(ax, x, y, w, h, color, label, gb_label=None, dashed=False):
     txt_color = _text_color(color)
     cx = x + w / 2
     if gb_label is None:
-        ax.text(cx, y + h / 2, label, ha="center", va="center",
-                fontsize=BOX_LABEL_FONTSIZE, fontweight="bold", color=txt_color)
+        ax.text(
+            cx,
+            y + h / 2,
+            label,
+            ha="center",
+            va="center",
+            fontsize=BOX_LABEL_FONTSIZE,
+            fontweight="bold",
+            color=txt_color,
+        )
     else:
-        ax.text(cx, y + h * 0.66, label, ha="center", va="center",
-                fontsize=BOX_LABEL_FONTSIZE, fontweight="bold", color=txt_color)
-        ax.text(cx, y + h * 0.16, gb_label, ha="center", va="center",
-                fontsize=BOX_VOLUME_FONTSIZE, color=txt_color)
+        ax.text(
+            cx,
+            y + h * 0.66,
+            label,
+            ha="center",
+            va="center",
+            fontsize=BOX_LABEL_FONTSIZE,
+            fontweight="bold",
+            color=txt_color,
+        )
+        ax.text(
+            cx,
+            y + h * 0.16,
+            gb_label,
+            ha="center",
+            va="center",
+            fontsize=BOX_VOLUME_FONTSIZE,
+            color=txt_color,
+        )
 
 
 def main():
@@ -130,31 +155,55 @@ def main():
     # Isolated hake box, set apart after a divider. Drawn at a fixed width
     # because the external survey is not on the Basto volume scale.
     hake_x = timeline_right + ISOLATION_GAP
-    _box(ax, hake_x, y0, HAKE_W, BOX_H, ROLE_COLOR["hake"],
-         "NOAA\nhake\nSH2306", dashed=True)
+    _box(ax, hake_x, y0, HAKE_W, BOX_H, ROLE_COLOR["hake"], "NOAA\nhake\nSH2306", dashed=True)
 
     # Dashed vertical divider between the Basto route and the external survey.
     div_x = timeline_right + ISOLATION_GAP / 2
-    ax.plot([div_x, div_x], [y0 - 0.55, y0 + BOX_H + 0.55],
-            linestyle=":", color="0.4", linewidth=1.8)
+    ax.plot(
+        [div_x, div_x], [y0 - 0.55, y0 + BOX_H + 0.55], linestyle=":", color="0.4", linewidth=1.8
+    )
 
     # Group labels above each block.
-    ax.text(timeline_right / 2, y0 + BOX_H + 0.42,
-            "Basto Electric route (Oslofjord)",
-            ha="center", va="bottom", fontsize=24, style="italic", color="0.2")
-    ax.text(hake_x + HAKE_W / 2, y0 + BOX_H + 0.42,
-            "Pacific (deep water)",
-            ha="center", va="bottom", fontsize=24, style="italic", color="0.2")
+    ax.text(
+        timeline_right / 2,
+        y0 + BOX_H + 0.42,
+        "Basto Electric route (Oslofjord)",
+        ha="center",
+        va="bottom",
+        fontsize=24,
+        style="italic",
+        color="0.2",
+    )
+    ax.text(
+        hake_x + HAKE_W / 2,
+        y0 + BOX_H + 0.42,
+        "Pacific (deep water)",
+        ha="center",
+        va="bottom",
+        fontsize=24,
+        style="italic",
+        color="0.2",
+    )
 
     # Time arrow beneath the timeline.
     arrow = FancyArrowPatch(
-        (0, y0 - 0.45), (timeline_right, y0 - 0.45),
-        arrowstyle="-|>", mutation_scale=22,
-        linewidth=2.0, color="0.35",
+        (0, y0 - 0.45),
+        (timeline_right, y0 - 0.45),
+        arrowstyle="-|>",
+        mutation_scale=22,
+        linewidth=2.0,
+        color="0.35",
     )
     ax.add_patch(arrow)
-    ax.text(timeline_right / 2, y0 - 0.72, "chronological order",
-            ha="center", va="top", fontsize=21, color="0.35")
+    ax.text(
+        timeline_right / 2,
+        y0 - 0.72,
+        "chronological order",
+        ha="center",
+        va="top",
+        fontsize=21,
+        color="0.35",
+    )
 
     # Legend for the roles.
     handles = [
@@ -163,10 +212,16 @@ def main():
     ]
     labels = [ROLE_LABEL[r] for r in ("train", "val", "calib", "test", "hake")]
     ax.legend(
-        handles, labels,
-        loc="lower center", bbox_to_anchor=(0.5, -0.42),
-        ncol=5, frameon=False, fontsize=20, handlelength=1.3,
-        columnspacing=1.4, handletextpad=0.5,
+        handles,
+        labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.42),
+        ncol=5,
+        frameon=False,
+        fontsize=20,
+        handlelength=1.3,
+        columnspacing=1.4,
+        handletextpad=0.5,
     )
 
     ax.set_xlim(-0.4, hake_x + HAKE_W + 0.4)

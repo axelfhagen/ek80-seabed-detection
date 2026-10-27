@@ -26,8 +26,8 @@ def _echogram(rows, seed=0):
     rng = np.random.default_rng(seed)
     e = -80.0 + rng.normal(0.0, 1.0, (N_SAMPLES, N_PINGS))
     for j, b in enumerate(rows):
-        e[b:b + 8, j] = -10.0
-        e[b + 8:, j] = -40.0
+        e[b : b + 8, j] = -10.0
+        e[b + 8 :, j] = -40.0
     return e
 
 
@@ -49,6 +49,7 @@ def sloping():
 
 
 # ── Per-ping CRIMAC-port detectors ─────────────────────────────────────────
+
 
 @pytest.mark.parametrize("echo", ["flat", "sloping"])
 def test_simple_detector_finds_leading_edge_within_three_samples(echo, request):
@@ -81,6 +82,7 @@ def test_gradient_detector_finds_bottom_within_three_samples(echo, request):
 
 # ── Offline detectors ──────────────────────────────────────────────────────
 
+
 @pytest.mark.parametrize("echo", ["flat", "sloping"])
 def test_tvg_detector_finds_exact_bottom_row(echo, request):
     e, truth = request.getfixturevalue(echo)
@@ -106,19 +108,24 @@ def test_cfar_detector_finds_exact_bottom_row(echo, request):
 @pytest.mark.parametrize("echo", ["flat", "sloping"])
 def test_changepoint_detector_finds_bottom_within_one_sample(echo, request):
     e, truth = request.getfixturevalue(echo)
-    np.testing.assert_allclose(bl.detect_bottom_changepoint(e, RANGE), truth,
-                               atol=DR + 1e-9)
+    np.testing.assert_allclose(bl.detect_bottom_changepoint(e, RANGE), truth, atol=DR + 1e-9)
 
 
-@pytest.mark.xfail(strict=True, raises=AttributeError, reason=(
-    "wavelet.py calls scipy.signal.cwt/ricker, removed in SciPy >= 1.15; "
-    "detect_bottom_wavelet cannot run with the installed SciPy"))
+@pytest.mark.xfail(
+    strict=True,
+    raises=AttributeError,
+    reason=(
+        "wavelet.py calls scipy.signal.cwt/ricker, removed in SciPy >= 1.15; "
+        "detect_bottom_wavelet cannot run with the installed SciPy"
+    ),
+)
 def test_wavelet_detector_runs_on_flat_bottom(flat):
     e, truth = flat
     np.testing.assert_allclose(bl.detect_bottom_wavelet(e, RANGE), truth, atol=3 * DR)
 
 
 # ── Ensemble and post-processing ───────────────────────────────────────────
+
 
 def test_ensemble_pipeline_finds_flat_bottom_including_default_offset(flat):
     e, truth = flat
@@ -158,6 +165,7 @@ def test_post_process_removes_spike_and_interpolates_gap():
 
 # ── Range / mask utilities ─────────────────────────────────────────────────
 
+
 def test_build_range_array_is_two_way_travel_distance():
     r = bl.build_range_array(4, 0.000128, sound_velocity=1500.0)
     np.testing.assert_allclose(r, [0.0, 0.096, 0.192, 0.288])
@@ -183,16 +191,29 @@ def test_create_bottom_mask_line_and_below_modes():
 
 SHIM_NAMES = {
     bottom_detection: [
-        "SOUND_VELOCITY", "build_range_array", "depth_to_range", "range_to_depth",
-        "parse_mru0_datagrams", "interpolate_heave_to_pings",
-        "overlay_bottom_on_echogram", "bottom_to_sample_index", "create_bottom_mask",
-        "save_bottom_detections", "detect_bottom_simple", "detect_bottom_edge",
-        "detect_bottom_gradient", "ensemble_bottom", "post_process_bottom",
+        "SOUND_VELOCITY",
+        "build_range_array",
+        "depth_to_range",
+        "range_to_depth",
+        "parse_mru0_datagrams",
+        "interpolate_heave_to_pings",
+        "overlay_bottom_on_echogram",
+        "bottom_to_sample_index",
+        "create_bottom_mask",
+        "save_bottom_detections",
+        "detect_bottom_simple",
+        "detect_bottom_edge",
+        "detect_bottom_gradient",
+        "ensemble_bottom",
+        "post_process_bottom",
         "detect_bottom_ensemble_pipeline",
     ],
     bottom_detection_offline: [
-        "detect_bottom_tvg", "detect_bottom_dp", "refine_bottom_snake",
-        "compute_phase_variance", "fuse_multifreq_bottom",
+        "detect_bottom_tvg",
+        "detect_bottom_dp",
+        "refine_bottom_snake",
+        "compute_phase_variance",
+        "fuse_multifreq_bottom",
     ],
 }
 
@@ -200,6 +221,7 @@ SHIM_NAMES = {
 @pytest.mark.parametrize("shim", list(SHIM_NAMES), ids=lambda m: m.__name__.split(".")[-1])
 def test_backcompat_shims_reexport_bottom_labelling_objects(shim):
     from raw_sensor_integration.bottom_labelling import utilities
+
     for name in SHIM_NAMES[shim]:
         source = getattr(bl, name, None) or getattr(utilities, name)
         assert getattr(shim, name) is source, name

@@ -7,6 +7,7 @@ error (20-bin reliability), and the median per-ping p=0.1->p=0.9 transition widt
 regenerates the reliability diagram and probability-distribution figures into
 Latex/Figures/regen_2026/.
 """
+
 import argparse
 import json
 import sys
@@ -15,6 +16,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -70,10 +72,17 @@ def main():
 
     for i, zp in enumerate(files, 1):
         sv, gt, gt_idx, rng_arr = load_file_data(
-            zp, FREQ1, FREQ2, max_range_m=None, max_range_samples=None,
-            vmin=VMIN, vmax=VMAX, mask_mode="below", line_thickness=1)
-        prob = predict_full_echogram(model, sv, TARGET, device,
-                                     patch_width=512, stride=512)
+            zp,
+            FREQ1,
+            FREQ2,
+            max_range_m=None,
+            max_range_samples=None,
+            vmin=VMIN,
+            vmax=VMAX,
+            mask_mode="below",
+            line_thickness=1,
+        )
+        prob = predict_full_echogram(model, sv, TARGET, device, patch_width=512, stride=512)
         p = prob.ravel().astype(np.float64)
         g = gt.ravel().astype(np.float64)
         total_pixels += p.size
@@ -85,8 +94,9 @@ def main():
         np.add.at(rel_count, bins, 1)
         np.add.at(rel_sum_pred, bins, p)
         np.add.at(rel_sum_pos, bins, g)
-        tw = np.asarray(compute_transition_width(prob, rng_arr, lower_t=0.1,
-                                                 upper_t=0.9, mode="local"))
+        tw = np.asarray(
+            compute_transition_width(prob, rng_arr, lower_t=0.1, upper_t=0.9, mode="local")
+        )
         tw = tw[np.isfinite(tw)]
         if tw.size:
             tw_medians.append(float(np.median(tw)))
@@ -141,6 +151,7 @@ def main():
     # Figure: combined reliability + histogram on a shared x-axis. Stacking the two panels
     # on one predicted-probability axis lines the scales up exactly (0 below 0, 1 below 1).
     from matplotlib.gridspec import GridSpec  # noqa: E402
+
     fig = plt.figure(figsize=(6.2, 6.6))
     gs = GridSpec(2, 1, height_ratios=[3.0, 1.35], hspace=0.07, figure=fig)
     ax0 = fig.add_subplot(gs[0])

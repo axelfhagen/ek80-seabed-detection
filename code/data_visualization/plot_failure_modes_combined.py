@@ -43,15 +43,36 @@ for ax, label in zip(axes, ("(a)", "(b)")):
     ax.set_yticks([])
     for side in ("top", "right", "bottom", "left"):
         ax.spines[side].set_visible(True)
-    ax.text(0.02, 0.97, label, transform=ax.transAxes, fontsize=20,
-            fontweight="bold", va="top", ha="left",
-            bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.8))
+    ax.text(
+        0.02,
+        0.97,
+        label,
+        transform=ax.transAxes,
+        fontsize=20,
+        fontweight="bold",
+        va="top",
+        ha="left",
+        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.8),
+    )
 
 # Legend: black pixels are the detected bottom.
-legend_handle = Line2D([0], [0], marker="s", color="none", markerfacecolor="black",
-                       markersize=16, label="Detected bottom")
-fig.legend(handles=[legend_handle], loc="lower center", ncol=1, fontsize=16,
-           frameon=False, bbox_to_anchor=(0.5, -0.04))
+legend_handle = Line2D(
+    [0],
+    [0],
+    marker="s",
+    color="none",
+    markerfacecolor="black",
+    markersize=16,
+    label="Detected bottom",
+)
+fig.legend(
+    handles=[legend_handle],
+    loc="lower center",
+    ncol=1,
+    fontsize=16,
+    frameon=False,
+    bbox_to_anchor=(0.5, -0.04),
+)
 
 # Qualitative intensity colorbar on the right.
 sm = plt.cm.ScalarMappable(cmap=intensity_cmap)

@@ -19,10 +19,8 @@ import segmentation_models_pytorch as smp
 # Model creation
 # ---------------------------------------------------------------------------
 
-def create_unet(encoder_name='resnet34',
-                encoder_weights='imagenet',
-                in_channels=3,
-                classes=1):
+
+def create_unet(encoder_name="resnet34", encoder_weights="imagenet", in_channels=3, classes=1):
     """
     Create a U-Net with a pretrained encoder.
 
@@ -77,6 +75,7 @@ def add_mc_dropout(model, p=0.1):
 # ---------------------------------------------------------------------------
 # Freezing strategies
 # ---------------------------------------------------------------------------
+
 
 def freeze_encoder(model):
     """
@@ -157,10 +156,10 @@ def get_trainable_param_count(model):
     total = sum(p.numel() for p in model.parameters())
     frozen = total - trainable
     return {
-        'trainable': trainable,
-        'frozen': frozen,
-        'total': total,
-        'trainable_pct': 100.0 * trainable / total if total > 0 else 0.0,
+        "trainable": trainable,
+        "frozen": frozen,
+        "total": total,
+        "trainable_pct": 100.0 * trainable / total if total > 0 else 0.0,
     }
 
 
@@ -184,20 +183,18 @@ def get_param_groups(model, encoder_lr, decoder_lr):
     """
     encoder_params = list(model.encoder.parameters())
     encoder_ids = {id(p) for p in encoder_params}
-    decoder_params = [p for p in model.parameters()
-                      if id(p) not in encoder_ids]
+    decoder_params = [p for p in model.parameters() if id(p) not in encoder_ids]
 
     return [
-        {'params': [p for p in encoder_params if p.requires_grad],
-         'lr': encoder_lr},
-        {'params': [p for p in decoder_params if p.requires_grad],
-         'lr': decoder_lr},
+        {"params": [p for p in encoder_params if p.requires_grad], "lr": encoder_lr},
+        {"params": [p for p in decoder_params if p.requires_grad], "lr": decoder_lr},
     ]
 
 
 # ---------------------------------------------------------------------------
 # Loss function
 # ---------------------------------------------------------------------------
+
 
 class DiceBCELoss(nn.Module):
     """
@@ -229,7 +226,7 @@ class DiceBCELoss(nn.Module):
         squeezed = logits.squeeze(1)  # (B, H, W)
 
         # BCE (use logits directly — safe under autocast)
-        bce = F.binary_cross_entropy_with_logits(squeezed, targets, reduction='mean')
+        bce = F.binary_cross_entropy_with_logits(squeezed, targets, reduction="mean")
 
         probs = torch.sigmoid(squeezed)
 
@@ -252,7 +249,7 @@ class FocalLoss(nn.Module):
 
     def forward(self, logits, targets):
         squeezed = logits.squeeze(1)
-        bce = F.binary_cross_entropy_with_logits(squeezed, targets, reduction='none')
+        bce = F.binary_cross_entropy_with_logits(squeezed, targets, reduction="none")
         probs = torch.sigmoid(squeezed)
         p_t = probs * targets + (1 - probs) * (1 - targets)
         focal_weight = self.alpha * (1 - p_t) ** self.gamma
@@ -332,8 +329,16 @@ class GeoSegLoss(nn.Module):
     smooth       : Laplace smoothing for the Dice backbone
     """
 
-    def __init__(self, bce_weight=0.5, reg_weight=0.1, smooth_weight=0.1,
-                 depth_scale=1.0, huber_delta=5.0, mask_mode='below', smooth=1.0):
+    def __init__(
+        self,
+        bce_weight=0.5,
+        reg_weight=0.1,
+        smooth_weight=0.1,
+        depth_scale=1.0,
+        huber_delta=5.0,
+        mask_mode="below",
+        smooth=1.0,
+    ):
         super().__init__()
         self.base = DiceBCELoss(bce_weight=bce_weight, smooth=smooth)
         self.reg_weight = reg_weight
@@ -344,7 +349,7 @@ class GeoSegLoss(nn.Module):
 
     def _soft_depth(self, x):
         """Per-ping bottom depth (B, W) from a (B, H, W) probability/label map."""
-        if self.mask_mode == 'line':
+        if self.mask_mode == "line":
             H = x.shape[1]
             rows = torch.arange(H, device=x.device, dtype=x.dtype).view(1, H, 1)
             weight = x.sum(dim=1).clamp_min(1e-6)
@@ -355,9 +360,9 @@ class GeoSegLoss(nn.Module):
     def forward(self, logits, targets):
         base = self.base(logits, targets)
 
-        probs = torch.sigmoid(logits.squeeze(1))      # (B, H, W)
-        d_pred = self._soft_depth(probs)               # (B, W)
-        d_true = self._soft_depth(targets)             # (B, W)
+        probs = torch.sigmoid(logits.squeeze(1))  # (B, H, W)
+        d_pred = self._soft_depth(probs)  # (B, W)
+        d_true = self._soft_depth(targets)  # (B, W)
 
         diff = (d_pred - d_true) * self.depth_scale
         reg = F.huber_loss(diff, torch.zeros_like(diff), delta=self.huber_delta)
@@ -378,21 +383,21 @@ def soft_argmax_depth(logits):
     over rows; the expectation is the (continuous, differentiable) bottom row.
     This is the regression decoding shared by the loss, metrics, and inference.
     """
-    x = logits.squeeze(1)                                       # (B, H, W)
+    x = logits.squeeze(1)  # (B, H, W)
     H = x.shape[1]
-    p = torch.softmax(x, dim=1)                                 # over rows, per col
+    p = torch.softmax(x, dim=1)  # over rows, per col
     rows = torch.arange(H, device=x.device, dtype=x.dtype).view(1, H, 1)
-    return (p * rows).sum(dim=1)                                # (B, W)
+    return (p * rows).sum(dim=1)  # (B, W)
 
 
-def target_depth_from_mask(targets, mask_mode='below'):
+def target_depth_from_mask(targets, mask_mode="below"):
     """Ground-truth per-ping bottom row ``(B, W)`` from a ``(B, H, W)`` mask.
 
     For 'below' masks the bottom row equals the number of water pixels above it
     (``sum_i (1 - m_ij)``); for 'line' masks it is the probability-weighted mean
     row (soft argmax of the thin line).
     """
-    if mask_mode == 'line':
+    if mask_mode == "line":
         H = targets.shape[1]
         rows = torch.arange(H, device=targets.device, dtype=targets.dtype).view(1, H, 1)
         w = targets.sum(dim=1).clamp_min(1e-6)
@@ -419,8 +424,7 @@ class RegressionLoss(nn.Module):
     mask_mode    : 'below' or 'line' — how the target depth is read off the mask
     """
 
-    def __init__(self, depth_scale=1.0, huber_delta=5.0, smooth_weight=0.1,
-                 mask_mode='below'):
+    def __init__(self, depth_scale=1.0, huber_delta=5.0, smooth_weight=0.1, mask_mode="below"):
         super().__init__()
         self.depth_scale = depth_scale
         self.huber_delta = huber_delta
@@ -428,7 +432,7 @@ class RegressionLoss(nn.Module):
         self.mask_mode = mask_mode
 
     def forward(self, logits, targets):
-        d_pred = soft_argmax_depth(logits)                      # (B, W)
+        d_pred = soft_argmax_depth(logits)  # (B, W)
         d_true = target_depth_from_mask(targets, self.mask_mode)
 
         diff = (d_pred - d_true) * self.depth_scale
@@ -443,10 +447,19 @@ class RegressionLoss(nn.Module):
         return reg + self.smooth_weight * smooth
 
 
-def build_loss(loss_type, bce_weight=0.5, focal_alpha=0.25, focal_gamma=2.0,
-               tversky_alpha=0.7, tversky_beta=0.3,
-               geo_reg_weight=0.1, geo_smooth_weight=0.1,
-               geo_depth_scale=1.0, geo_huber_delta=5.0, mask_mode='below'):
+def build_loss(
+    loss_type,
+    bce_weight=0.5,
+    focal_alpha=0.25,
+    focal_gamma=2.0,
+    tversky_alpha=0.7,
+    tversky_beta=0.3,
+    geo_reg_weight=0.1,
+    geo_smooth_weight=0.1,
+    geo_depth_scale=1.0,
+    geo_huber_delta=5.0,
+    mask_mode="below",
+):
     """Factory for loss functions based on loss_type string."""
     if loss_type == "dice_bce":
         return DiceBCELoss(bce_weight=bce_weight)
@@ -457,12 +470,21 @@ def build_loss(loss_type, bce_weight=0.5, focal_alpha=0.25, focal_gamma=2.0,
     elif loss_type == "tversky":
         return TverskyLoss(alpha=tversky_alpha, beta=tversky_beta)
     elif loss_type == "geo_seg":
-        return GeoSegLoss(bce_weight=bce_weight, reg_weight=geo_reg_weight,
-                          smooth_weight=geo_smooth_weight, depth_scale=geo_depth_scale,
-                          huber_delta=geo_huber_delta, mask_mode=mask_mode)
+        return GeoSegLoss(
+            bce_weight=bce_weight,
+            reg_weight=geo_reg_weight,
+            smooth_weight=geo_smooth_weight,
+            depth_scale=geo_depth_scale,
+            huber_delta=geo_huber_delta,
+            mask_mode=mask_mode,
+        )
     elif loss_type == "regression":
-        return RegressionLoss(depth_scale=geo_depth_scale, huber_delta=geo_huber_delta,
-                              smooth_weight=geo_smooth_weight, mask_mode=mask_mode)
+        return RegressionLoss(
+            depth_scale=geo_depth_scale,
+            huber_delta=geo_huber_delta,
+            smooth_weight=geo_smooth_weight,
+            mask_mode=mask_mode,
+        )
     else:
         raise ValueError(f"Unknown loss type: {loss_type}")
 
@@ -471,9 +493,9 @@ def build_loss(loss_type, bce_weight=0.5, focal_alpha=0.25, focal_gamma=2.0,
 # Metrics
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
-def compute_metrics(logits, targets, threshold=0.5, mask_mode='below',
-                    task='segmentation'):
+def compute_metrics(logits, targets, threshold=0.5, mask_mode="below", task="segmentation"):
     """
     Compute binary segmentation metrics.
 
@@ -499,15 +521,14 @@ def compute_metrics(logits, targets, threshold=0.5, mask_mode='below',
     moving as confidence sharpens (e.g. bottom pixels 0.6 → 0.9), so it stays
     sensitive after the thresholded metrics have saturated.
     """
-    if task == 'regression':
-        d_pred = soft_argmax_depth(logits)                       # (B, W)
-        d_true = target_depth_from_mask(targets, mask_mode)      # (B, W)
+    if task == "regression":
+        d_pred = soft_argmax_depth(logits)  # (B, W)
+        d_true = target_depth_from_mask(targets, mask_mode)  # (B, W)
         bottom_mae = (d_pred - d_true).abs().mean()
 
         H = logits.shape[2]
-        rows = torch.arange(H, device=logits.device,
-                            dtype=d_pred.dtype).view(1, H, 1)
-        preds = (rows >= d_pred.unsqueeze(1)).float()            # below-mask
+        rows = torch.arange(H, device=logits.device, dtype=d_pred.dtype).view(1, H, 1)
+        preds = (rows >= d_pred.unsqueeze(1)).float()  # below-mask
         gt = (rows >= d_true.unsqueeze(1)).float()
         intersection = (preds * gt).sum()
         pred_sum = preds.sum()
@@ -515,11 +536,11 @@ def compute_metrics(logits, targets, threshold=0.5, mask_mode='below',
         union = pred_sum + target_sum - intersection
         eps = 1e-7
         return {
-            'iou': ((intersection + eps) / (union + eps)).item(),
-            'dice': ((2.0 * intersection + eps) / (pred_sum + target_sum + eps)).item(),
-            'precision': ((intersection + eps) / (pred_sum + eps)).item(),
-            'recall': ((intersection + eps) / (target_sum + eps)).item(),
-            'bottom_mae': bottom_mae.item(),
+            "iou": ((intersection + eps) / (union + eps)).item(),
+            "dice": ((2.0 * intersection + eps) / (pred_sum + target_sum + eps)).item(),
+            "precision": ((intersection + eps) / (pred_sum + eps)).item(),
+            "recall": ((intersection + eps) / (target_sum + eps)).item(),
+            "bottom_mae": bottom_mae.item(),
         }
 
     probs = torch.sigmoid(logits.squeeze(1))
@@ -537,7 +558,7 @@ def compute_metrics(logits, targets, threshold=0.5, mask_mode='below',
     recall = (intersection + eps) / (target_sum + eps)
 
     # Soft per-ping bottom row, then mean absolute error against the target.
-    if mask_mode == 'line':
+    if mask_mode == "line":
         H = probs.shape[1]
         rows = torch.arange(H, device=probs.device, dtype=probs.dtype).view(1, H, 1)
         d_pred = (probs * rows).sum(dim=1) / probs.sum(dim=1).clamp_min(1e-6)
@@ -548,11 +569,11 @@ def compute_metrics(logits, targets, threshold=0.5, mask_mode='below',
     bottom_mae = (d_pred - d_true).abs().mean()
 
     return {
-        'iou': iou.item(),
-        'dice': dice.item(),
-        'precision': precision.item(),
-        'recall': recall.item(),
-        'bottom_mae': bottom_mae.item(),
+        "iou": iou.item(),
+        "dice": dice.item(),
+        "precision": precision.item(),
+        "recall": recall.item(),
+        "bottom_mae": bottom_mae.item(),
     }
 
 
@@ -560,9 +581,18 @@ def compute_metrics(logits, targets, threshold=0.5, mask_mode='below',
 # Training and validation steps
 # ---------------------------------------------------------------------------
 
-def train_one_epoch(model, loader, optimizer, loss_fn, device, scaler=None,
-                    mask_mode='below', grad_clip_norm=None,
-                    task='segmentation'):
+
+def train_one_epoch(
+    model,
+    loader,
+    optimizer,
+    loss_fn,
+    device,
+    scaler=None,
+    mask_mode="below",
+    grad_clip_norm=None,
+    task="segmentation",
+):
     """
     Train for one epoch.
 
@@ -596,7 +626,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device, scaler=None,
     n_nonfinite = 0
 
     use_amp = scaler is not None
-    amp_dtype = torch.float16 if device == 'cuda' else torch.bfloat16
+    amp_dtype = torch.float16 if device == "cuda" else torch.bfloat16
 
     for images, masks in loader:
         images = images.to(device)
@@ -631,26 +661,24 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device, scaler=None,
                 torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
             optimizer.step()
 
-        metrics = compute_metrics(logits.detach(), masks, mask_mode=mask_mode,
-                                  task=task)
+        metrics = compute_metrics(logits.detach(), masks, mask_mode=mask_mode, task=task)
         running_loss += loss.item()
-        running_iou += metrics['iou']
-        running_dice += metrics['dice']
-        running_bottom_mae += metrics['bottom_mae']
+        running_iou += metrics["iou"]
+        running_dice += metrics["dice"]
+        running_bottom_mae += metrics["bottom_mae"]
         n_batches += 1
 
     return {
-        'loss': running_loss / n_batches if n_batches else float('nan'),
-        'iou': running_iou / n_batches if n_batches else 0.0,
-        'dice': running_dice / n_batches if n_batches else 0.0,
-        'bottom_mae': running_bottom_mae / n_batches if n_batches else float('nan'),
-        'n_nonfinite': n_nonfinite,
+        "loss": running_loss / n_batches if n_batches else float("nan"),
+        "iou": running_iou / n_batches if n_batches else 0.0,
+        "dice": running_dice / n_batches if n_batches else 0.0,
+        "bottom_mae": running_bottom_mae / n_batches if n_batches else float("nan"),
+        "n_nonfinite": n_nonfinite,
     }
 
 
 @torch.no_grad()
-def validate(model, loader, loss_fn, device, mask_mode='below',
-             task='segmentation'):
+def validate(model, loader, loss_fn, device, mask_mode="below", task="segmentation"):
     """
     Run validation.  Same signature/return as ``train_one_epoch`` but
     without gradient computation.
@@ -671,22 +699,23 @@ def validate(model, loader, loss_fn, device, mask_mode='below',
 
         metrics = compute_metrics(logits, masks, mask_mode=mask_mode, task=task)
         running_loss += loss.item()
-        running_iou += metrics['iou']
-        running_dice += metrics['dice']
-        running_bottom_mae += metrics['bottom_mae']
+        running_iou += metrics["iou"]
+        running_dice += metrics["dice"]
+        running_bottom_mae += metrics["bottom_mae"]
         n_batches += 1
 
     return {
-        'loss': running_loss / max(n_batches, 1),
-        'iou': running_iou / max(n_batches, 1),
-        'dice': running_dice / max(n_batches, 1),
-        'bottom_mae': running_bottom_mae / max(n_batches, 1),
+        "loss": running_loss / max(n_batches, 1),
+        "iou": running_iou / max(n_batches, 1),
+        "dice": running_dice / max(n_batches, 1),
+        "bottom_mae": running_bottom_mae / max(n_batches, 1),
     }
 
 
 # ---------------------------------------------------------------------------
 # Early stopping
 # ---------------------------------------------------------------------------
+
 
 class EarlyStopping:
     """Stop training when a monitored score stops improving."""
@@ -710,9 +739,11 @@ class EarlyStopping:
 # Full-echogram inference (sliding window with overlap averaging)
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
-def predict_full_echogram(model, sv_channels, target_size, device,
-                          patch_width=512, stride=128, task='segmentation'):
+def predict_full_echogram(
+    model, sv_channels, target_size, device, patch_width=512, stride=128, task="segmentation"
+):
     """
     Run inference on a complete echogram using a sliding window.
 
@@ -760,34 +791,32 @@ def predict_full_echogram(model, sv_channels, target_size, device,
 
         # Resize to model input size
         patch_hwc = np.transpose(patch, (1, 2, 0))  # (n_range, pw, C)
-        patch_resized = cv2.resize(patch_hwc, (w, h),
-                                   interpolation=cv2.INTER_LINEAR)
-        if patch_resized.ndim == 2:          # cv2 drops a singleton channel
+        patch_resized = cv2.resize(patch_hwc, (w, h), interpolation=cv2.INTER_LINEAR)
+        if patch_resized.ndim == 2:  # cv2 drops a singleton channel
             patch_resized = patch_resized[..., None]
         patch_chw = np.transpose(patch_resized, (2, 0, 1))  # (C, h, w)
 
         # Model forward pass
         inp = torch.from_numpy(patch_chw[np.newaxis]).float().to(device)
         logits = model(inp)  # (1, 1, h, w)
-        if task == 'regression':
+        if task == "regression":
             # Decode the column-softmax to a per-ping bottom row, then paint a
             # 'below' mask so the downstream thresholding / extract_bottom_line
             # path (shared with segmentation) recovers the same line.
-            d = soft_argmax_depth(logits)[0]                  # (w,) rows in [0, h)
+            d = soft_argmax_depth(logits)[0]  # (w,) rows in [0, h)
             rr = torch.arange(h, device=device, dtype=d.dtype).view(h, 1)
             probs = (rr >= d.view(1, w)).float().cpu().numpy()  # (h, w)
         else:
             probs = torch.sigmoid(logits)[0, 0].cpu().numpy()  # (h, w)
 
         # Resize prediction back to this window's ping width
-        probs_orig = cv2.resize(probs, (pw, n_range),
-                                interpolation=cv2.INTER_LINEAR)
+        probs_orig = cv2.resize(probs, (pw, n_range), interpolation=cv2.INTER_LINEAR)
 
         sum_pred[:, start:end] += probs_orig
         count[:, start:end] += 1.0
 
     # Average overlapping predictions
-    prediction = np.divide(sum_pred, count,
-                           out=np.zeros_like(sum_pred),
-                           where=count > 0).astype(np.float32)
+    prediction = np.divide(sum_pred, count, out=np.zeros_like(sum_pred), where=count > 0).astype(
+        np.float32
+    )
     return prediction

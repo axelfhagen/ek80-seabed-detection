@@ -35,8 +35,7 @@ def _stringify(value: Any) -> str:
     if isinstance(value, Path):
         return str(value)
     if isinstance(value, (list, tuple)):
-        if isinstance(value, tuple) and len(value) == 2 and all(
-                isinstance(v, int) for v in value):
+        if isinstance(value, tuple) and len(value) == 2 and all(isinstance(v, int) for v in value):
             return f"{value[0]}x{value[1]}"
         return ";".join(_stringify(v) for v in value)
     return str(value)
@@ -75,7 +74,9 @@ def _git_commit() -> Optional[str]:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
             cwd=Path(__file__).resolve().parent,
         )
         if result.returncode == 0:
@@ -103,12 +104,10 @@ def _rewrite_with_new_columns(path: Path, new_header: list[str]) -> None:
         reader = csv.DictReader(f)
         rows = list(reader)
 
-    fd, tmp_name = tempfile.mkstemp(
-        dir=str(path.parent), prefix=".results_log_", suffix=".csv")
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=".results_log_", suffix=".csv")
     try:
         with os.fdopen(fd, "w", newline="") as out:
-            writer = csv.DictWriter(out, fieldnames=new_header,
-                                    extrasaction="ignore")
+            writer = csv.DictWriter(out, fieldnames=new_header, extrasaction="ignore")
             writer.writeheader()
             for r in rows:
                 writer.writerow({k: r.get(k, "") for k in new_header})
@@ -148,8 +147,7 @@ def append_run(csv_path: Path, row: dict[str, Any]) -> None:
                 _rewrite_with_new_columns(csv_path, full_header)
 
             with open(csv_path, "a", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=full_header,
-                                        extrasaction="ignore")
+                writer = csv.DictWriter(f, fieldnames=full_header, extrasaction="ignore")
                 writer.writerow({k: str_row.get(k, "") for k in full_header})
         finally:
             fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
@@ -179,22 +177,27 @@ def build_row(
         "n_epochs_completed": n_epochs_completed,
     }
     if eval_summary is not None:
-        metrics.update({
-            "eval_mean_iou": f"{eval_summary.get('mean_iou', float('nan')):.6f}",
-            "eval_mean_dice": f"{eval_summary.get('mean_dice', float('nan')):.6f}",
-            "eval_mean_bottom_error_m": (
-                f"{eval_summary.get('mean_bottom_error_m', float('nan')):.4f}"),
-            "eval_std_iou": f"{eval_summary.get('std_iou', float('nan')):.6f}",
-            "eval_n_files": eval_summary.get("n_files", ""),
-        })
+        metrics.update(
+            {
+                "eval_mean_iou": f"{eval_summary.get('mean_iou', float('nan')):.6f}",
+                "eval_mean_dice": f"{eval_summary.get('mean_dice', float('nan')):.6f}",
+                "eval_mean_bottom_error_m": (
+                    f"{eval_summary.get('mean_bottom_error_m', float('nan')):.4f}"
+                ),
+                "eval_std_iou": f"{eval_summary.get('std_iou', float('nan')):.6f}",
+                "eval_n_files": eval_summary.get("n_files", ""),
+            }
+        )
     else:
-        metrics.update({
-            "eval_mean_iou": "",
-            "eval_mean_dice": "",
-            "eval_mean_bottom_error_m": "",
-            "eval_std_iou": "",
-            "eval_n_files": "",
-        })
+        metrics.update(
+            {
+                "eval_mean_iou": "",
+                "eval_mean_dice": "",
+                "eval_mean_bottom_error_m": "",
+                "eval_std_iou": "",
+                "eval_n_files": "",
+            }
+        )
 
     # Order: metadata → config → metrics
     return {**meta, **_flatten_config(cfg), **metrics}

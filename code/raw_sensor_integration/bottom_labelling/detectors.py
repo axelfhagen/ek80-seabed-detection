@@ -27,6 +27,7 @@ from .utilities import SOUND_VELOCITY, _BEAM_WIDTH
 
 # ── Private helpers (ported from CRIMAC bottom_utils.py) ───────────────────
 
+
 def _shift_arr(arr: np.ndarray, num: int, fill_value: float = np.nan) -> np.ndarray:
     """Shift 1D array by num samples (positive = shift right / deeper)."""
     result = np.empty_like(arr)
@@ -41,17 +42,21 @@ def _shift_arr(arr: np.ndarray, num: int, fill_value: float = np.nan) -> np.ndar
     return result
 
 
-def _stack_max(v: np.ndarray, v_prev: np.ndarray, v_next: np.ndarray,
-               shift: float, shift_prev: float, shift_next: float) -> np.ndarray:
+def _stack_max(
+    v: np.ndarray,
+    v_prev: np.ndarray,
+    v_next: np.ndarray,
+    shift: float,
+    shift_prev: float,
+    shift_next: float,
+) -> np.ndarray:
     """Element-wise max of three heave-aligned ping columns."""
     shift_diff_prev = int(np.round(shift_prev - shift)) if not np.isnan(shift_prev) else 0
     shift_diff_next = int(np.round(shift_next - shift)) if not np.isnan(shift_next) else 0
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', message='All-NaN slice encountered')
+        warnings.filterwarnings("ignore", message="All-NaN slice encountered")
         return np.nanmax(
-            np.stack([v,
-                      _shift_arr(v_prev, shift_diff_prev),
-                      _shift_arr(v_next, shift_diff_next)]),
+            np.stack([v, _shift_arr(v_prev, shift_diff_prev), _shift_arr(v_next, shift_diff_next)]),
             axis=0,
         )
 
@@ -65,16 +70,18 @@ def _mean_at_index(sv: np.ndarray, index: int, radius: int) -> float:
     if end <= start:
         return 0.0
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', message='Mean of empty slice')
+        warnings.filterwarnings("ignore", message="Mean of empty slice")
         return float(np.nanmean(sv[start:end]))
 
 
-def _first_bottom_index_numpy(sv: np.ndarray,
-                               sample_dist: float,
-                               threshold: float,
-                               heave_shift_samples: float,
-                               pulse_duration: float,
-                               min_index: int) -> int:
+def _first_bottom_index_numpy(
+    sv: np.ndarray,
+    sample_dist: float,
+    threshold: float,
+    heave_shift_samples: float,
+    pulse_duration: float,
+    min_index: int,
+) -> int:
     """
     Find initial bottom sample index for a single ping column.
     Includes second-echo correction.
@@ -100,15 +107,17 @@ def _first_bottom_index_numpy(sv: np.ndarray,
     return bottom_index
 
 
-def _back_step_simple_numpy(v: np.ndarray,
-                             v_prev: np.ndarray,
-                             v_next: np.ndarray,
-                             shift: float,
-                             shift_prev: float,
-                             shift_next: float,
-                             di: int,
-                             min_depth_value_fraction: float,
-                             segment_nsamples: int) -> int:
+def _back_step_simple_numpy(
+    v: np.ndarray,
+    v_prev: np.ndarray,
+    v_next: np.ndarray,
+    shift: float,
+    shift_prev: float,
+    shift_next: float,
+    di: int,
+    min_depth_value_fraction: float,
+    segment_nsamples: int,
+) -> int:
     """
     Refine bottom index by stepping back to the leading edge.
     Ports CRIMAC simple_bottom_detector._back_step_inner().
@@ -126,11 +135,16 @@ def _back_step_simple_numpy(v: np.ndarray,
         segment_start = max(0, segment_end - segment_nsamples)
         actual_length = segment_end - segment_start
 
-        seg = np.nanmax(np.stack([
-            np.asarray(vs[segment_start:segment_end])[::-1],
-            np.asarray(_shift_arr(vs, 1)[segment_start:segment_end])[::-1],
-            np.asarray(_shift_arr(vs, -1)[segment_start:segment_end])[::-1],
-        ]), axis=0)
+        seg = np.nanmax(
+            np.stack(
+                [
+                    np.asarray(vs[segment_start:segment_end])[::-1],
+                    np.asarray(_shift_arr(vs, 1)[segment_start:segment_end])[::-1],
+                    np.asarray(_shift_arr(vs, -1)[segment_start:segment_end])[::-1],
+                ]
+            ),
+            axis=0,
+        )
 
         below = seg <= min_depth_value_fraction * vi
         first_below = int(below.argmax())
@@ -145,20 +159,22 @@ def _back_step_simple_numpy(v: np.ndarray,
     final_index = max(0, di - back_step_offset)
     forward_step_offset = 0
     if v[final_index] < min_depth_value_fraction * vi:
-        above = np.asarray(v[final_index + 1:di]) > min_depth_value_fraction * vi
+        above = np.asarray(v[final_index + 1 : di]) > min_depth_value_fraction * vi
         if len(above) > 0 and above.any():
             forward_step_offset = int(above.argmax())
 
     return final_index + forward_step_offset
 
 
-def _bottom_width_numpy(sv: np.ndarray,
-                         bottom_index: int,
-                         factor: float,
-                         frequency_hz: float,
-                         start_index: int,
-                         sample_dist: float,
-                         pulse_duration: float) -> float:
+def _bottom_width_numpy(
+    sv: np.ndarray,
+    bottom_index: int,
+    factor: float,
+    frequency_hz: float,
+    start_index: int,
+    sample_dist: float,
+    pulse_duration: float,
+) -> float:
     """Estimate width (in samples) of the bottom echo for one ping."""
     if bottom_index < 0:
         return np.nan
@@ -182,7 +198,9 @@ def _bottom_width_numpy(sv: np.ndarray,
     bw_half = _BEAM_WIDTH.get(freq_key, 7.1) / 2.0
     max_range_m = bottom_index * sample_dist
     if start_index < len(sv):
-        min_thickness_m = pulse_thickness_m + max_range_m * (1.0 / np.cos(np.radians(bw_half)) - 1.0)
+        min_thickness_m = pulse_thickness_m + max_range_m * (
+            1.0 / np.cos(np.radians(bw_half)) - 1.0
+        )
     else:
         min_thickness_m = pulse_thickness_m
     min_thickness_samples = min_thickness_m / sample_dist
@@ -201,13 +219,15 @@ def _possibly_small_backstep(v: np.ndarray, threshold: float, index: int) -> int
     return index
 
 
-def _back_step_edge_numpy(v: np.ndarray,
-                           di: int,
-                           width: float,
-                           start_index: int,
-                           max_candidates: int = 3,
-                           alpha: float = 0.95,
-                           sample_dist: float = 0.072) -> Tuple[np.ndarray, np.ndarray]:
+def _back_step_edge_numpy(
+    v: np.ndarray,
+    di: int,
+    width: float,
+    start_index: int,
+    max_candidates: int = 3,
+    alpha: float = 0.95,
+    sample_dist: float = 0.072,
+) -> Tuple[np.ndarray, np.ndarray]:
     """Edge-based back-step using Gaussian-derivative convolution."""
     empty = (
         np.full(max_candidates, -1, dtype=np.int64),
@@ -225,11 +245,11 @@ def _back_step_edge_numpy(v: np.ndarray,
     center = width_int
 
     b = (center / 2.0) ** 2
-    kernel = np.array([(i - center) * np.exp(-(i - center) ** 2 / b) for i in range(n)])
+    kernel = np.array([(i - center) * np.exp(-((i - center) ** 2) / b) for i in range(n)])
     kernel[:center] *= alpha
-    kernel[center:] *= (1.0 - alpha)
+    kernel[center:] *= 1.0 - alpha
 
-    a_hs = np.convolve(vs, np.flip(kernel), 'same')
+    a_hs = np.convolve(vs, np.flip(kernel), "same")
 
     peaks, _ = si.find_peaks(a_hs)
     rel_di = di - start_index
@@ -265,15 +285,18 @@ def _back_step_edge_numpy(v: np.ndarray,
 
 # ── Public detectors ──────────────────────────────────────────────────────
 
-def detect_bottom_simple(power_db: np.ndarray,
-                          range_array: np.ndarray,
-                          heave: np.ndarray,
-                          pulse_duration: float,
-                          transducer_draft: float = 0.0,
-                          minimum_range: float = 10.0,
-                          threshold_log_sv: Union[float, str] = 'auto',
-                          offset: float = 0.5,
-                          sound_velocity: float = SOUND_VELOCITY) -> np.ndarray:
+
+def detect_bottom_simple(
+    power_db: np.ndarray,
+    range_array: np.ndarray,
+    heave: np.ndarray,
+    pulse_duration: float,
+    transducer_draft: float = 0.0,
+    minimum_range: float = 10.0,
+    threshold_log_sv: Union[float, str] = "auto",
+    offset: float = 0.5,
+    sound_velocity: float = SOUND_VELOCITY,
+) -> np.ndarray:
     """
     Simple threshold + back-step bottom detection (CRIMAC port).
 
@@ -297,7 +320,7 @@ def detect_bottom_simple(power_db: np.ndarray,
     n_pings = sv.shape[1]
     heave_shift = heave / sample_dist
 
-    if threshold_log_sv == 'auto':
+    if threshold_log_sv == "auto":
         ping_max_db = np.nanmax(power_db[min_index:, :], axis=0)
         noise_floor_db = float(np.nanpercentile(power_db, 10))
         auto_threshold = True
@@ -316,8 +339,12 @@ def detect_bottom_simple(power_db: np.ndarray,
         sv_col = sv[:, i]
 
         di = _first_bottom_index_numpy(
-            sv_col, sample_dist, threshold,
-            heave_shift[i], pulse_duration, min_index,
+            sv_col,
+            sample_dist,
+            threshold,
+            heave_shift[i],
+            pulse_duration,
+            min_index,
         )
         if di < 0:
             continue
@@ -328,9 +355,15 @@ def detect_bottom_simple(power_db: np.ndarray,
         sh_next = heave_shift[i + 1] if i < n_pings - 1 else heave_shift[i]
 
         di_final = _back_step_simple_numpy(
-            sv_col, v_prev, v_next,
-            heave_shift[i], sh_prev, sh_next,
-            di, 0.001, segment_nsamples,
+            sv_col,
+            v_prev,
+            v_next,
+            heave_shift[i],
+            sh_prev,
+            sh_next,
+            di,
+            0.001,
+            segment_nsamples,
         )
 
         if 0 <= di_final < len(range_array):
@@ -339,17 +372,19 @@ def detect_bottom_simple(power_db: np.ndarray,
     return bottom_range_m
 
 
-def detect_bottom_edge(power_db: np.ndarray,
-                        range_array: np.ndarray,
-                        heave: np.ndarray,
-                        pulse_duration: float,
-                        frequency_hz: float = 38000.0,
-                        transducer_draft: float = 0.0,
-                        minimum_range: float = 10.0,
-                        threshold_log_sv: Union[float, str] = 'auto',
-                        offset: float = 0.5,
-                        alpha: float = 0.95,
-                        sound_velocity: float = SOUND_VELOCITY) -> np.ndarray:
+def detect_bottom_edge(
+    power_db: np.ndarray,
+    range_array: np.ndarray,
+    heave: np.ndarray,
+    pulse_duration: float,
+    frequency_hz: float = 38000.0,
+    transducer_draft: float = 0.0,
+    minimum_range: float = 10.0,
+    threshold_log_sv: Union[float, str] = "auto",
+    offset: float = 0.5,
+    alpha: float = 0.95,
+    sound_velocity: float = SOUND_VELOCITY,
+) -> np.ndarray:
     """
     Edge-detection based bottom detection (CRIMAC port).
 
@@ -366,7 +401,7 @@ def detect_bottom_edge(power_db: np.ndarray,
     n_samples, n_pings = sv.shape
     heave_shift = heave / sample_dist
 
-    if threshold_log_sv == 'auto':
+    if threshold_log_sv == "auto":
         ping_max_db = np.nanmax(power_db[min_index:, :], axis=0)
         noise_floor_db = float(np.nanpercentile(power_db, 10))
         auto_threshold = True
@@ -380,8 +415,7 @@ def detect_bottom_edge(power_db: np.ndarray,
         v_next = sv[:, i + 1] if i < n_pings - 1 else sv[:, i]
         sh_prev = heave_shift[i - 1] if i > 0 else heave_shift[i]
         sh_next = heave_shift[i + 1] if i < n_pings - 1 else heave_shift[i]
-        stacked[:, i] = _stack_max(sv[:, i], v_prev, v_next,
-                                    heave_shift[i], sh_prev, sh_next)
+        stacked[:, i] = _stack_max(sv[:, i], v_prev, v_next, heave_shift[i], sh_prev, sh_next)
 
     bottom_range_m = np.full(n_pings, np.nan)
 
@@ -394,21 +428,34 @@ def detect_bottom_edge(power_db: np.ndarray,
         sv_col = stacked[:, i]
 
         di = _first_bottom_index_numpy(
-            sv_col, sample_dist, threshold,
-            heave_shift[i], pulse_duration, min_index,
+            sv_col,
+            sample_dist,
+            threshold,
+            heave_shift[i],
+            pulse_duration,
+            min_index,
         )
         if di < 0:
             continue
 
         width = _bottom_width_numpy(
-            sv_col, di, factor=0.1, frequency_hz=frequency_hz,
-            start_index=min_index, sample_dist=sample_dist,
+            sv_col,
+            di,
+            factor=0.1,
+            frequency_hz=frequency_hz,
+            start_index=min_index,
+            sample_dist=sample_dist,
             pulse_duration=pulse_duration,
         )
 
         candidate_indices, _ = _back_step_edge_numpy(
-            sv_col, di, width, start_index=min_index,
-            max_candidates=3, alpha=alpha, sample_dist=sample_dist,
+            sv_col,
+            di,
+            width,
+            start_index=min_index,
+            max_candidates=3,
+            alpha=alpha,
+            sample_dist=sample_dist,
         )
 
         best_idx = candidate_indices[0]
@@ -418,11 +465,13 @@ def detect_bottom_edge(power_db: np.ndarray,
     return bottom_range_m
 
 
-def detect_bottom_gradient(power_db: np.ndarray,
-                            range_array: np.ndarray,
-                            minimum_range: float = 10.0,
-                            gradient_window: int = 5,
-                            offset: float = 0.5) -> np.ndarray:
+def detect_bottom_gradient(
+    power_db: np.ndarray,
+    range_array: np.ndarray,
+    minimum_range: float = 10.0,
+    gradient_window: int = 5,
+    offset: float = 0.5,
+) -> np.ndarray:
     """
     Gradient-based bottom detection (threshold-free).
 
@@ -445,7 +494,7 @@ def detect_bottom_gradient(power_db: np.ndarray,
         col[np.isnan(col)] = -999.0
         if len(col) < gradient_window * 2:
             continue
-        smoothed = np.convolve(col, kernel, mode='valid')
+        smoothed = np.convolve(col, kernel, mode="valid")
         grad = np.diff(smoothed)
         if len(grad) == 0:
             continue

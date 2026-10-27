@@ -24,13 +24,17 @@ from pathlib import Path
 import numpy as np
 import torch
 
-_ROOT = Path(__file__).resolve().parents[2]   # .../code
+_ROOT = Path(__file__).resolve().parents[2]  # .../code
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from deep_learning.echo_dataset import (
-    LazyPatchDataset, _npz_to_fast, _fast_paths, _npy_patch_count,
-    ensure_cached, _cache_key,
+    LazyPatchDataset,
+    _npz_to_fast,
+    _fast_paths,
+    _npy_patch_count,
+    ensure_cached,
+    _cache_key,
 )
 from deep_learning.training.config import PipelineConfig
 
@@ -81,24 +85,37 @@ def test_ensure_cached_fast(tmp):
     cache = Path(tmp) / "isolated_cache"
     cache.mkdir(parents=True, exist_ok=True)
     cfg = PipelineConfig(
-        fast_cache=True, target_size=(64, 64), cache_dir=cache,
-        patch_width=40, stride=40, crop_mode="full",
+        fast_cache=True,
+        target_size=(64, 64),
+        cache_dir=cache,
+        patch_width=40,
+        stride=40,
+        crop_mode="full",
     )
-    zarr_path = "/nonexistent/DUMMY.zarr"   # only used for the deterministic key
+    zarr_path = "/nonexistent/DUMMY.zarr"  # only used for the deterministic key
     fname = _cache_key(
-        zarr_path, cfg.freq1_hz, cfg.freq2_hz, cfg.patch_width, cfg.stride,
-        cfg.max_range_m, cfg.max_range_samples, cfg.vmin, cfg.vmax,
-        norm_method=cfg.norm_method, clip_percentile=cfg.clip_percentile,
-        single_freq=cfg.single_freq, mask_mode=cfg.mask_mode,
-        crop_mode=cfg.crop_mode, crop_padding=cfg.crop_padding,
+        zarr_path,
+        cfg.freq1_hz,
+        cfg.freq2_hz,
+        cfg.patch_width,
+        cfg.stride,
+        cfg.max_range_m,
+        cfg.max_range_samples,
+        cfg.vmin,
+        cfg.vmax,
+        norm_method=cfg.norm_method,
+        clip_percentile=cfg.clip_percentile,
+        single_freq=cfg.single_freq,
+        mask_mode=cfg.mask_mode,
+        crop_mode=cfg.crop_mode,
+        crop_padding=cfg.crop_padding,
     )
     # Plant a small full-height npz at the canonical path (simulates the
     # existing shared cache having this file already).
     n = 3
     patches = np.random.rand(n, 3, 128, 40).astype(np.float32)
     masks = (np.random.rand(n, 128, 40) > 0.5).astype(np.uint8)
-    np.savez_compressed(str((cache / fname).with_suffix("")),
-                        patches=patches, masks=masks)
+    np.savez_compressed(str((cache / fname).with_suffix("")), patches=patches, masks=masks)
 
     load_path, count = ensure_cached(zarr_path, cache, cfg, verbose=True)
     if count != n:
@@ -126,9 +143,11 @@ def test_npz_path_still_works(tmp):
     """The legacy .npz read path through the refactored __getitem__."""
     npz = Path(tmp) / "legacy.npz"
     n = 4
-    np.savez_compressed(str(npz.with_suffix("")),
-                        patches=np.random.rand(n, 3, 300, 40).astype(np.float32),
-                        masks=(np.random.rand(n, 300, 40) > 0.5).astype(np.uint8))
+    np.savez_compressed(
+        str(npz.with_suffix("")),
+        patches=np.random.rand(n, 3, 300, 40).astype(np.float32),
+        masks=(np.random.rand(n, 300, 40) > 0.5).astype(np.uint8),
+    )
     ds = LazyPatchDataset([(npz, i) for i in range(n)], (128, 128), None)
     img, msk = ds[2]
     if tuple(img.shape) != (3, 128, 128) or tuple(msk.shape) != (128, 128):
@@ -153,6 +172,7 @@ def main():
                 results[name] = bool(fn(tmp))
             except Exception:
                 import traceback
+
                 traceback.print_exc()
                 results[name] = False
     print("\n" + "=" * 60)

@@ -31,8 +31,8 @@ class SmpModel(SegmentationModel):
         super().__init__()
         if arch_type not in _SMP_CLASSES:
             raise ValueError(
-                f"Unknown smp architecture '{arch_type}'. "
-                f"Available: {sorted(_SMP_CLASSES)}")
+                f"Unknown smp architecture '{arch_type}'. Available: {sorted(_SMP_CLASSES)}"
+            )
         cls = _SMP_CLASSES[arch_type]
         extra = {}
         # decoder_attention_type is only accepted by the U-Net decoder.

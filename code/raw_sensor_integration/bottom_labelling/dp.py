@@ -11,9 +11,9 @@ import numpy as np
 import scipy.signal as sig
 
 
-def _apply_pseudo_tvg(power_db: np.ndarray,
-                      range_array: np.ndarray,
-                      absorption_db_per_m: float = 0.01) -> np.ndarray:
+def _apply_pseudo_tvg(
+    power_db: np.ndarray, range_array: np.ndarray, absorption_db_per_m: float = 0.01
+) -> np.ndarray:
     """Apply pseudo-TVG correction for geometric spreading loss."""
     range_col = range_array[:, np.newaxis]
     range_safe = np.maximum(range_col, 1.0)
@@ -21,11 +21,13 @@ def _apply_pseudo_tvg(power_db: np.ndarray,
     return power_db + tvg
 
 
-def detect_bottom_tvg(power_db: np.ndarray,
-                      range_array: np.ndarray,
-                      minimum_range: float = 5.0,
-                      backstep_db: float = 10.0,
-                      noise_threshold_db: float = 6.0) -> np.ndarray:
+def detect_bottom_tvg(
+    power_db: np.ndarray,
+    range_array: np.ndarray,
+    minimum_range: float = 5.0,
+    backstep_db: float = 10.0,
+    noise_threshold_db: float = 6.0,
+) -> np.ndarray:
     """
     Per-ping bottom detection using TVG-corrected argmax with back-step.
 
@@ -90,14 +92,16 @@ def _linear_envelope_min(values: np.ndarray, penalty: float) -> Tuple[np.ndarray
     return envelope, argmin_indices
 
 
-def detect_bottom_dp(power_db: np.ndarray,
-                     range_array: np.ndarray,
-                     smoothness: float = 1.0,
-                     minimum_range: float = 5.0,
-                     backstep_db: float = 10.0,
-                     data_weight: float = 5.0,
-                     phase_confidence: Optional[np.ndarray] = None,
-                     phase_weight: float = 3.0) -> np.ndarray:
+def detect_bottom_dp(
+    power_db: np.ndarray,
+    range_array: np.ndarray,
+    smoothness: float = 1.0,
+    minimum_range: float = 5.0,
+    backstep_db: float = 10.0,
+    data_weight: float = 5.0,
+    phase_confidence: Optional[np.ndarray] = None,
+    phase_weight: float = 3.0,
+) -> np.ndarray:
     """
     Bottom detection: per-ping TVG + bidirectional DP temporal smoothing.
 
@@ -114,7 +118,8 @@ def detect_bottom_dp(power_db: np.ndarray,
     min_index = max(0, int(minimum_range / sample_dist))
 
     tvg_trace = detect_bottom_tvg(
-        power_db, range_array,
+        power_db,
+        range_array,
         minimum_range=minimum_range,
         backstep_db=backstep_db,
     )
@@ -129,9 +134,9 @@ def detect_bottom_dp(power_db: np.ndarray,
     if valid.any() and not valid.all():
         x = np.arange(n_pings)
         interp_trace = np.interp(x, x[valid], tvg_trace[valid])
-        gap_idx = np.round(
-            np.interp(interp_trace, range_array, np.arange(n_samples))
-        ).astype(np.int64)
+        gap_idx = np.round(np.interp(interp_trace, range_array, np.arange(n_samples))).astype(
+            np.int64
+        )
         candidate_idx[~valid] = gap_idx[~valid]
 
     corrected = _apply_pseudo_tvg(power_db, range_array)
@@ -206,13 +211,15 @@ def detect_bottom_dp(power_db: np.ndarray,
     return range_array[path]
 
 
-def refine_bottom_snake(power_db: np.ndarray,
-                        range_array: np.ndarray,
-                        initial_bottom_m: np.ndarray,
-                        search_radius_m: float = 5.0,
-                        smoothing_window: int = 21,
-                        smoothing_order: int = 3,
-                        iterations: int = 3) -> np.ndarray:
+def refine_bottom_snake(
+    power_db: np.ndarray,
+    range_array: np.ndarray,
+    initial_bottom_m: np.ndarray,
+    search_radius_m: float = 5.0,
+    smoothing_window: int = 21,
+    smoothing_order: int = 3,
+    iterations: int = 3,
+) -> np.ndarray:
     """
     Refine a bottom trace with Savitzky-Golay smoothing + local gradient snap.
 
@@ -243,9 +250,7 @@ def refine_bottom_snake(power_db: np.ndarray,
             if np.isnan(smoothed[j]):
                 continue
 
-            center_idx = int(np.round(
-                np.interp(smoothed[j], range_array, np.arange(n_samples))
-            ))
+            center_idx = int(np.round(np.interp(smoothed[j], range_array, np.arange(n_samples))))
             lo = max(0, center_idx - search_radius_samples)
             hi = min(n_samples, center_idx + search_radius_samples + 1)
 

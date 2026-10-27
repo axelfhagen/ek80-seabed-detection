@@ -8,6 +8,7 @@ adaptive band whose width scales with the local probability-transition width.
 
 Output: Figures/conformal_hake_deep_water/wide_band_diagnostics/
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,6 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -53,10 +55,7 @@ from validation.generate_conformal_hake import (  # noqa: E402
 
 
 DEFAULT_OUTPUT_DIR = HAKE_OUT_DIR / "wide_band_diagnostics"
-DEFAULT_CHECKPOINT = (
-    PROJECT_ROOT / "code/checkpoints/chunk_arch_sweep_2/"
-    "smp_unet_resnet34_best.pth"
-)
+DEFAULT_CHECKPOINT = PROJECT_ROOT / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
 LOCAL_BAND_COLOR = METHODS["local"][1]
 PROFILE_BAND_COLOR = METHODS["profile"][1]
 CONSTANT_BAND_COLOR = METHODS["constant"][1]
@@ -106,8 +105,9 @@ def percentile(values: list[np.ndarray], q: float) -> float:
     return float(np.nanpercentile(finite, q))
 
 
-def score_candidates(items, band_sets, window: int, min_separation: int,
-                     threshold_m: float) -> list[tuple[float, str, int]]:
+def score_candidates(
+    items, band_sets, window: int, min_separation: int, threshold_m: float
+) -> list[tuple[float, str, int]]:
     candidates: list[tuple[float, str, int]] = []
     for name, _g in items:
         width = band_sets[name]["local"][2]
@@ -128,11 +128,16 @@ def score_candidates(items, band_sets, window: int, min_separation: int,
     return candidates
 
 
-def select_examples(items, band_sets, n_examples: int, window: int,
-                    min_separation: int, max_per_group: int,
-                    threshold_m: float) -> list[tuple[float, str, int]]:
-    candidates = score_candidates(items, band_sets, window, min_separation,
-                                  threshold_m)
+def select_examples(
+    items,
+    band_sets,
+    n_examples: int,
+    window: int,
+    min_separation: int,
+    max_per_group: int,
+    threshold_m: float,
+) -> list[tuple[float, str, int]]:
+    candidates = score_candidates(items, band_sets, window, min_separation, threshold_m)
     selected: list[tuple[float, str, int]] = []
     counts = {name: 0 for name, _ in items}
     used = {name: [] for name, _ in items}
@@ -177,9 +182,17 @@ def finite_depth_window(*arrays: np.ndarray) -> np.ndarray:
     return np.concatenate(vals)
 
 
-def plot_example(rank: int, name: str, g: dict, bands: dict, center: int,
-                 score_m: float, window: int, plot_width: int,
-                 out_path: Path) -> Example:
+def plot_example(
+    rank: int,
+    name: str,
+    g: dict,
+    bands: dict,
+    center: int,
+    score_m: float,
+    window: int,
+    plot_width: int,
+    out_path: Path,
+) -> Example:
     sv1 = g["sv1"]
     ra = g["range_crop"]
     n_pings = sv1.shape[1]
@@ -196,9 +209,12 @@ def plot_example(rank: int, name: str, g: dict, bands: dict, center: int,
     ref = g["ref_d"]
 
     depth_vals = finite_depth_window(
-        local_u[start:stop], local_l[start:stop],
-        profile_u[start:stop], profile_l[start:stop],
-        pred[start:stop], ref[start:stop],
+        local_u[start:stop],
+        local_l[start:stop],
+        profile_u[start:stop],
+        profile_l[start:stop],
+        pred[start:stop],
+        ref[start:stop],
     )
     if depth_vals.size:
         pad = max(20.0, 0.12 * float(np.nanmax(depth_vals) - np.nanmin(depth_vals)))
@@ -208,8 +224,15 @@ def plot_example(rank: int, name: str, g: dict, bands: dict, center: int,
         y0, y1 = float(ra[0]), float(ra[-1])
 
     fig, ax = plt.subplots(figsize=(12, 6.5))
-    ax.imshow(sv1[:, start:stop], aspect="auto", cmap="viridis",
-              vmin=VMIN, vmax=VMAX, origin="upper", extent=extent)
+    ax.imshow(
+        sv1[:, start:stop],
+        aspect="auto",
+        cmap="viridis",
+        vmin=VMIN,
+        vmax=VMAX,
+        origin="upper",
+        extent=extent,
+    )
 
     for upper, lower, color, alpha, zorder in (
         (profile_u, profile_l, PROFILE_BAND_COLOR, 0.14, 2),
@@ -218,8 +241,9 @@ def plot_example(rank: int, name: str, g: dict, bands: dict, center: int,
     ):
         v = np.isfinite(upper[x]) & np.isfinite(lower[x])
         if v.any():
-            ax.fill_between(x[v], upper[x][v], lower[x][v], color=color,
-                            alpha=alpha, linewidth=0, zorder=zorder)
+            ax.fill_between(
+                x[v], upper[x][v], lower[x][v], color=color, alpha=alpha, linewidth=0, zorder=zorder
+            )
 
     for upper, lower, color, linestyle, linewidth in (
         (local_u, local_l, LOCAL_BAND_COLOR, "--", 1.4),
@@ -228,20 +252,46 @@ def plot_example(rank: int, name: str, g: dict, bands: dict, center: int,
     ):
         v = np.isfinite(upper[x]) & np.isfinite(lower[x])
         if v.any():
-            ax.plot(x[v], upper[x][v], color=color, linestyle=linestyle,
-                    linewidth=linewidth, alpha=0.9, zorder=6)
-            ax.plot(x[v], lower[x][v], color=color, linestyle=linestyle,
-                    linewidth=linewidth, alpha=0.9, zorder=6)
+            ax.plot(
+                x[v],
+                upper[x][v],
+                color=color,
+                linestyle=linestyle,
+                linewidth=linewidth,
+                alpha=0.9,
+                zorder=6,
+            )
+            ax.plot(
+                x[v],
+                lower[x][v],
+                color=color,
+                linestyle=linestyle,
+                linewidth=linewidth,
+                alpha=0.9,
+                zorder=6,
+            )
 
     vpred = np.isfinite(pred[x]) & (pred[x] > 0)
     vref = np.isfinite(ref[x]) & (ref[x] > 0)
     if vpred.any():
-        ax.plot(x[vpred], pred[x][vpred], color=UNET_PREDICTION_COLOR,
-                linewidth=2.0, zorder=8, label="U-Net prediction")
+        ax.plot(
+            x[vpred],
+            pred[x][vpred],
+            color=UNET_PREDICTION_COLOR,
+            linewidth=2.0,
+            zorder=8,
+            label="U-Net prediction",
+        )
     if vref.any():
-        ax.plot(x[vref], ref[x][vref], color=REFERENCE_BOTTOM_COLOR,
-                linewidth=2.2, linestyle="--", zorder=9,
-                label="Reference label")
+        ax.plot(
+            x[vref],
+            ref[x][vref],
+            color=REFERENCE_BOTTOM_COLOR,
+            linewidth=2.2,
+            linestyle="--",
+            zorder=9,
+            label="Reference label",
+        )
 
     ax.axvline(center, color="white", linewidth=1.0, alpha=0.65, zorder=10)
     ax.set_xlim(start, stop - 1)
@@ -249,33 +299,32 @@ def plot_example(rank: int, name: str, g: dict, bands: dict, center: int,
     ax.set_xlabel("Ping")
     ax.set_ylabel("Depth (m)")
     ax.set_title(
-        f"Wide local conformal band #{rank}: {name} | "
-        f"{window}-ping mean width {score_m:.1f} m"
+        f"Wide local conformal band #{rank}: {name} | {window}-ping mean width {score_m:.1f} m"
     )
     handles = [
-        Line2D([0], [0], color=UNET_PREDICTION_COLOR, lw=2.0,
-               label="U-Net prediction"),
-        Line2D([0], [0], color=REFERENCE_BOTTOM_COLOR, lw=2.2, linestyle="--",
-               label="Reference label"),
-        Patch(facecolor=LOCAL_BAND_COLOR, alpha=0.32,
-              label="Local conformal band"),
-        Patch(facecolor=PROFILE_BAND_COLOR, alpha=0.14,
-              label="Profile band"),
-        Patch(facecolor=CONSTANT_BAND_COLOR, alpha=0.16,
-              label="Constant band"),
+        Line2D([0], [0], color=UNET_PREDICTION_COLOR, lw=2.0, label="U-Net prediction"),
+        Line2D(
+            [0], [0], color=REFERENCE_BOTTOM_COLOR, lw=2.2, linestyle="--", label="Reference label"
+        ),
+        Patch(facecolor=LOCAL_BAND_COLOR, alpha=0.32, label="Local conformal band"),
+        Patch(facecolor=PROFILE_BAND_COLOR, alpha=0.14, label="Profile band"),
+        Patch(facecolor=CONSTANT_BAND_COLOR, alpha=0.16, label="Constant band"),
     ]
-    ax.legend(handles=handles, loc="lower right", ncol=2, framealpha=0.92,
-              fontsize=12)
+    ax.legend(handles=handles, loc="lower right", ncol=2, framealpha=0.92, fontsize=12)
     savefig(fig, out_path)
     plt.close(fig)
 
     width_slice = local_w[start:stop]
-    valid_cov = (np.isfinite(local_u[start:stop])
-                 & np.isfinite(local_l[start:stop])
-                 & np.isfinite(ref[start:stop]) & (ref[start:stop] > 0))
+    valid_cov = (
+        np.isfinite(local_u[start:stop])
+        & np.isfinite(local_l[start:stop])
+        & np.isfinite(ref[start:stop])
+        & (ref[start:stop] > 0)
+    )
     if valid_cov.any():
-        inside = ((ref[start:stop][valid_cov] >= local_u[start:stop][valid_cov])
-                  & (ref[start:stop][valid_cov] <= local_l[start:stop][valid_cov]))
+        inside = (ref[start:stop][valid_cov] >= local_u[start:stop][valid_cov]) & (
+            ref[start:stop][valid_cov] <= local_l[start:stop][valid_cov]
+        )
         coverage = float(inside.mean())
     else:
         coverage = float("nan")
@@ -309,23 +358,31 @@ def plot_gallery(examples: list[Example], out_path: Path) -> None:
         ax.imshow(mpimg.imread(ex.out_path))
         ax.set_axis_off()
         ax.set_title(
-            f"#{ex.rank} {ex.name}, p{ex.center} | "
-            f"mean {ex.score_m:.1f} m",
+            f"#{ex.rank} {ex.name}, p{ex.center} | mean {ex.score_m:.1f} m",
             fontsize=12,
         )
-    for ax in axes_flat[len(examples):]:
+    for ax in axes_flat[len(examples) :]:
         ax.set_visible(False)
-    fig.suptitle("Zoomed diagnostics: unusually wide local conformal bands",
-                 y=1.005)
+    fig.suptitle("Zoomed diagnostics: unusually wide local conformal bands", y=1.005)
     fig.tight_layout()
     savefig(fig, out_path)
     plt.close(fig)
 
 
-def write_report(out_dir: Path, examples: list[Example], paths_used: list[Path],
-                 threshold_m: float, percentile_q: float, window: int,
-                 plot_width: int, q_const: float, q_local: float,
-                 q_profile: float, n_groups: int, source: Path) -> None:
+def write_report(
+    out_dir: Path,
+    examples: list[Example],
+    paths_used: list[Path],
+    threshold_m: float,
+    percentile_q: float,
+    window: int,
+    plot_width: int,
+    q_const: float,
+    q_local: float,
+    q_profile: float,
+    n_groups: int,
+    source: Path,
+) -> None:
     rows = "\n".join(
         f"| {ex.rank} | `{ex.name}` | {ex.center} | {ex.start}-{ex.stop - 1} | "
         f"{ex.score_m:.2f} | {ex.mean_width_m:.2f} | {ex.max_width_m:.2f} | "
@@ -426,13 +483,14 @@ def main() -> None:
     model = load_model(args.checkpoint, device)
 
     depth_s, local_s, profile_s, _rel = load_or_build_calib(
-        model, device, args.n_calib, args.seed, args.recompute_calib)
+        model, device, args.n_calib, args.seed, args.recompute_calib
+    )
     q_const = conformal_quantile(depth_s, ALPHA)
     q_local = conformal_quantile(local_s, ALPHA)
     q_profile = conformal_quantile(profile_s, ALPHA)
     print(f"q_constant={q_const:.3f} q_local={q_local:.3f} q_profile={q_profile:.4f}")
 
-    groups = consecutive_groups(args.group_size)[:args.n_groups]
+    groups = consecutive_groups(args.group_size)[: args.n_groups]
     items = []
     band_sets = {}
     paths_used = [
@@ -442,8 +500,7 @@ def main() -> None:
         args.checkpoint,
     ]
     for i, stems in enumerate(groups, 1):
-        name = (f"{stems[0]}+{len(stems)-1}more" if len(stems) > 1
-                else stems[0])
+        name = f"{stems[0]}+{len(stems) - 1}more" if len(stems) > 1 else stems[0]
         print(f"[hake {i}/{len(groups)}] {name}", flush=True)
         g = process_hake_group(stems, model, device)
         bands = bands_for_group(g, q_const, q_profile, q_local)
@@ -459,14 +516,16 @@ def main() -> None:
     if not items:
         raise SystemExit("No Hake groups were processed.")
 
-    smoothed_widths = [
-        rolling_mean(band_sets[name]["local"][2], args.window)
-        for name, _ in items
-    ]
+    smoothed_widths = [rolling_mean(band_sets[name]["local"][2], args.window) for name, _ in items]
     threshold_m = percentile(smoothed_widths, args.large_percentile)
     selected = select_examples(
-        items, band_sets, args.n_examples, args.window, args.min_separation,
-        args.max_per_group, threshold_m,
+        items,
+        band_sets,
+        args.n_examples,
+        args.window,
+        args.min_separation,
+        args.max_per_group,
+        threshold_m,
     )
     if not selected:
         raise SystemExit("No finite local conformal-band widths found.")
@@ -475,15 +534,35 @@ def main() -> None:
     examples: list[Example] = []
     for rank, (score, name, center) in enumerate(selected, 1):
         out_path = args.output_dir / f"wide_band_{rank:02d}_{name}_p{center}.png"
-        ex = plot_example(rank, name, by_name[name], band_sets[name], center,
-                          score, args.window, args.plot_width, out_path)
+        ex = plot_example(
+            rank,
+            name,
+            by_name[name],
+            band_sets[name],
+            center,
+            score,
+            args.window,
+            args.plot_width,
+            out_path,
+        )
         examples.append(ex)
         print(f"  saved {out_path}")
 
     plot_gallery(examples, args.output_dir / "wide_band_gallery.png")
-    write_report(args.output_dir, examples, paths_used, threshold_m,
-                 args.large_percentile, args.window, args.plot_width,
-                 q_const, q_local, q_profile, len(items), Path(__file__))
+    write_report(
+        args.output_dir,
+        examples,
+        paths_used,
+        threshold_m,
+        args.large_percentile,
+        args.window,
+        args.plot_width,
+        q_const,
+        q_local,
+        q_profile,
+        len(items),
+        Path(__file__),
+    )
     print(f"Done. Report -> {args.output_dir / 'REPORT.md'}")
 
 

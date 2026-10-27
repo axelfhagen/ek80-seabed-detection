@@ -16,7 +16,7 @@ def _mask_from_bottom(bottom, H):
 
 def test_smooth_erratic_bottom_removes_single_ping_spike():
     bottom = [10] * 11
-    bottom[5] = 60                        # jump of 50 > max_jump 30
+    bottom[5] = 60  # jump of 50 > max_jump 30
     new = smooth_erratic_bottom(_mask_from_bottom(bottom, 80), max_jump=30)
     np.testing.assert_array_equal(get_bottom_line(new), [10] * 11)
     np.testing.assert_array_equal(new, _mask_from_bottom([10] * 11, 80))

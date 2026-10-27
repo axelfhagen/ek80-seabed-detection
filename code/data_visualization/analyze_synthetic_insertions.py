@@ -67,8 +67,7 @@ RNG_SEED = 7
 class Conv2dReLU(nn.Sequential):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1,
-                      bias=False),
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
@@ -97,16 +96,14 @@ class Encoder(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_channels: int, skip_channels: int,
-                 out_channels: int):
+    def __init__(self, in_channels: int, skip_channels: int, out_channels: int):
         super().__init__()
         self.skip_channels = skip_channels
         self.conv1 = Conv2dReLU(in_channels + skip_channels, out_channels)
         self.conv2 = Conv2dReLU(out_channels, out_channels)
 
     def forward(self, x: torch.Tensor, skip: torch.Tensor | None = None):
-        x = F.interpolate(x, scale_factor=2, mode="bilinear",
-                          align_corners=False)
+        x = F.interpolate(x, scale_factor=2, mode="bilinear", align_corners=False)
         if skip is not None:
             x = torch.cat([x, skip], dim=1)
         x = self.conv1(x)
@@ -117,13 +114,15 @@ class DecoderBlock(nn.Module):
 class Decoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.blocks = nn.ModuleList([
-            DecoderBlock(512, 256, 256),
-            DecoderBlock(256, 128, 128),
-            DecoderBlock(128, 64, 64),
-            DecoderBlock(64, 64, 32),
-            DecoderBlock(32, 0, 16),
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                DecoderBlock(512, 256, 256),
+                DecoderBlock(256, 128, 128),
+                DecoderBlock(128, 64, 64),
+                DecoderBlock(64, 64, 32),
+                DecoderBlock(32, 0, 16),
+            ]
+        )
 
     def forward(self, features: list[torch.Tensor]) -> torch.Tensor:
         x = features[-1]
@@ -157,9 +156,11 @@ def _load_model(checkpoint_path: Path, device: str) -> SimpleSmpLikeUnet:
 
     model = SimpleSmpLikeUnet()
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    state = ckpt["model_state_dict"] if (
-        isinstance(ckpt, dict) and "model_state_dict" in ckpt
-    ) else ckpt
+    state = (
+        ckpt["model_state_dict"]
+        if (isinstance(ckpt, dict) and "model_state_dict" in ckpt)
+        else ckpt
+    )
     cleaned = {k.removeprefix("model."): v for k, v in state.items()}
     missing, unexpected = model.load_state_dict(cleaned, strict=False)
     if missing or unexpected:
@@ -171,9 +172,14 @@ def _load_model(checkpoint_path: Path, device: str) -> SimpleSmpLikeUnet:
     return model
 
 
-def _predict_full_echogram(model: nn.Module, sv_channels: np.ndarray,
-                           target_size: tuple[int, int], device: str,
-                           patch_width: int = 512, stride: int = 128) -> np.ndarray:
+def _predict_full_echogram(
+    model: nn.Module,
+    sv_channels: np.ndarray,
+    target_size: tuple[int, int],
+    device: str,
+    patch_width: int = 512,
+    stride: int = 128,
+) -> np.ndarray:
     """Sliding-window inference, rewritten to avoid the missing smp dependency."""
     n_ch, n_range, n_pings = sv_channels.shape
     h, w = target_size
@@ -196,16 +202,18 @@ def _predict_full_echogram(model: nn.Module, sv_channels: np.ndarray,
             logits = model(patch_t)
             probs = torch.sigmoid(logits)[0, 0]
             probs = F.interpolate(
-                probs[None, None], size=(n_range, end - start),
-                mode="bilinear", align_corners=False,
+                probs[None, None],
+                size=(n_range, end - start),
+                mode="bilinear",
+                align_corners=False,
             )[0, 0]
         probs_np = probs.cpu().numpy()
         sum_pred[:, start:end] += probs_np
         count[:, start:end] += 1.0
 
-    prediction = np.divide(sum_pred, count,
-                           out=np.zeros_like(sum_pred),
-                           where=count > 0).astype(np.float32)
+    prediction = np.divide(sum_pred, count, out=np.zeros_like(sum_pred), where=count > 0).astype(
+        np.float32
+    )
     return prediction
 
 
@@ -232,7 +240,8 @@ def _synthetic_inputs(height: int, width: int) -> dict[str, np.ndarray]:
         "all_ones": np.ones((3, height, width), dtype=np.float32),
         "gaussian_noise": np.clip(
             rng.normal(loc=0.5, scale=0.20, size=(3, height, width)),
-            0.0, 1.0,
+            0.0,
+            1.0,
         ).astype(np.float32),
     }
 
@@ -253,9 +262,13 @@ def _target_mask(prob: np.ndarray) -> np.ndarray:
     return mask
 
 
-def _gradcam_single(model: nn.Module, target_layer: nn.Module,
-                    input_chw: np.ndarray, target_mask: np.ndarray,
-                    device: str) -> np.ndarray:
+def _gradcam_single(
+    model: nn.Module,
+    target_layer: nn.Module,
+    input_chw: np.ndarray,
+    target_mask: np.ndarray,
+    device: str,
+) -> np.ndarray:
     """Minimal Grad-CAM implementation without external dependencies."""
     activations: list[torch.Tensor] = []
     gradients: list[torch.Tensor] = []
@@ -281,13 +294,12 @@ def _gradcam_single(model: nn.Module, target_layer: nn.Module,
         if not activations or not gradients:
             raise RuntimeError("Grad-CAM hooks did not capture activations/gradients")
 
-        acts = activations[0][0]   # (C, H, W)
-        grads = gradients[0][0]    # (C, H, W)
+        acts = activations[0][0]  # (C, H, W)
+        grads = gradients[0][0]  # (C, H, W)
         weights = grads.mean(dim=(1, 2), keepdim=True)
         cam = torch.relu((weights * acts).sum(dim=0, keepdim=True))
         cam = cam[None]  # (1, 1, H, W)
-        cam = F.interpolate(cam, size=target_mask.shape, mode="bilinear",
-                            align_corners=False)[0, 0]
+        cam = F.interpolate(cam, size=target_mask.shape, mode="bilinear", align_corners=False)[0, 0]
         cam = cam - cam.min()
         denom = cam.max().clamp_min(1e-8)
         cam = (cam / denom).detach().cpu().numpy().astype(np.float32)
@@ -297,9 +309,16 @@ def _gradcam_single(model: nn.Module, target_layer: nn.Module,
         h_bwd.remove()
 
 
-def _plot_case(name: str, input_chw: np.ndarray, prob: np.ndarray,
-               range_arr: np.ndarray, q_hat: float, model, device: str,
-               out_dir: Path) -> None:
+def _plot_case(
+    name: str,
+    input_chw: np.ndarray,
+    prob: np.ndarray,
+    range_arr: np.ndarray,
+    q_hat: float,
+    model,
+    device: str,
+    out_dir: Path,
+) -> None:
     _, n_pings = prob.shape
     extent = [0, n_pings, float(range_arr[-1]), float(range_arr[0])]
     ping_axis = np.arange(n_pings)
@@ -335,25 +354,34 @@ def _plot_case(name: str, input_chw: np.ndarray, prob: np.ndarray,
     cmaps = ["viridis", "viridis", "coolwarm"]
     for i in range(3):
         vmin, vmax = (0.0, 1.0) if i < 2 else (-1.0, 1.0)
-        im = axes[0, i].imshow(input_chw[i], aspect="auto", cmap=cmaps[i],
-                               vmin=vmin, vmax=vmax, origin="upper",
-                               extent=extent)
+        im = axes[0, i].imshow(
+            input_chw[i],
+            aspect="auto",
+            cmap=cmaps[i],
+            vmin=vmin,
+            vmax=vmax,
+            origin="upper",
+            extent=extent,
+        )
         axes[0, i].set_title(channel_titles[i], fontsize=11)
         axes[0, i].set_xlabel("Ping")
         axes[0, i].set_ylabel("Range (m)")
         fig.colorbar(im, ax=axes[0, i], fraction=0.046, pad=0.03)
 
-    im = axes[1, 0].imshow(prob, aspect="auto", cmap="RdYlBu_r",
-                           vmin=0.0, vmax=1.0, origin="upper", extent=extent)
+    im = axes[1, 0].imshow(
+        prob, aspect="auto", cmap="RdYlBu_r", vmin=0.0, vmax=1.0, origin="upper", extent=extent
+    )
     axes[1, 0].fill_between(
         ping_axis[valid_pred],
         upper[valid_pred],
         lower[valid_pred],
-        color="#ff7f0e", alpha=0.28,
+        color="#ff7f0e",
+        alpha=0.28,
         label=f"conformal band (±{q_hat:.2f} m)",
     )
-    axes[1, 0].plot(ping_axis[valid_pred], line_depths[valid_pred],
-                    color="#d62728", lw=1.25, label=line_label)
+    axes[1, 0].plot(
+        ping_axis[valid_pred], line_depths[valid_pred], color="#d62728", lw=1.25, label=line_label
+    )
     axes[1, 0].set_title(
         f"Probability map  max={prob.max():.3f}  mean={prob.mean():.3f}",
         fontsize=11,
@@ -363,19 +391,18 @@ def _plot_case(name: str, input_chw: np.ndarray, prob: np.ndarray,
     axes[1, 0].legend(loc="lower right", fontsize=8, framealpha=0.92)
     fig.colorbar(im, ax=axes[1, 0], fraction=0.046, pad=0.03, label="p(bottom)")
 
-    im = axes[1, 1].imshow(cam_overlay, aspect="auto", origin="upper",
-                           extent=extent)
+    im = axes[1, 1].imshow(cam_overlay, aspect="auto", origin="upper", extent=extent)
     axes[1, 1].set_title("Grad-CAM overlay", fontsize=11)
     axes[1, 1].set_xlabel("Ping")
     axes[1, 1].set_ylabel("Range (m)")
 
-    im = axes[1, 2].imshow(cam, aspect="auto", cmap="jet", vmin=0, vmax=1,
-                           origin="upper", extent=extent)
+    im = axes[1, 2].imshow(
+        cam, aspect="auto", cmap="jet", vmin=0, vmax=1, origin="upper", extent=extent
+    )
     axes[1, 2].set_title("Grad-CAM heatmap", fontsize=11)
     axes[1, 2].set_xlabel("Ping")
     axes[1, 2].set_ylabel("Range (m)")
-    fig.colorbar(im, ax=axes[1, 2], fraction=0.046, pad=0.03,
-                 label="importance")
+    fig.colorbar(im, ax=axes[1, 2], fraction=0.046, pad=0.03, label="importance")
 
     fig.suptitle(
         f"Synthetic insertion test: {name}  |  q_hat={q_hat:.2f} m  "
@@ -405,20 +432,26 @@ def main() -> None:
 
     for name, input_chw in cases.items():
         prob = _predict_full_echogram(
-            model, input_chw, TARGET_SIZE, device,
-            patch_width=PATCH_WIDTH, stride=STRIDE,
+            model,
+            input_chw,
+            TARGET_SIZE,
+            device,
+            patch_width=PATCH_WIDTH,
+            stride=STRIDE,
         )
-        _plot_case(name, input_chw, prob, range_arr, q_hat,
-                   model, device, OUTPUT_DIR)
+        _plot_case(name, input_chw, prob, range_arr, q_hat, model, device, OUTPUT_DIR)
 
     summary_path = OUTPUT_DIR / "summary.txt"
     summary_path.write_text(
-        "\n".join([
-            f"checkpoint: {CHECKPOINT}",
-            f"q_hat_m: {q_hat:.6f}",
-            f"cases: {', '.join(cases.keys())}",
-            f"output_dir: {OUTPUT_DIR}",
-        ]) + "\n",
+        "\n".join(
+            [
+                f"checkpoint: {CHECKPOINT}",
+                f"q_hat_m: {q_hat:.6f}",
+                f"cases: {', '.join(cases.keys())}",
+                f"output_dir: {OUTPUT_DIR}",
+            ]
+        )
+        + "\n",
         encoding="utf-8",
     )
     print(f"Wrote {summary_path}")

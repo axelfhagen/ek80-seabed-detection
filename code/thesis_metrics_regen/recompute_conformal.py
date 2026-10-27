@@ -14,6 +14,7 @@ baseline, leave-one-file-out CV of q_hat, and per-survey median |error|.
 
 Reuses the finite-sample quantile rule from validation/conformal.py.
 """
+
 import json
 import sys
 from pathlib import Path
@@ -32,8 +33,17 @@ OUT_CSV = Path(__file__).resolve().parent / "outputs/conformal_perfile_coverage.
 ALPHA = 0.10
 CALIB = "jan_2025"
 TEST = ["feb_2025", "jun_2025"]
-ALL_SURVEYS = ["dec_2023", "jan_2024", "apr_2024", "jul_2024", "sep_2024",
-               "oct_2024", "jan_2025", "feb_2025", "jun_2025"]
+ALL_SURVEYS = [
+    "dec_2023",
+    "jan_2024",
+    "apr_2024",
+    "jul_2024",
+    "sep_2024",
+    "oct_2024",
+    "jan_2025",
+    "feb_2025",
+    "jun_2025",
+]
 
 
 def load(survey):
@@ -81,9 +91,7 @@ def main():
     res["per_survey_test_coverage_constant"] = {
         s: coverage(tests[s]["abs_err"], q_const) for s in TEST
     }
-    res["per_survey_test_coverage_lw"] = {
-        s: coverage(tests[s]["norm_err"], q_lw) for s in TEST
-    }
+    res["per_survey_test_coverage_lw"] = {s: coverage(tests[s]["norm_err"], q_lw) for s in TEST}
 
     # Per-file coverage (constant band) across all scored test files.
     per_file = []

@@ -61,17 +61,27 @@ def _convert_one(npz_path, target_size):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--cache-dir", type=Path, required=True)
-    ap.add_argument("--target-size", type=int, nargs=2, default=[512, 512],
-                    metavar=("H", "W"))
-    ap.add_argument("--workers", type=int, default=4,
-                    help="Parallel conversion processes. Peak RAM is roughly "
-                         "workers x largest-decompressed-file, so keep it "
-                         "modest on a 32G job.")
-    ap.add_argument("--limit", type=int, default=None,
-                    help="Convert at most this many files (for a quick test).")
-    ap.add_argument("--include-synthetic", action="store_true",
-                    help="Also convert _no_bottom_* synthetic npz (off by "
-                         "default; training injects those as .npz directly).")
+    ap.add_argument("--target-size", type=int, nargs=2, default=[512, 512], metavar=("H", "W"))
+    ap.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Parallel conversion processes. Peak RAM is roughly "
+        "workers x largest-decompressed-file, so keep it "
+        "modest on a 32G job.",
+    )
+    ap.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Convert at most this many files (for a quick test).",
+    )
+    ap.add_argument(
+        "--include-synthetic",
+        action="store_true",
+        help="Also convert _no_bottom_* synthetic npz (off by "
+        "default; training injects those as .npz directly).",
+    )
     args = ap.parse_args()
 
     cache_dir = args.cache_dir
@@ -80,7 +90,7 @@ def main():
     if not args.include_synthetic:
         npzs = [p for p in npzs if "_no_bottom" not in Path(p).name]
     if args.limit:
-        npzs = npzs[:args.limit]
+        npzs = npzs[: args.limit]
 
     print(f"Cache dir : {cache_dir}")
     print(f"Target    : {target[0]}x{target[1]}")
@@ -101,23 +111,28 @@ def main():
         done = sum(counts.values())
         if done % 50 == 0 or done == len(npzs):
             el = time.perf_counter() - t0
-            print(f"  [{done}/{len(npzs)}] built={counts['built']} "
-                  f"skip={counts['skip']} err={counts['error']} ({el:.0f}s)",
-                  flush=True)
+            print(
+                f"  [{done}/{len(npzs)}] built={counts['built']} "
+                f"skip={counts['skip']} err={counts['error']} ({el:.0f}s)",
+                flush=True,
+            )
 
     if args.workers <= 1:
         for p in npzs:
             _record(*_convert_one(p, target))
     else:
         import concurrent.futures as cf
+
         with cf.ProcessPoolExecutor(max_workers=args.workers) as ex:
             futs = {ex.submit(_convert_one, p, target): p for p in npzs}
             for fut in cf.as_completed(futs):
                 _record(*fut.result())
 
     el = time.perf_counter() - t0
-    print(f"\nDone in {el:.0f}s: built={counts['built']} "
-          f"skipped={counts['skip']} errors={counts['error']}")
+    print(
+        f"\nDone in {el:.0f}s: built={counts['built']} "
+        f"skipped={counts['skip']} errors={counts['error']}"
+    )
     if errors:
         print("Errors (first 10):")
         for e in errors[:10]:

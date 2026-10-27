@@ -68,11 +68,12 @@ def load_model(checkpoint_dir: str, device: str):
 
 def evaluate_single(model, zarr_path, device):
     sv_channels, gt_mask, gt_bottom_idx, range_arr = load_file_data(
-        zarr_path, FREQ1, FREQ2, vmin=-80.0, vmax=-34.0)
+        zarr_path, FREQ1, FREQ2, vmin=-80.0, vmax=-34.0
+    )
 
     prediction = predict_full_echogram(
-        model, sv_channels, TARGET_SIZE, device,
-        patch_width=PATCH_WIDTH, stride=STRIDE)
+        model, sv_channels, TARGET_SIZE, device, patch_width=PATCH_WIDTH, stride=STRIDE
+    )
 
     pred_binary = (prediction >= 0.5).astype(np.uint8)
     gt_flat = gt_mask.astype(bool).ravel()
@@ -85,6 +86,7 @@ def evaluate_single(model, zarr_path, device):
 
     pred_bottom = extract_bottom_line(prediction, threshold=0.5)
     from deep_learning.evaluate import bottom_depth_error
+
     errs = bottom_depth_error(pred_bottom, gt_bottom_idx, range_arr)
     err_mean = float(np.mean(errs)) if len(errs) > 0 else float("nan")
 
@@ -102,6 +104,7 @@ def evaluate_single(model, zarr_path, device):
 
 def plot_grid(results, title, save_path):
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -121,8 +124,15 @@ def plot_grid(results, title, save_path):
         range_arr = res["range_arr"]
         extent = [0, n_pings, range_arr[-1], range_arr[0]]
 
-        ax.imshow(echogram_200, aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                  origin="upper", extent=extent)
+        ax.imshow(
+            echogram_200,
+            aspect="auto",
+            cmap="viridis",
+            vmin=0,
+            vmax=1,
+            origin="upper",
+            extent=extent,
+        )
 
         gt_idx = res["gt_bottom_idx"]
         pred_idx = extract_bottom_line(res["prediction"], threshold=0.5)
@@ -139,9 +149,8 @@ def plot_grid(results, title, save_path):
             depths_p = range_arr[np.clip(pred_idx[valid_pred], 0, len(range_arr) - 1)]
             ax.plot(pings_p, depths_p, color="red", linewidth=0.8, alpha=0.9)
 
-        err_str = f"{res['bottom_error_m']:.1f}m" if not np.isnan(res['bottom_error_m']) else "N/A"
-        ax.set_title(f"{res['name']}\nIoU={res['iou']:.4f}  dev={err_str}",
-                     fontsize=9)
+        err_str = f"{res['bottom_error_m']:.1f}m" if not np.isnan(res["bottom_error_m"]) else "N/A"
+        ax.set_title(f"{res['name']}\nIoU={res['iou']:.4f}  dev={err_str}", fontsize=9)
         ax.set_ylabel("Range (m)", fontsize=7)
         ax.set_xlabel("Ping", fontsize=7)
         ax.tick_params(labelsize=7)
@@ -153,8 +162,7 @@ def plot_grid(results, title, save_path):
         Line2D([0], [0], color="cyan", lw=1.5, label="Reference bottom"),
         Line2D([0], [0], color="red", lw=1.5, label="Predicted bottom"),
     ]
-    fig.legend(handles=legend_elements, loc="upper right", fontsize=10,
-               framealpha=0.9)
+    fig.legend(handles=legend_elements, loc="upper right", fontsize=10, framealpha=0.9)
     fig.suptitle(title, fontsize=14, fontweight="bold", y=1.01)
     fig.tight_layout()
     fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
@@ -163,9 +171,9 @@ def plot_grid(results, title, save_path):
 
 
 def run_survey(survey_name, checkpoint_dir, output_dir, device):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Survey: {survey_name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     model = load_model(checkpoint_dir, device)
     val_paths = get_val_paths(survey_name)
@@ -201,22 +209,30 @@ def run_survey(survey_name, checkpoint_dir, output_dir, device):
     label = survey_name.replace("_", " ").title()
 
     if random_selection:
-        plot_grid(random_selection,
-                  f"{label} — Random Validation Files (200 kHz)",
-                  output_dir / f"{survey_name}_random.png")
+        plot_grid(
+            random_selection,
+            f"{label} — Random Validation Files (200 kHz)",
+            output_dir / f"{survey_name}_random.png",
+        )
 
     if worst:
-        plot_grid(worst,
-                  f"{label} — Worst Validation Files by IoU (200 kHz)",
-                  output_dir / f"{survey_name}_worst.png")
+        plot_grid(
+            worst,
+            f"{label} — Worst Validation Files by IoU (200 kHz)",
+            output_dir / f"{survey_name}_worst.png",
+        )
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", default="code/plots_june2025/survey_eval")
     parser.add_argument("--device", default=None)
-    parser.add_argument("--surveys", nargs="*", default=None,
-                        help="Subset of surveys to plot (default: all available)")
+    parser.add_argument(
+        "--surveys",
+        nargs="*",
+        default=None,
+        help="Subset of surveys to plot (default: all available)",
+    )
     args = parser.parse_args()
 
     if args.device:

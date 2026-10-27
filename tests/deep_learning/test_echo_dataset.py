@@ -4,6 +4,7 @@ Echograms are (n_samples, n_pings): depth on axis 0. A synthetic dataset zarr
 with a precomputed ``bottom_mask`` is written through the public
 ``save_dataset_zarr`` so no bottom detection or real data is needed.
 """
+
 import warnings
 
 import numpy as np
@@ -38,10 +39,15 @@ def write_zarr(path, n_range, n_pings, bottom_row, empty_pings=0):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         return save_dataset_zarr(
-            sv, [F1, F2], np.arange(n_range) * 0.5,
+            sv,
+            [F1, F2],
+            np.arange(n_range) * 0.5,
             pd.date_range("2024-01-01", periods=n_pings, freq="s"),
-            np.full(n_pings, bottom_row * 0.5), mask, np.zeros(n_pings),
-            path / "synthetic.zarr")
+            np.full(n_pings, bottom_row * 0.5),
+            mask,
+            np.zeros(n_pings),
+            path / "synthetic.zarr",
+        )
 
 
 @pytest.fixture
@@ -53,7 +59,8 @@ def small_zarr(tmp_path):
 def test_patches_slide_along_ping_axis_with_full_depth(small_zarr):
     # Windows start at 0, 4, 8, 12 (20 - 8 + 1 = 13 exclusive).
     patches, masks = prepare_patches_from_zarr(
-        small_zarr, F1, F2, patch_width=8, stride=4, require_bottom=False)
+        small_zarr, F1, F2, patch_width=8, stride=4, require_bottom=False
+    )
     assert len(patches) == len(masks) == 4
     assert all(p.shape == (3, 40, 8) and p.dtype == np.float32 for p in patches)
     assert all(m.shape == (40, 8) and m.dtype == np.uint8 for m in masks)
@@ -62,7 +69,8 @@ def test_patches_slide_along_ping_axis_with_full_depth(small_zarr):
 def test_require_bottom_drops_windows_with_all_zero_mask(small_zarr):
     # Windows at 0 (pings 0-7) and 4 (pings 4-11) have no bottom.
     patches, masks = prepare_patches_from_zarr(
-        small_zarr, F1, F2, patch_width=8, stride=4, require_bottom=True)
+        small_zarr, F1, F2, patch_width=8, stride=4, require_bottom=True
+    )
     assert len(patches) == 2
     assert all(m.max() == 1 for m in masks)
 
@@ -70,22 +78,25 @@ def test_require_bottom_drops_windows_with_all_zero_mask(small_zarr):
 def test_trailing_pings_that_do_not_fill_a_window_are_dropped(small_zarr):
     # Width 8, stride 5 -> starts 0, 5, 10 ; pings 18-19 are never used.
     patches, _ = prepare_patches_from_zarr(
-        small_zarr, F1, F2, patch_width=8, stride=5, require_bottom=False)
+        small_zarr, F1, F2, patch_width=8, stride=5, require_bottom=False
+    )
     assert len(patches) == 3
 
 
 def test_patch_channels_are_norm_f1_norm_f2_and_their_difference(small_zarr):
     patches, masks = prepare_patches_from_zarr(
-        small_zarr, F1, F2, patch_width=8, stride=8, require_bottom=True)
+        small_zarr, F1, F2, patch_width=8, stride=8, require_bottom=True
+    )
     p, m = patches[0], masks[0]
-    np.testing.assert_allclose(p[:, 0, 0], [0.0, 0.0, 0.0])    # water
-    np.testing.assert_allclose(p[:, 30, 7], [1.0, 0.5, 0.5])   # seabed
-    assert m[9, 7] == 0 and m[10:, 7].min() == 1                # below-mask from row 10
+    np.testing.assert_allclose(p[:, 0, 0], [0.0, 0.0, 0.0])  # water
+    np.testing.assert_allclose(p[:, 30, 7], [1.0, 0.5, 0.5])  # seabed
+    assert m[9, 7] == 0 and m[10:, 7].min() == 1  # below-mask from row 10
 
 
 def test_single_frequency_patches_have_one_channel(small_zarr):
     patches, _ = prepare_patches_from_zarr(
-        small_zarr, F1, F2, patch_width=8, stride=4, single_freq=True)
+        small_zarr, F1, F2, patch_width=8, stride=4, single_freq=True
+    )
     assert [p.shape for p in patches] == [(1, 40, 8)] * 2
 
 
@@ -94,7 +105,8 @@ def test_bottom_crop_mode_pads_extent_and_rounds_height_up_to_256(tmp_path):
     # [193, 705), which overruns 600, so the window is shifted up to [88, 600).
     path = write_zarr(tmp_path, n_range=600, n_pings=8, bottom_row=300)
     patches, masks = prepare_patches_from_zarr(
-        path, F1, F2, patch_width=8, stride=8, crop_mode="bottom", crop_padding=64)
+        path, F1, F2, patch_width=8, stride=8, crop_mode="bottom", crop_padding=64
+    )
     assert patches[0].shape == (3, 512, 8)
     assert masks[0].shape == (512, 8)
     first_bottom_row = int(np.argmax(masks[0][:, 0]))
@@ -102,6 +114,7 @@ def test_bottom_crop_mode_pads_extent_and_rounds_height_up_to_256(tmp_path):
 
 
 # --- datasets ----------------------------------------------------------------
+
 
 def _synthetic_patches(n=3, c=3, h=100, w=40):
     rng = np.random.default_rng(0)
@@ -121,16 +134,17 @@ def test_patch_dataset_resizes_to_target_size_as_chw_tensors():
     assert len(ds) == 3
     assert img.shape == (3, 64, 32) and img.dtype == torch.float32
     assert msk.shape == (64, 32) and msk.dtype == torch.float32
-    assert set(torch.unique(msk).tolist()) == {0.0, 1.0}      # nearest-neighbour
-    assert msk[:31].max() == 0 and msk[33:].min() == 1         # edge at ~half height
+    assert set(torch.unique(msk).tolist()) == {0.0, 1.0}  # nearest-neighbour
+    assert msk[:31].max() == 0 and msk[33:].min() == 1  # edge at ~half height
 
 
 @pytest.mark.xfail(
     strict=True,
     reason="echo_dataset._resize_and_augment (line ~372): cv2.resize drops the "
-           "singleton channel of a 1-channel patch and the 2-D branch returns an "
-           "(H, W) tensor, so single_freq batches lack the channel axis. The "
-           "fast-cache path (_resize_patch) restores it; the on-the-fly path does not.")
+    "singleton channel of a 1-channel patch and the 2-D branch returns an "
+    "(H, W) tensor, so single_freq batches lack the channel axis. The "
+    "fast-cache path (_resize_patch) restores it; the on-the-fly path does not.",
+)
 def test_patch_dataset_keeps_single_channel_dimension():
     patches, masks = _synthetic_patches(c=1)
     img, _ = EchogramPatchDataset(patches, masks, target_size=(64, 32))[0]
@@ -166,6 +180,7 @@ def test_lazy_dataset_loads_requested_patch_from_npz(tmp_path):
 
 # --- splits and augmentation -------------------------------------------------
 
+
 def test_three_way_split_is_disjoint_and_covers_all_files():
     paths = [f"f{i}.zarr" for i in range(20)]
     train, val, calib = split_files_three_way(paths, 0.15, 0.15, seed=42)
@@ -192,7 +207,7 @@ def test_channel_dropout_never_blanks_all_three_channels():
         out = drop(image)
         alive = (out.reshape(-1, 3).max(axis=0) > 0).sum()
         assert alive == 1
-    np.testing.assert_array_equal(image, 1.0)                  # input not mutated
+    np.testing.assert_array_equal(image, 1.0)  # input not mutated
 
 
 def test_channel_dropout_passes_single_channel_images_through():

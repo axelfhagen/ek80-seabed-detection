@@ -6,4 +6,4 @@ from . import evaluate
 from . import unet_model
 from . import training
 
-__all__ = ['architectures', 'echo_dataset', 'evaluate', 'unet_model', 'training']
+__all__ = ["architectures", "echo_dataset", "evaluate", "unet_model", "training"]

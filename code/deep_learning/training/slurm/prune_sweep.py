@@ -33,6 +33,7 @@ def rank(rows: list[dict], metric: str = "best_val_iou") -> list[dict]:
             return float(r.get(metric, 0) or 0)
         except ValueError:
             return 0.0
+
     return sorted(rows, key=key, reverse=True)
 
 
@@ -84,7 +85,7 @@ def main():
         sys.exit(1)
 
     ranked = rank(matched, args.metric)
-    top = ranked[:args.top]
+    top = ranked[: args.top]
 
     print(f"Found {len(matched)} runs for '{args.grid}', keeping top {args.top}:")
     print()

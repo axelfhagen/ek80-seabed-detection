@@ -1,4 +1,5 @@
 """Characterization tests for model construction, forward shapes and inference."""
+
 import dataclasses
 
 import numpy as np
@@ -35,12 +36,21 @@ def _seed():
 
 
 def test_registry_lists_all_known_architectures():
-    assert list_architectures() == sorted([
-        "smp_unet", "unet_regression", "smp_unet_scse", "smp_fpn",
-        "smp_deeplabv3plus", "smp_manet", "smp_segformer",
-        "vanilla_unet", "vanilla_unet_small", "vanilla_unet_large",
-        "lightweight_cnn",
-    ])
+    assert list_architectures() == sorted(
+        [
+            "smp_unet",
+            "unet_regression",
+            "smp_unet_scse",
+            "smp_fpn",
+            "smp_deeplabv3plus",
+            "smp_manet",
+            "smp_segformer",
+            "vanilla_unet",
+            "vanilla_unet_small",
+            "vanilla_unet_large",
+            "lightweight_cnn",
+        ]
+    )
 
 
 @pytest.mark.parametrize("arch", sorted(CHEAP_ARCHS))
@@ -63,19 +73,26 @@ def test_create_model_rejects_unknown_architecture():
 
 
 def test_create_model_silently_ignores_kwargs_for_other_architectures():
-    model = create_model("lightweight_cnn", encoder_name="resnet34",
-                         base_filters=99, depth=7, channels=(4, 8))
+    model = create_model(
+        "lightweight_cnn", encoder_name="resnet34", base_filters=99, depth=7, channels=(4, 8)
+    )
     assert model.architecture_id == "lightweight_cnn_4_8"
 
 
-@pytest.mark.parametrize("arch, kwargs, expected", [
-    ("vanilla_unet", dict(), "vanilla_unet_d4_f32"),
-    ("vanilla_unet_small", dict(depth=3), "vanilla_unet_d3_f16"),
-    ("lightweight_cnn", dict(), "lightweight_cnn_16_32_64"),
-    ("smp_unet", dict(encoder_name="resnet18", encoder_weights=None), "smp_unet_resnet18"),
-    ("unet_regression", dict(encoder_name="resnet18", encoder_weights=None),
-     "unet_reg_resnet18"),
-])
+@pytest.mark.parametrize(
+    "arch, kwargs, expected",
+    [
+        ("vanilla_unet", dict(), "vanilla_unet_d4_f32"),
+        ("vanilla_unet_small", dict(depth=3), "vanilla_unet_d3_f16"),
+        ("lightweight_cnn", dict(), "lightweight_cnn_16_32_64"),
+        ("smp_unet", dict(encoder_name="resnet18", encoder_weights=None), "smp_unet_resnet18"),
+        (
+            "unet_regression",
+            dict(encoder_name="resnet18", encoder_weights=None),
+            "unet_reg_resnet18",
+        ),
+    ],
+)
 def test_architecture_id_encodes_architecture_and_size(arch, kwargs, expected):
     assert create_model(arch, **kwargs).architecture_id == expected
 
@@ -114,7 +131,7 @@ def test_create_unet_without_pretrained_weights_returns_raw_logits():
     with torch.no_grad():
         out = model(torch.randn(2, 3, 64, 64))
     assert out.shape == (2, 1, 64, 64)
-    assert out.min() < 0 or out.max() > 1     # no sigmoid applied
+    assert out.min() < 0 or out.max() > 1  # no sigmoid applied
 
 
 def test_regression_unet_forces_a_single_output_channel():
@@ -124,13 +141,15 @@ def test_regression_unet_forces_a_single_output_channel():
 
 
 def test_build_model_from_config_with_no_pretrained_weights():
-    cfg = PipelineConfig(architecture="vanilla_unet", base_filters=4, model_depth=2,
-                         encoder_weights="none")
+    cfg = PipelineConfig(
+        architecture="vanilla_unet", base_filters=4, model_depth=2, encoder_weights="none"
+    )
     model = build_model(cfg)
     assert model.architecture_id == "vanilla_unet_d2_f4"
 
 
 # --- config ------------------------------------------------------------------
+
 
 def test_pipeline_config_defaults_for_the_standard_training_run():
     cfg = PipelineConfig()
@@ -166,6 +185,7 @@ def test_pipeline_config_list_defaults_are_not_shared_between_instances():
 
 # --- full-echogram sliding-window inference ----------------------------------
 
+
 class ConstantLogits(nn.Module):
     def __init__(self, value):
         super().__init__()
@@ -179,8 +199,9 @@ class ConstantLogits(nn.Module):
 def test_full_echogram_prediction_covers_every_ping_at_original_size(n_pings):
     # 300 pings, width 128, stride 100 -> windows at 0, 100 and pinned 172.
     sv = np.random.rand(3, 40, n_pings).astype(np.float32)
-    pred = predict_full_echogram(ConstantLogits(20.0), sv, (32, 32), "cpu",
-                                 patch_width=128, stride=100)
+    pred = predict_full_echogram(
+        ConstantLogits(20.0), sv, (32, 32), "cpu", patch_width=128, stride=100
+    )
     assert pred.shape == (40, n_pings)
     assert pred.dtype == np.float32
     np.testing.assert_allclose(pred, 1.0, atol=1e-6)
@@ -188,19 +209,20 @@ def test_full_echogram_prediction_covers_every_ping_at_original_size(n_pings):
 
 def test_full_echogram_prediction_is_sigmoid_of_logits():
     sv = np.zeros((3, 20, 64), dtype=np.float32)
-    pred = predict_full_echogram(ConstantLogits(0.0), sv, (32, 32), "cpu",
-                                 patch_width=32, stride=16)
+    pred = predict_full_echogram(
+        ConstantLogits(0.0), sv, (32, 32), "cpu", patch_width=32, stride=16
+    )
     np.testing.assert_allclose(pred, 0.5, atol=1e-6)
 
 
 # --- training / validation loops ---------------------------------------------
 
+
 def _tiny_loader():
     imgs = torch.randn(4, 3, 32, 32)
     masks = torch.zeros(4, 32, 32)
     masks[:, 16:] = 1
-    return torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(imgs, masks), batch_size=2)
+    return torch.utils.data.DataLoader(torch.utils.data.TensorDataset(imgs, masks), batch_size=2)
 
 
 def test_validate_returns_finite_averaged_metrics():

@@ -16,8 +16,10 @@ Works on any canonical survey split (test, val, calibration, train) via
 
 Output: Figures/channel_importance/ (test) or Figures/channel_importance/<split>/
 """
+
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from pathlib import Path
@@ -30,7 +32,7 @@ import cv2
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT / 'code'))
+sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from deep_learning.unet_model import create_unet
 from deep_learning.training.survey_groups import SURVEYS, SPLITS
@@ -39,17 +41,21 @@ from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import SemanticSegmentationTarget
 
 
-CHECKPOINT_PATH = PROJECT_ROOT / 'code/checkpoints' / \
-    'exp_20260511_191547_all_surveys_jun2025' / 'smp_unet_resnet34_best.pth'
-CACHE_DIR = PROJECT_ROOT / 'Datasets/patch_cache'
-OUTPUT_BASE = PROJECT_ROOT / 'Figures' / 'channel_importance'
+CHECKPOINT_PATH = (
+    PROJECT_ROOT
+    / "code/checkpoints"
+    / "exp_20260511_191547_all_surveys_jun2025"
+    / "smp_unet_resnet34_best.pth"
+)
+CACHE_DIR = PROJECT_ROOT / "Datasets/patch_cache"
+OUTPUT_BASE = PROJECT_ROOT / "Figures" / "channel_importance"
 
-CHANNEL_NAMES = ['38 kHz', '200 kHz', '38 kHz minus 200 kHz']
-CHANNEL_SHORT = ['38 kHz', '200 kHz', 'diff']
-CHANNEL_COLORS = ['#1f77b4', '#d62728', '#2ca02c']
+CHANNEL_NAMES = ["38 kHz", "200 kHz", "38 kHz minus 200 kHz"]
+CHANNEL_SHORT = ["38 kHz", "200 kHz", "diff"]
+CHANNEL_COLORS = ["#1f77b4", "#d62728", "#2ca02c"]
 
 TARGET_SIZE = (512, 512)
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 apply_thesis_style()
 
@@ -57,6 +63,7 @@ apply_thesis_style()
 # ---------------------------------------------------------------------------
 # Cache-file resolution per split
 # ---------------------------------------------------------------------------
+
 
 def resolve_cache_files(split):
     """Return cached NPZ filenames for a canonical split.
@@ -66,13 +73,12 @@ def resolve_cache_files(split):
     (verified for the current cache).
     """
     if split not in SPLITS:
-        raise ValueError(f"Unknown split '{split}', expected one of "
-                         f"{list(SPLITS.keys())}")
+        raise ValueError(f"Unknown split '{split}', expected one of {list(SPLITS.keys())}")
     prefixes = []
     for survey in SPLITS[split]:
-        prefixes.extend(SURVEYS[survey]['date_prefixes'])
+        prefixes.extend(SURVEYS[survey]["date_prefixes"])
     files = []
-    for f in sorted(CACHE_DIR.glob('*.npz')):
+    for f in sorted(CACHE_DIR.glob("*.npz")):
         for pref in prefixes:
             if f.name.startswith(pref):
                 files.append(f.name)
@@ -84,6 +90,7 @@ def resolve_cache_files(split):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _cleanup():
     gc.collect()
     if torch.cuda.is_available():
@@ -91,12 +98,12 @@ def _cleanup():
 
 
 def load_model():
-    model = create_unet(encoder_name='resnet34', encoder_weights=None,
-                        in_channels=3, classes=1)
-    sd = torch.load(CHECKPOINT_PATH, map_location='cpu', weights_only=False)
-    state = sd['model_state_dict']
-    cleaned = {k.replace('model.', '', 1) if k.startswith('model.') else k: v
-               for k, v in state.items()}
+    model = create_unet(encoder_name="resnet34", encoder_weights=None, in_channels=3, classes=1)
+    sd = torch.load(CHECKPOINT_PATH, map_location="cpu", weights_only=False)
+    state = sd["model_state_dict"]
+    cleaned = {
+        k.replace("model.", "", 1) if k.startswith("model.") else k: v for k, v in state.items()
+    }
     model.load_state_dict(cleaned, strict=True)
     return model.to(DEVICE).eval()
 
@@ -107,8 +114,7 @@ def resize_patch(patch_chw, mask=None, size=TARGET_SIZE):
     hwc_r = cv2.resize(hwc, (w, h), interpolation=cv2.INTER_LINEAR)
     out_chw = np.transpose(hwc_r, (2, 0, 1)).astype(np.float32)
     if mask is not None:
-        m_r = cv2.resize(mask.astype(np.uint8), (w, h),
-                         interpolation=cv2.INTER_NEAREST)
+        m_r = cv2.resize(mask.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST)
         return out_chw, m_r
     return out_chw
 
@@ -156,15 +162,15 @@ def bottom_depth_error(pred_binary, gt_binary):
     gt = bottom_row_per_col(gt_binary)
     mask = (pr >= 0) & (gt >= 0)
     if mask.sum() == 0:
-        return float('nan')
+        return float("nan")
     return float(np.mean(np.abs(pr[mask] - gt[mask])))
 
 
 def channels_to_rgb_composite(patch_chw):
     def to01(c):
         return np.clip((c + 1.0) * 0.5, 0.0, 1.0)
-    return np.stack([to01(patch_chw[0]), to01(patch_chw[1]),
-                     to01(patch_chw[2])], axis=-1)
+
+    return np.stack([to01(patch_chw[0]), to01(patch_chw[1]), to01(patch_chw[2])], axis=-1)
 
 
 def add_cb(im, ax, label=None):
@@ -177,8 +183,8 @@ def add_cb(im, ax, label=None):
 # Sample loading
 # ---------------------------------------------------------------------------
 
-def load_patches(cache_files, max_per_file=20, min_cov=0.05, max_cov=0.9,
-                 seed=0):
+
+def load_patches(cache_files, max_per_file=20, min_cov=0.05, max_cov=0.9, seed=0):
     """Stream and resize patches from the cache, keeping a balanced set.
 
     NPZ caches are compressed, so any indexed access decompresses the whole
@@ -196,10 +202,10 @@ def load_patches(cache_files, max_per_file=20, min_cov=0.05, max_cov=0.9,
         path = CACHE_DIR / fname
         if not path.exists():
             continue
-        print(f'  Loading {fname} ...', flush=True)
+        print(f"  Loading {fname} ...", flush=True)
         with np.load(path) as d:
-            all_p = d['patches']  # forces decompression once
-            all_m = d['masks']
+            all_p = d["patches"]  # forces decompression once
+            all_m = d["masks"]
             if all_p.ndim == 0 or all_p.shape[0] == 0:
                 continue
             n = all_p.shape[0]
@@ -217,7 +223,7 @@ def load_patches(cache_files, max_per_file=20, min_cov=0.05, max_cov=0.9,
                 rp, rm = resize_patch(p, m)
                 patches.append(rp)
                 masks.append(rm.astype(np.uint8))
-                meta.append({'file': fname.split('_')[0], 'index': int(idx)})
+                meta.append({"file": fname.split("_")[0], "index": int(idx)})
                 n_kept += 1
         del all_p, all_m
         gc.collect()
@@ -228,36 +234,36 @@ def load_patches(cache_files, max_per_file=20, min_cov=0.05, max_cov=0.9,
 # Analysis 1: channel ablation (single channel zero / mean / shuffled)
 # ---------------------------------------------------------------------------
 
+
 def ablate_channel(patch_chw, channel, mode, replacement=None):
     """Return a copy of patch_chw with `channel` replaced.
 
     mode = 'zero', 'mean' (per-image mean), or 'replace' (use replacement
     array of shape (H, W))."""
     out = patch_chw.copy()
-    if mode == 'zero':
+    if mode == "zero":
         out[channel] = 0.0
-    elif mode == 'mean':
+    elif mode == "mean":
         out[channel] = float(out[channel].mean())
-    elif mode == 'replace':
+    elif mode == "replace":
         out[channel] = replacement
     else:
         raise ValueError(mode)
     return out
 
 
-def run_ablation(model, patches, masks, n_shuffle_trials=3, batch_size=16,
-                 threshold=0.5, seed=0):
+def run_ablation(model, patches, masks, n_shuffle_trials=3, batch_size=16, threshold=0.5, seed=0):
     """Compute IoU/Dice/bottom-error for baseline and per-channel ablations."""
     rng = np.random.RandomState(seed)
 
     def batched_probs(arr_list):
         out = []
         for i in range(0, len(arr_list), batch_size):
-            chunk = np.stack(arr_list[i:i + batch_size])
+            chunk = np.stack(arr_list[i : i + batch_size])
             out.append(predict_probs_batch(model, chunk))
         return np.concatenate(out, axis=0)
 
-    print(f'  Ablation: running baseline on {len(patches)} patches')
+    print(f"  Ablation: running baseline on {len(patches)} patches")
     base_probs = batched_probs(patches)
     base_metrics = []
     for prob, m in zip(base_probs, masks):
@@ -268,17 +274,17 @@ def run_ablation(model, patches, masks, n_shuffle_trials=3, batch_size=16,
     base_metrics = np.array(base_metrics)
 
     results = {
-        'baseline': {
-            'iou': base_metrics[:, 0],
-            'dice': base_metrics[:, 1],
-            'err': base_metrics[:, 2],
+        "baseline": {
+            "iou": base_metrics[:, 0],
+            "dice": base_metrics[:, 1],
+            "err": base_metrics[:, 2],
         },
     }
 
-    for mode in ['zero', 'mean']:
+    for mode in ["zero", "mean"]:
         results[mode] = {}
         for ch in range(3):
-            print(f'  Ablation [{mode}] channel {ch} ({CHANNEL_SHORT[ch]})')
+            print(f"  Ablation [{mode}] channel {ch} ({CHANNEL_SHORT[ch]})")
             ablated = [ablate_channel(p, ch, mode) for p in patches]
             probs = batched_probs(ablated)
             mets = []
@@ -289,14 +295,15 @@ def run_ablation(model, patches, masks, n_shuffle_trials=3, batch_size=16,
                 mets.append((iou, dice, err))
             mets = np.array(mets)
             results[mode][ch] = {
-                'iou': mets[:, 0], 'dice': mets[:, 1], 'err': mets[:, 2],
+                "iou": mets[:, 0],
+                "dice": mets[:, 1],
+                "err": mets[:, 2],
             }
 
-    results['shuffle'] = {}
+    results["shuffle"] = {}
     n = len(patches)
     for ch in range(3):
-        print(f'  Ablation [shuffle x{n_shuffle_trials}] channel {ch} '
-              f'({CHANNEL_SHORT[ch]})')
+        print(f"  Ablation [shuffle x{n_shuffle_trials}] channel {ch} ({CHANNEL_SHORT[ch]})")
         iou_all, dice_all, err_all = [], [], []
         for trial in range(n_shuffle_trials):
             perm = rng.permutation(n)
@@ -305,7 +312,7 @@ def run_ablation(model, patches, masks, n_shuffle_trials=3, batch_size=16,
             ablated = []
             for i, p in enumerate(patches):
                 repl = patches[perm[i]][ch]
-                ablated.append(ablate_channel(p, ch, 'replace', replacement=repl))
+                ablated.append(ablate_channel(p, ch, "replace", replacement=repl))
             probs = batched_probs(ablated)
             mets = []
             for prob, m in zip(probs, masks):
@@ -317,10 +324,10 @@ def run_ablation(model, patches, masks, n_shuffle_trials=3, batch_size=16,
             iou_all.append(mets[:, 0])
             dice_all.append(mets[:, 1])
             err_all.append(mets[:, 2])
-        results['shuffle'][ch] = {
-            'iou': np.mean(iou_all, axis=0),
-            'dice': np.mean(dice_all, axis=0),
-            'err': np.nanmean(err_all, axis=0),
+        results["shuffle"][ch] = {
+            "iou": np.mean(iou_all, axis=0),
+            "dice": np.mean(dice_all, axis=0),
+            "err": np.nanmean(err_all, axis=0),
         }
 
     return results
@@ -330,19 +337,20 @@ def run_ablation(model, patches, masks, n_shuffle_trials=3, batch_size=16,
 # Analysis 2: pairwise channel ablation (keep only one)
 # ---------------------------------------------------------------------------
 
-def run_pairwise_ablation(model, patches, masks, batch_size=16,
-                          threshold=0.5):
+
+def run_pairwise_ablation(model, patches, masks, batch_size=16, threshold=0.5):
     """For each single channel kept (others zeroed), measure IoU/Dice."""
+
     def batched_probs(arr_list):
         out = []
         for i in range(0, len(arr_list), batch_size):
-            chunk = np.stack(arr_list[i:i + batch_size])
+            chunk = np.stack(arr_list[i : i + batch_size])
             out.append(predict_probs_batch(model, chunk))
         return np.concatenate(out, axis=0)
 
     results = {}
     for keep in range(3):
-        print(f'  Keep-only channel {keep} ({CHANNEL_SHORT[keep]})')
+        print(f"  Keep-only channel {keep} ({CHANNEL_SHORT[keep]})")
         ablated = []
         for p in patches:
             mod = p.copy()
@@ -355,18 +363,20 @@ def run_pairwise_ablation(model, patches, masks, batch_size=16,
         for prob, m in zip(probs, masks):
             pred = (prob > threshold).astype(np.uint8)
             iou, dice = iou_dice(pred, m)
-            ious.append(iou); dices.append(dice)
-        results[keep] = {'iou': np.array(ious), 'dice': np.array(dices)}
+            ious.append(iou)
+            dices.append(dice)
+        results[keep] = {"iou": np.array(ious), "dice": np.array(dices)}
 
-    print('  Keep none (all zeros)')
+    print("  Keep none (all zeros)")
     ablated = [np.zeros_like(p) for p in patches]
     probs = batched_probs(ablated)
     ious, dices = [], []
     for prob, m in zip(probs, masks):
         pred = (prob > threshold).astype(np.uint8)
         iou, dice = iou_dice(pred, m)
-        ious.append(iou); dices.append(dice)
-    results['none'] = {'iou': np.array(ious), 'dice': np.array(dices)}
+        ious.append(iou)
+        dices.append(dice)
+    results["none"] = {"iou": np.array(ious), "dice": np.array(dices)}
 
     return results
 
@@ -374,6 +384,7 @@ def run_pairwise_ablation(model, patches, masks, batch_size=16,
 # ---------------------------------------------------------------------------
 # Analysis 3 & 4: input gradient and integrated gradients per channel
 # ---------------------------------------------------------------------------
+
 
 def input_gradient(model, patch_chw, target_mask=None):
     """Return d(score)/d(input) where score = sum over predicted-bottom pixels
@@ -420,8 +431,7 @@ def integrated_gradients(model, patch_chw, steps=32, target_mask=None):
     return ig.squeeze(0).cpu().numpy()
 
 
-def aggregate_attribution(model, patches, masks, method='grad',
-                          steps=32, max_patches=None):
+def aggregate_attribution(model, patches, masks, method="grad", steps=32, max_patches=None):
     """Run grad or IG over all patches and accumulate per-channel stats."""
     if max_patches is not None:
         patches = patches[:max_patches]
@@ -434,9 +444,9 @@ def aggregate_attribution(model, patches, masks, method='grad',
     window = 200
 
     for i, (p, m) in enumerate(zip(patches, masks)):
-        if method == 'grad':
+        if method == "grad":
             attr = input_gradient(model, p)
-        elif method == 'ig':
+        elif method == "ig":
             attr = integrated_gradients(model, p, steps=steps)
         else:
             raise ValueError(method)
@@ -466,15 +476,15 @@ def aggregate_attribution(model, patches, masks, method='grad',
         aligned_profile.append(seg)
 
         if (i + 1) % 25 == 0:
-            print(f'    {method} {i + 1}/{n}')
+            print(f"    {method} {i + 1}/{n}")
 
     accum_map /= n
     aligned_profile = np.array(aligned_profile)
     return {
-        'per_patch': per_patch,
-        'mean_map': accum_map,
-        'aligned': aligned_profile,
-        'rel_y': np.arange(-window, window),
+        "per_patch": per_patch,
+        "mean_map": accum_map,
+        "aligned": aligned_profile,
+        "rel_y": np.arange(-window, window),
     }
 
 
@@ -482,10 +492,10 @@ def aggregate_attribution(model, patches, masks, method='grad',
 # Analysis 5: GradCAM
 # ---------------------------------------------------------------------------
 
+
 def gradcam_target(model, target_layer, input_chw, target_mask):
     inp = torch.from_numpy(input_chw[np.newaxis]).float().to(DEVICE)
-    targets = [SemanticSegmentationTarget(
-        category=0, mask=target_mask.astype(np.float32))]
+    targets = [SemanticSegmentationTarget(category=0, mask=target_mask.astype(np.float32))]
     with GradCAM(model=model, target_layers=[target_layer]) as cam:
         return cam(input_tensor=inp, targets=targets)[0]
 
@@ -494,8 +504,8 @@ def gradcam_target(model, target_layer, input_chw, target_mask):
 # Analysis 6: per-channel input distributions for bottom vs water
 # ---------------------------------------------------------------------------
 
-def collect_channel_distributions(patches, masks, max_samples_per_class=200_000,
-                                  seed=0):
+
+def collect_channel_distributions(patches, masks, max_samples_per_class=200_000, seed=0):
     """Sample input values from bottom vs water pixels for each channel."""
     rng = np.random.RandomState(seed)
     bottom_vals = [[], [], []]
@@ -515,25 +525,28 @@ def collect_channel_distributions(patches, masks, max_samples_per_class=200_000,
             bottom_vals[c].append(bv)
             water_vals[c].append(wv)
 
-    return ([np.concatenate(v) for v in bottom_vals],
-            [np.concatenate(v) for v in water_vals])
+    return ([np.concatenate(v) for v in bottom_vals], [np.concatenate(v) for v in water_vals])
 
 
 # ---------------------------------------------------------------------------
 # Figure generation
 # ---------------------------------------------------------------------------
 
+
 def fig_ablation_bars(ablation, out_path, split_label):
     fig, axes = plt.subplots(1, 3, figsize=(22, 7))
-    metrics = ['iou', 'dice', 'err']
-    titles = ['IoU (higher better)', 'Dice (higher better)',
-              'Bottom-row error in pixels (lower better)']
-    modes = ['zero', 'mean', 'shuffle']
-    mode_labels = ['Zero out', 'Replace with mean', 'Replace from other patch']
+    metrics = ["iou", "dice", "err"]
+    titles = [
+        "IoU (higher better)",
+        "Dice (higher better)",
+        "Bottom-row error in pixels (lower better)",
+    ]
+    modes = ["zero", "mean", "shuffle"]
+    mode_labels = ["Zero out", "Replace with mean", "Replace from other patch"]
 
     for ax, metric, title in zip(axes, metrics, titles):
-        base = ablation['baseline'][metric]
-        base_mean = np.nanmean(base) if metric == 'err' else np.mean(base)
+        base = ablation["baseline"][metric]
+        base_mean = np.nanmean(base) if metric == "err" else np.mean(base)
 
         x = np.arange(3)
         width = 0.25
@@ -541,188 +554,242 @@ def fig_ablation_bars(ablation, out_path, split_label):
             means, lows, highs = [], [], []
             for ch in range(3):
                 arr = ablation[mode][ch][metric]
-                arr = arr[~np.isnan(arr)] if metric == 'err' else arr
-                m = np.mean(arr) if len(arr) else float('nan')
-                lo = np.percentile(arr, 2.5) if len(arr) else float('nan')
-                hi = np.percentile(arr, 97.5) if len(arr) else float('nan')
-                means.append(m); lows.append(m - lo); highs.append(hi - m)
-            ax.bar(x + (j - 1) * width, means, width=width, label=lbl,
-                   yerr=[lows, highs], capsize=4,
-                   color=['#8da0cb', '#fc8d62', '#66c2a5'][j], alpha=0.9)
-        ax.axhline(base_mean, color='black', linestyle='--', linewidth=2,
-                   label=f'Baseline ({base_mean:.3f})')
+                arr = arr[~np.isnan(arr)] if metric == "err" else arr
+                m = np.mean(arr) if len(arr) else float("nan")
+                lo = np.percentile(arr, 2.5) if len(arr) else float("nan")
+                hi = np.percentile(arr, 97.5) if len(arr) else float("nan")
+                means.append(m)
+                lows.append(m - lo)
+                highs.append(hi - m)
+            ax.bar(
+                x + (j - 1) * width,
+                means,
+                width=width,
+                label=lbl,
+                yerr=[lows, highs],
+                capsize=4,
+                color=["#8da0cb", "#fc8d62", "#66c2a5"][j],
+                alpha=0.9,
+            )
+        ax.axhline(
+            base_mean,
+            color="black",
+            linestyle="--",
+            linewidth=2,
+            label=f"Baseline ({base_mean:.3f})",
+        )
         ax.set_xticks(x)
         ax.set_xticklabels(CHANNEL_NAMES)
         ax.set_ylabel(title)
-        ax.set_title(f'Channel ablation: {metric.upper()}')
-        ax.legend(loc='lower right' if metric != 'err' else 'upper left',
-                  fontsize=12)
-        ax.grid(axis='y', alpha=0.3)
-        if metric == 'err':
-            ax.set_yscale('log')
+        ax.set_title(f"Channel ablation: {metric.upper()}")
+        ax.legend(loc="lower right" if metric != "err" else "upper left", fontsize=12)
+        ax.grid(axis="y", alpha=0.3)
+        if metric == "err":
+            ax.set_yscale("log")
 
-    fig.suptitle(f'Per-channel ablation on {split_label} set: how IoU, Dice, '
-                 f'and bottom error change when a channel is removed', y=1.03)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    fig.suptitle(
+        f"Per-channel ablation on {split_label} set: how IoU, Dice, "
+        f"and bottom error change when a channel is removed",
+        y=1.03,
+    )
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
 def fig_drop_distribution(ablation, out_path, split_label):
     fig, axes = plt.subplots(1, 3, figsize=(22, 6))
-    base = ablation['baseline']['iou']
+    base = ablation["baseline"]["iou"]
     for ch, ax in enumerate(axes):
-        drops = base - ablation['shuffle'][ch]['iou']
-        ax.hist(drops, bins=30, color=CHANNEL_COLORS[ch], alpha=0.75,
-                edgecolor='black')
-        ax.axvline(np.median(drops), color='black', linestyle='--',
-                   linewidth=2, label=f'Median drop {np.median(drops):+.3f}')
-        ax.axvline(0, color='gray', linestyle=':', linewidth=1.5)
-        ax.set_xlabel('IoU drop (baseline minus ablated)')
-        ax.set_ylabel('Patch count')
-        ax.set_title(f'Drop in IoU when {CHANNEL_NAMES[ch]} is shuffled')
-        ax.legend(loc='upper right', fontsize=13)
+        drops = base - ablation["shuffle"][ch]["iou"]
+        ax.hist(drops, bins=30, color=CHANNEL_COLORS[ch], alpha=0.75, edgecolor="black")
+        ax.axvline(
+            np.median(drops),
+            color="black",
+            linestyle="--",
+            linewidth=2,
+            label=f"Median drop {np.median(drops):+.3f}",
+        )
+        ax.axvline(0, color="gray", linestyle=":", linewidth=1.5)
+        ax.set_xlabel("IoU drop (baseline minus ablated)")
+        ax.set_ylabel("Patch count")
+        ax.set_title(f"Drop in IoU when {CHANNEL_NAMES[ch]} is shuffled")
+        ax.legend(loc="upper right", fontsize=13)
         ax.grid(alpha=0.3)
-    fig.suptitle(f'Distribution of per-patch IoU drop under channel shuffling '
-                 f'({split_label} set)', y=1.02)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    fig.suptitle(
+        f"Distribution of per-patch IoU drop under channel shuffling ({split_label} set)", y=1.02
+    )
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
 def fig_pairwise_bars(pairwise, ablation, out_path, split_label):
     fig, ax = plt.subplots(1, 1, figsize=(13, 7))
-    base_iou = float(np.mean(ablation['baseline']['iou']))
-    base_dice = float(np.mean(ablation['baseline']['dice']))
+    base_iou = float(np.mean(ablation["baseline"]["iou"]))
+    base_dice = float(np.mean(ablation["baseline"]["dice"]))
 
-    labels = (['Baseline\n(all 3)']
-              + [f'Only\n{CHANNEL_SHORT[c]}' for c in range(3)]
-              + ['All zeros'])
-    iou_means = [base_iou] + [float(np.mean(pairwise[c]['iou']))
-                              for c in range(3)] + [
-        float(np.mean(pairwise['none']['iou']))]
-    dice_means = [base_dice] + [float(np.mean(pairwise[c]['dice']))
-                                for c in range(3)] + [
-        float(np.mean(pairwise['none']['dice']))]
+    labels = ["Baseline\n(all 3)"] + [f"Only\n{CHANNEL_SHORT[c]}" for c in range(3)] + ["All zeros"]
+    iou_means = (
+        [base_iou]
+        + [float(np.mean(pairwise[c]["iou"])) for c in range(3)]
+        + [float(np.mean(pairwise["none"]["iou"]))]
+    )
+    dice_means = (
+        [base_dice]
+        + [float(np.mean(pairwise[c]["dice"])) for c in range(3)]
+        + [float(np.mean(pairwise["none"]["dice"]))]
+    )
 
     x = np.arange(len(labels))
     width = 0.36
-    ax.bar(x - width / 2, iou_means, width, label='IoU',
-           color='#1f77b4', alpha=0.85)
-    ax.bar(x + width / 2, dice_means, width, label='Dice',
-           color='#ff7f0e', alpha=0.85)
+    ax.bar(x - width / 2, iou_means, width, label="IoU", color="#1f77b4", alpha=0.85)
+    ax.bar(x + width / 2, dice_means, width, label="Dice", color="#ff7f0e", alpha=0.85)
     for i, (iv, dv) in enumerate(zip(iou_means, dice_means)):
-        ax.text(i - width / 2, iv + 0.01, f'{iv:.3f}', ha='center',
-                fontsize=12)
-        ax.text(i + width / 2, dv + 0.01, f'{dv:.3f}', ha='center',
-                fontsize=12)
+        ax.text(i - width / 2, iv + 0.01, f"{iv:.3f}", ha="center", fontsize=12)
+        ax.text(i + width / 2, dv + 0.01, f"{dv:.3f}", ha="center", fontsize=12)
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
-    ax.set_ylabel('Metric')
-    ax.set_title(f'Performance when only a single channel is retained '
-                 f'({split_label} set)')
-    ax.legend(loc='upper right')
+    ax.set_ylabel("Metric")
+    ax.set_title(f"Performance when only a single channel is retained ({split_label} set)")
+    ax.legend(loc="upper right")
     ax.set_ylim(0, max(iou_means + dice_means) * 1.15)
-    ax.grid(axis='y', alpha=0.3)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    ax.grid(axis="y", alpha=0.3)
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
 def fig_attribution_bars(grad_agg, ig_agg, out_path, split_label):
     fig, axes = plt.subplots(1, 2, figsize=(20, 7))
-    for ax, agg, title in zip(axes, [grad_agg, ig_agg],
-                              ['Mean absolute input gradient per channel',
-                               'Mean absolute integrated gradient per channel']):
-        means = agg['per_patch'].mean(axis=0)
-        lo = np.percentile(agg['per_patch'], 2.5, axis=0)
-        hi = np.percentile(agg['per_patch'], 97.5, axis=0)
+    for ax, agg, title in zip(
+        axes,
+        [grad_agg, ig_agg],
+        [
+            "Mean absolute input gradient per channel",
+            "Mean absolute integrated gradient per channel",
+        ],
+    ):
+        means = agg["per_patch"].mean(axis=0)
+        lo = np.percentile(agg["per_patch"], 2.5, axis=0)
+        hi = np.percentile(agg["per_patch"], 97.5, axis=0)
         share = means / means.sum() * 100
         x = np.arange(3)
-        ax.bar(x, means, color=CHANNEL_COLORS, alpha=0.85,
-               yerr=[means - lo, hi - means], capsize=5, edgecolor='black')
+        ax.bar(
+            x,
+            means,
+            color=CHANNEL_COLORS,
+            alpha=0.85,
+            yerr=[means - lo, hi - means],
+            capsize=5,
+            edgecolor="black",
+        )
         for i, (m, s) in enumerate(zip(means, share)):
-            ax.text(i, m + 0.02 * means.max(), f'{m:.3e}\n({s:.1f}%)',
-                    ha='center', fontsize=13)
+            ax.text(i, m + 0.02 * means.max(), f"{m:.3e}\n({s:.1f}%)", ha="center", fontsize=13)
         ax.set_xticks(x)
         ax.set_xticklabels(CHANNEL_NAMES)
-        ax.set_ylabel('Mean |attribution|')
+        ax.set_ylabel("Mean |attribution|")
         ax.set_title(title)
-        ax.grid(axis='y', alpha=0.3)
-    fig.suptitle(f'Per-channel attribution magnitudes ({split_label} set)',
-                 y=1.02)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+        ax.grid(axis="y", alpha=0.3)
+    fig.suptitle(f"Per-channel attribution magnitudes ({split_label} set)", y=1.02)
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
 def fig_mean_attribution_maps(agg, title_prefix, out_path, split_label):
     fig, axes = plt.subplots(1, 3, figsize=(22, 7))
-    vmax = float(agg['mean_map'].max())
+    vmax = float(agg["mean_map"].max())
     for c, ax in enumerate(axes):
-        im = ax.imshow(agg['mean_map'][c], cmap='hot', aspect='auto',
-                       vmin=0, vmax=vmax)
-        share = agg['mean_map'][c].sum() / agg['mean_map'].sum() * 100
-        ax.set_title(f'{CHANNEL_NAMES[c]} ({share:.1f}% of total)')
-        ax.set_xticks([]); ax.set_yticks([])
-        add_cb(im, ax, 'mean |attribution|')
-    fig.suptitle(f'{title_prefix}: mean per-channel spatial attribution '
-                 f'({split_label} set)', y=1.03)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+        im = ax.imshow(agg["mean_map"][c], cmap="hot", aspect="auto", vmin=0, vmax=vmax)
+        share = agg["mean_map"][c].sum() / agg["mean_map"].sum() * 100
+        ax.set_title(f"{CHANNEL_NAMES[c]} ({share:.1f}% of total)")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        add_cb(im, ax, "mean |attribution|")
+    fig.suptitle(
+        f"{title_prefix}: mean per-channel spatial attribution ({split_label} set)", y=1.03
+    )
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
 def fig_bottom_aligned_profiles(grad_agg, ig_agg, out_path, split_label):
     fig, axes = plt.subplots(1, 2, figsize=(20, 8))
     for ax, agg, title in zip(
-            axes, [grad_agg, ig_agg],
-            ['Input gradient profile aligned to bottom edge',
-             'Integrated gradient profile aligned to bottom edge']):
-        rel_y = agg['rel_y']
+        axes,
+        [grad_agg, ig_agg],
+        [
+            "Input gradient profile aligned to bottom edge",
+            "Integrated gradient profile aligned to bottom edge",
+        ],
+    ):
+        rel_y = agg["rel_y"]
         for c in range(3):
-            mean = np.nanmean(agg['aligned'][:, c, :], axis=0)
-            std = np.nanstd(agg['aligned'][:, c, :], axis=0)
-            ax.plot(mean, rel_y, color=CHANNEL_COLORS[c], linewidth=2.5,
-                    label=CHANNEL_NAMES[c])
-            ax.fill_betweenx(rel_y, mean - std, mean + std,
-                             color=CHANNEL_COLORS[c], alpha=0.15)
-        ax.axhline(0, color='red', linestyle='--', linewidth=2,
-                   label='Bottom edge')
+            mean = np.nanmean(agg["aligned"][:, c, :], axis=0)
+            std = np.nanstd(agg["aligned"][:, c, :], axis=0)
+            ax.plot(mean, rel_y, color=CHANNEL_COLORS[c], linewidth=2.5, label=CHANNEL_NAMES[c])
+            ax.fill_betweenx(rel_y, mean - std, mean + std, color=CHANNEL_COLORS[c], alpha=0.15)
+        ax.axhline(0, color="red", linestyle="--", linewidth=2, label="Bottom edge")
         ax.invert_yaxis()
-        ax.set_xlabel('Mean |attribution| over columns')
-        ax.set_ylabel('Rows relative to bottom edge')
+        ax.set_xlabel("Mean |attribution| over columns")
+        ax.set_ylabel("Rows relative to bottom edge")
         ax.set_title(title)
-        ax.legend(loc='lower right', fontsize=13)
+        ax.legend(loc="lower right", fontsize=13)
         ax.grid(alpha=0.3)
-    fig.suptitle(f'Where each channel matters relative to the seabed line '
-                 f'({split_label} set)', y=1.02)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    fig.suptitle(
+        f"Where each channel matters relative to the seabed line ({split_label} set)", y=1.02
+    )
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
-def fig_per_patch_grad_examples(model, patches, masks, meta, out_path,
-                                n_examples=3):
+def fig_per_patch_grad_examples(model, patches, masks, meta, out_path, n_examples=3):
     chosen = []
     for i, m in enumerate(masks):
         cov = m.mean()
@@ -739,56 +806,61 @@ def fig_per_patch_grad_examples(model, patches, masks, meta, out_path,
         composite = channels_to_rgb_composite(p)
         probs = predict_probs(model, p)
 
-        axes[r, 0].imshow(composite, aspect='auto')
-        axes[r, 0].set_title(
-            f'Input: {meta[idx]["file"]}#{meta[idx]["index"]}')
-        axes[r, 0].set_xticks([]); axes[r, 0].set_yticks([])
+        axes[r, 0].imshow(composite, aspect="auto")
+        axes[r, 0].set_title(f"Input: {meta[idx]['file']}#{meta[idx]['index']}")
+        axes[r, 0].set_xticks([])
+        axes[r, 0].set_yticks([])
 
-        im = axes[r, 1].imshow(probs, cmap='magma', aspect='auto',
-                               vmin=0, vmax=1)
-        axes[r, 1].set_title('Predicted p(bottom)')
-        axes[r, 1].set_xticks([]); axes[r, 1].set_yticks([])
+        im = axes[r, 1].imshow(probs, cmap="magma", aspect="auto", vmin=0, vmax=1)
+        axes[r, 1].set_title("Predicted p(bottom)")
+        axes[r, 1].set_xticks([])
+        axes[r, 1].set_yticks([])
         add_cb(im, axes[r, 1])
 
         g = input_gradient(model, p)
         ig = integrated_gradients(model, p, steps=24)
-        g_abs = np.abs(g); ig_abs = np.abs(ig)
+        g_abs = np.abs(g)
+        ig_abs = np.abs(ig)
         g_max = max(g_abs.max(), 1e-12)
         for c in range(3):
-            im = axes[r, 2 + c].imshow(g_abs[c], cmap='hot', aspect='auto',
-                                       vmin=0, vmax=g_max)
+            im = axes[r, 2 + c].imshow(g_abs[c], cmap="hot", aspect="auto", vmin=0, vmax=g_max)
             pct = g_abs[c].sum() / g_abs.sum() * 100
-            axes[r, 2 + c].set_title(f'|grad| {CHANNEL_SHORT[c]} ({pct:.1f}%)')
-            axes[r, 2 + c].set_xticks([]); axes[r, 2 + c].set_yticks([])
+            axes[r, 2 + c].set_title(f"|grad| {CHANNEL_SHORT[c]} ({pct:.1f}%)")
+            axes[r, 2 + c].set_xticks([])
+            axes[r, 2 + c].set_yticks([])
             add_cb(im, axes[r, 2 + c])
 
         ig_pcts = ig_abs.reshape(3, -1).sum(axis=1)
         ig_share = ig_pcts / max(ig_pcts.sum(), 1e-12) * 100
         ig_comp = ig_abs.sum(axis=0)
-        im = axes[r, 5].imshow(ig_comp, cmap='hot', aspect='auto',
-                               vmin=0, vmax=ig_comp.max())
-        axes[r, 5].set_title('|IG| summed channels')
-        axes[r, 5].set_xticks([]); axes[r, 5].set_yticks([])
+        im = axes[r, 5].imshow(ig_comp, cmap="hot", aspect="auto", vmin=0, vmax=ig_comp.max())
+        axes[r, 5].set_title("|IG| summed channels")
+        axes[r, 5].set_xticks([])
+        axes[r, 5].set_yticks([])
         add_cb(im, axes[r, 5])
 
-        axes[r, 6].bar(np.arange(3), ig_share, color=CHANNEL_COLORS,
-                       alpha=0.85, edgecolor='black')
+        axes[r, 6].bar(np.arange(3), ig_share, color=CHANNEL_COLORS, alpha=0.85, edgecolor="black")
         axes[r, 6].set_xticks(np.arange(3))
         axes[r, 6].set_xticklabels(CHANNEL_SHORT, fontsize=14)
-        axes[r, 6].set_ylabel('IG share (%)')
+        axes[r, 6].set_ylabel("IG share (%)")
         axes[r, 6].set_ylim(0, 100)
-        axes[r, 6].set_title('IG attribution per channel')
-        axes[r, 6].grid(axis='y', alpha=0.3)
+        axes[r, 6].set_title("IG attribution per channel")
+        axes[r, 6].grid(axis="y", alpha=0.3)
         for i, s in enumerate(ig_share):
-            axes[r, 6].text(i, s + 2, f'{s:.0f}%', ha='center', fontsize=14)
+            axes[r, 6].text(i, s + 2, f"{s:.0f}%", ha="center", fontsize=14)
 
-    fig.suptitle('Per-patch input attribution: gradient and integrated '
-                 'gradient per channel', y=1.005)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    fig.suptitle(
+        "Per-patch input attribution: gradient and integrated gradient per channel", y=1.005
+    )
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -796,32 +868,35 @@ def fig_distribution_per_channel(bot_vals, wat_vals, out_path, split_label):
     fig, axes = plt.subplots(1, 3, figsize=(22, 7))
     for c, ax in enumerate(axes):
         bins = np.linspace(-1, 1, 60)
-        ax.hist(wat_vals[c], bins=bins, alpha=0.55, density=True,
-                color='steelblue', label='Water')
-        ax.hist(bot_vals[c], bins=bins, alpha=0.55, density=True,
-                color='firebrick', label='Bottom')
+        ax.hist(wat_vals[c], bins=bins, alpha=0.55, density=True, color="steelblue", label="Water")
+        ax.hist(bot_vals[c], bins=bins, alpha=0.55, density=True, color="firebrick", label="Bottom")
         hb, _ = np.histogram(bot_vals[c], bins=bins, density=True)
         hw, _ = np.histogram(wat_vals[c], bins=bins, density=True)
-        hb /= hb.sum() + 1e-12; hw /= hw.sum() + 1e-12
+        hb /= hb.sum() + 1e-12
+        hw /= hw.sum() + 1e-12
         bhatt = np.sum(np.sqrt(hb * hw))
         sep = -np.log(bhatt + 1e-12)
-        ax.set_title(f'{CHANNEL_NAMES[c]}\nseparability (-log Bhatt) = {sep:.2f}')
-        ax.set_xlabel('Normalised value (channel scale)')
-        ax.set_ylabel('Density')
-        ax.legend(loc='upper left')
+        ax.set_title(f"{CHANNEL_NAMES[c]}\nseparability (-log Bhatt) = {sep:.2f}")
+        ax.set_xlabel("Normalised value (channel scale)")
+        ax.set_ylabel("Density")
+        ax.legend(loc="upper left")
         ax.grid(alpha=0.3)
-    fig.suptitle(f'Per-channel input distributions: bottom vs water pixels '
-                 f'({split_label} set)', y=1.03)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    fig.suptitle(
+        f"Per-channel input distributions: bottom vs water pixels ({split_label} set)", y=1.03
+    )
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
-def fig_gradcam_per_channel(model, patches, masks, meta, out_path,
-                            n_examples=2):
+def fig_gradcam_per_channel(model, patches, masks, meta, out_path, n_examples=2):
     layer = model.decoder.blocks[-1]
     chosen = [i for i, m in enumerate(masks) if 0.15 < m.mean() < 0.7][:n_examples]
     if not chosen:
@@ -836,53 +911,54 @@ def fig_gradcam_per_channel(model, patches, masks, meta, out_path,
         probs = predict_probs(model, p)
         pred = (probs > 0.5).astype(np.uint8)
 
-        axes[r, 0].imshow(composite, aspect='auto')
-        axes[r, 0].set_title(
-            f'Input: {meta[idx]["file"]}#{meta[idx]["index"]}')
-        axes[r, 0].set_xticks([]); axes[r, 0].set_yticks([])
+        axes[r, 0].imshow(composite, aspect="auto")
+        axes[r, 0].set_title(f"Input: {meta[idx]['file']}#{meta[idx]['index']}")
+        axes[r, 0].set_xticks([])
+        axes[r, 0].set_yticks([])
 
         cam = gradcam_target(model, layer, p, pred)
-        im = axes[r, 1].imshow(cam, cmap='jet', aspect='auto', vmin=0, vmax=1)
-        axes[r, 1].set_title('Grad-CAM (decoder block -1)')
-        axes[r, 1].set_xticks([]); axes[r, 1].set_yticks([])
+        im = axes[r, 1].imshow(cam, cmap="jet", aspect="auto", vmin=0, vmax=1)
+        axes[r, 1].set_title("Grad-CAM (decoder block -1)")
+        axes[r, 1].set_xticks([])
+        axes[r, 1].set_yticks([])
         add_cb(im, axes[r, 1])
 
         g = np.abs(input_gradient(model, p))
         for c in range(3):
-            v1 = g[c].ravel(); v2 = cam.ravel()
-            cos = float(np.dot(v1, v2) /
-                        (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-12))
+            v1 = g[c].ravel()
+            v2 = cam.ravel()
+            cos = float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-12))
             im = axes[r, 2 + c].imshow(
-                g[c] / max(g[c].max(), 1e-12), cmap='hot', aspect='auto',
-                vmin=0, vmax=1)
-            axes[r, 2 + c].set_title(
-                f'|grad| {CHANNEL_SHORT[c]} (cos with CAM = {cos:.2f})')
-            axes[r, 2 + c].set_xticks([]); axes[r, 2 + c].set_yticks([])
+                g[c] / max(g[c].max(), 1e-12), cmap="hot", aspect="auto", vmin=0, vmax=1
+            )
+            axes[r, 2 + c].set_title(f"|grad| {CHANNEL_SHORT[c]} (cos with CAM = {cos:.2f})")
+            axes[r, 2 + c].set_xticks([])
+            axes[r, 2 + c].set_yticks([])
 
-    fig.suptitle('Grad-CAM at the decoder vs per-channel input gradient '
-                 'magnitude', y=1.005)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    fig.suptitle("Grad-CAM at the decoder vs per-channel input gradient magnitude", y=1.005)
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
-def fig_summary_dashboard(ablation, pairwise, grad_agg, ig_agg, out_path,
-                          split_label):
+def fig_summary_dashboard(ablation, pairwise, grad_agg, ig_agg, out_path, split_label):
     fig, axes = plt.subplots(1, 2, figsize=(22, 7))
-    base_iou = float(np.mean(ablation['baseline']['iou']))
+    base_iou = float(np.mean(ablation["baseline"]["iou"]))
 
-    shuffle_drop = np.array([
-        base_iou - float(np.mean(ablation['shuffle'][c]['iou']))
-        for c in range(3)])
-    zero_drop = np.array([
-        base_iou - float(np.mean(ablation['zero'][c]['iou']))
-        for c in range(3)])
-    only_iou = np.array([float(np.mean(pairwise[c]['iou'])) for c in range(3)])
-    grad_score = grad_agg['per_patch'].mean(axis=0)
-    ig_score = ig_agg['per_patch'].mean(axis=0)
+    shuffle_drop = np.array(
+        [base_iou - float(np.mean(ablation["shuffle"][c]["iou"])) for c in range(3)]
+    )
+    zero_drop = np.array([base_iou - float(np.mean(ablation["zero"][c]["iou"])) for c in range(3)])
+    only_iou = np.array([float(np.mean(pairwise[c]["iou"])) for c in range(3)])
+    grad_score = grad_agg["per_patch"].mean(axis=0)
+    ig_score = ig_agg["per_patch"].mean(axis=0)
 
     def norm(x):
         x = np.array(x, dtype=float)
@@ -891,11 +967,11 @@ def fig_summary_dashboard(ablation, pairwise, grad_agg, ig_agg, out_path,
         return x / s if s > 0 else x
 
     methods = {
-        'IoU drop (zero)': norm(zero_drop),
-        'IoU drop (shuffle)': norm(shuffle_drop),
-        'Only-channel IoU': norm(only_iou),
-        '|grad|': norm(grad_score),
-        '|IG|': norm(ig_score),
+        "IoU drop (zero)": norm(zero_drop),
+        "IoU drop (shuffle)": norm(shuffle_drop),
+        "Only-channel IoU": norm(only_iou),
+        "|grad|": norm(grad_score),
+        "|IG|": norm(ig_score),
     }
     method_names = list(methods.keys())
     n_methods = len(methods)
@@ -904,36 +980,37 @@ def fig_summary_dashboard(ablation, pairwise, grad_agg, ig_agg, out_path,
 
     ax = axes[0]
     for j, (name, vals) in enumerate(methods.items()):
-        ax.bar(x + (j - (n_methods - 1) / 2) * width, vals, width,
-               label=name, alpha=0.85)
+        ax.bar(x + (j - (n_methods - 1) / 2) * width, vals, width, label=name, alpha=0.85)
     ax.set_xticks(x)
     ax.set_xticklabels(CHANNEL_NAMES)
-    ax.set_ylabel('Normalised importance share')
-    ax.set_title('Channel importance share by method (each method sums to 1)')
-    ax.legend(loc='upper right', fontsize=12)
-    ax.grid(axis='y', alpha=0.3)
+    ax.set_ylabel("Normalised importance share")
+    ax.set_title("Channel importance share by method (each method sums to 1)")
+    ax.legend(loc="upper right", fontsize=12)
+    ax.grid(axis="y", alpha=0.3)
 
     ax = axes[1]
     rows = np.array([methods[k] for k in method_names])
-    im = ax.imshow(rows, cmap='YlGnBu', aspect='auto', vmin=0, vmax=rows.max())
+    im = ax.imshow(rows, cmap="YlGnBu", aspect="auto", vmin=0, vmax=rows.max())
     ax.set_yticks(np.arange(n_methods))
     ax.set_yticklabels(method_names)
     ax.set_xticks(np.arange(3))
     ax.set_xticklabels(CHANNEL_NAMES)
     for i in range(n_methods):
         for j in range(3):
-            ax.text(j, i, f'{rows[i, j]:.2f}', ha='center', va='center',
-                    fontsize=14, color='black')
-    ax.set_title('Importance share heatmap')
-    add_cb(im, ax, 'normalised share')
+            ax.text(j, i, f"{rows[i, j]:.2f}", ha="center", va="center", fontsize=14, color="black")
+    ax.set_title("Importance share heatmap")
+    add_cb(im, ax, "normalised share")
 
-    fig.suptitle(f'Cross-method summary of per-channel importance '
-                 f'({split_label} set)', y=1.03)
-    fig.text(0.01, 0.005,
-             'Source: code/data_visualization/analyze_channel_importance.py',
-             fontsize=10, color='gray')
+    fig.suptitle(f"Cross-method summary of per-channel importance ({split_label} set)", y=1.03)
+    fig.text(
+        0.01,
+        0.005,
+        "Source: code/data_visualization/analyze_channel_importance.py",
+        fontsize=10,
+        color="gray",
+    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches='tight')
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -941,174 +1018,190 @@ def fig_summary_dashboard(ablation, pairwise, grad_agg, ig_agg, out_path,
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--split', default='test',
-                        choices=list(SPLITS.keys()),
-                        help='Canonical survey split to analyse')
-    parser.add_argument('--output-dir', type=Path, default=None,
-                        help='Override the output directory')
-    parser.add_argument('--max-per-file', type=int, default=14,
-                        help='Patches sampled per cache file')
-    parser.add_argument('--max-files', type=int, default=None,
-                        help='Cap number of cache files (useful for big splits)')
-    parser.add_argument('--max-attribution-patches', type=int, default=80,
-                        help='Cap for gradient/IG aggregation (slowest step)')
-    parser.add_argument('--ig-steps', type=int, default=24)
-    parser.add_argument('--shuffle-trials', type=int, default=3)
-    parser.add_argument('--batch-size', type=int, default=8)
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument(
+        "--split",
+        default="test",
+        choices=list(SPLITS.keys()),
+        help="Canonical survey split to analyse",
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=None, help="Override the output directory"
+    )
+    parser.add_argument(
+        "--max-per-file", type=int, default=14, help="Patches sampled per cache file"
+    )
+    parser.add_argument(
+        "--max-files",
+        type=int,
+        default=None,
+        help="Cap number of cache files (useful for big splits)",
+    )
+    parser.add_argument(
+        "--max-attribution-patches",
+        type=int,
+        default=80,
+        help="Cap for gradient/IG aggregation (slowest step)",
+    )
+    parser.add_argument("--ig-steps", type=int, default=24)
+    parser.add_argument("--shuffle-trials", type=int, default=3)
+    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
     apply_thesis_style()
 
     split_label = args.split
     if args.output_dir is not None:
         out_dir = args.output_dir
-    elif args.split == 'test':
+    elif args.split == "test":
         out_dir = OUTPUT_BASE
     else:
         out_dir = OUTPUT_BASE / args.split
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f'Device: {DEVICE}')
-    print(f'Checkpoint: {CHECKPOINT_PATH.name}')
-    print(f'Split: {args.split}')
-    print(f'Output: {out_dir}')
+    print(f"Device: {DEVICE}")
+    print(f"Checkpoint: {CHECKPOINT_PATH.name}")
+    print(f"Split: {args.split}")
+    print(f"Output: {out_dir}")
 
     cache_files = resolve_cache_files(args.split)
     if args.max_files is not None:
         # Even subsample across the file list so we span the whole split
         if len(cache_files) > args.max_files:
             step = len(cache_files) / args.max_files
-            cache_files = [cache_files[int(i * step)]
-                           for i in range(args.max_files)]
+            cache_files = [cache_files[int(i * step)] for i in range(args.max_files)]
     print(f'Cache files for split "{args.split}": {len(cache_files)}')
     if not cache_files:
-        raise SystemExit(f'No cached patch files found for split {args.split}')
+        raise SystemExit(f"No cached patch files found for split {args.split}")
 
     model = load_model()
 
-    print(f'\n[1/9] Loading patches (max {args.max_per_file} per file)...')
-    patches, masks, meta = load_patches(
-        cache_files, max_per_file=args.max_per_file, seed=args.seed)
-    print(f'  Total kept patches: {len(patches)}')
+    print(f"\n[1/9] Loading patches (max {args.max_per_file} per file)...")
+    patches, masks, meta = load_patches(cache_files, max_per_file=args.max_per_file, seed=args.seed)
+    print(f"  Total kept patches: {len(patches)}")
     if not patches:
-        raise SystemExit('No patches passed the coverage filter')
+        raise SystemExit("No patches passed the coverage filter")
 
-    print('\n[2/9] Channel ablation (zero, mean, shuffle)...')
-    ablation = run_ablation(model, patches, masks,
-                            n_shuffle_trials=args.shuffle_trials,
-                            batch_size=args.batch_size, seed=args.seed)
+    print("\n[2/9] Channel ablation (zero, mean, shuffle)...")
+    ablation = run_ablation(
+        model,
+        patches,
+        masks,
+        n_shuffle_trials=args.shuffle_trials,
+        batch_size=args.batch_size,
+        seed=args.seed,
+    )
     _cleanup()
 
-    print('\n[3/9] Pairwise ablation (keep only one channel)...')
-    pairwise = run_pairwise_ablation(model, patches, masks,
-                                     batch_size=args.batch_size)
+    print("\n[3/9] Pairwise ablation (keep only one channel)...")
+    pairwise = run_pairwise_ablation(model, patches, masks, batch_size=args.batch_size)
     _cleanup()
 
-    print(f'\n[4/9] Input gradient aggregation '
-          f'(capped at {args.max_attribution_patches})...')
+    print(f"\n[4/9] Input gradient aggregation (capped at {args.max_attribution_patches})...")
     grad_agg = aggregate_attribution(
-        model, patches, masks, method='grad',
-        max_patches=args.max_attribution_patches)
+        model, patches, masks, method="grad", max_patches=args.max_attribution_patches
+    )
     _cleanup()
 
-    print(f'\n[5/9] Integrated gradient aggregation '
-          f'({args.ig_steps} steps, capped at '
-          f'{args.max_attribution_patches})...')
+    print(
+        f"\n[5/9] Integrated gradient aggregation "
+        f"({args.ig_steps} steps, capped at "
+        f"{args.max_attribution_patches})..."
+    )
     ig_agg = aggregate_attribution(
-        model, patches, masks, method='ig', steps=args.ig_steps,
-        max_patches=args.max_attribution_patches)
+        model,
+        patches,
+        masks,
+        method="ig",
+        steps=args.ig_steps,
+        max_patches=args.max_attribution_patches,
+    )
     _cleanup()
 
-    print('\n[6/9] Channel distribution stats...')
+    print("\n[6/9] Channel distribution stats...")
     bot_vals, wat_vals = collect_channel_distributions(patches, masks)
     _cleanup()
 
-    print('\n[7/9] Generating figures...')
-    fig_ablation_bars(ablation, out_dir / '01_ablation_iou_dice_err.png',
-                      split_label)
-    fig_drop_distribution(
-        ablation, out_dir / '02_ablation_iou_drop_distribution.png',
-        split_label)
+    print("\n[7/9] Generating figures...")
+    fig_ablation_bars(ablation, out_dir / "01_ablation_iou_dice_err.png", split_label)
+    fig_drop_distribution(ablation, out_dir / "02_ablation_iou_drop_distribution.png", split_label)
     fig_pairwise_bars(
-        pairwise, ablation,
-        out_dir / '03_pairwise_keep_only_one_channel.png', split_label)
-    fig_attribution_bars(
-        grad_agg, ig_agg, out_dir / '04_attribution_bars.png', split_label)
+        pairwise, ablation, out_dir / "03_pairwise_keep_only_one_channel.png", split_label
+    )
+    fig_attribution_bars(grad_agg, ig_agg, out_dir / "04_attribution_bars.png", split_label)
     fig_mean_attribution_maps(
-        grad_agg, 'Input gradient', out_dir / '05_mean_gradient_maps.png',
-        split_label)
+        grad_agg, "Input gradient", out_dir / "05_mean_gradient_maps.png", split_label
+    )
     fig_mean_attribution_maps(
-        ig_agg, 'Integrated gradient', out_dir / '06_mean_ig_maps.png',
-        split_label)
+        ig_agg, "Integrated gradient", out_dir / "06_mean_ig_maps.png", split_label
+    )
     fig_bottom_aligned_profiles(
-        grad_agg, ig_agg, out_dir / '07_bottom_aligned_profiles.png',
-        split_label)
+        grad_agg, ig_agg, out_dir / "07_bottom_aligned_profiles.png", split_label
+    )
     fig_per_patch_grad_examples(
-        model, patches, masks, meta,
-        out_dir / '08_per_patch_grad_examples.png')
+        model, patches, masks, meta, out_dir / "08_per_patch_grad_examples.png"
+    )
     fig_distribution_per_channel(
-        bot_vals, wat_vals, out_dir / '09_channel_distributions.png',
-        split_label)
+        bot_vals, wat_vals, out_dir / "09_channel_distributions.png", split_label
+    )
     fig_gradcam_per_channel(
-        model, patches, masks, meta,
-        out_dir / '10_gradcam_vs_per_channel_grad.png')
+        model, patches, masks, meta, out_dir / "10_gradcam_vs_per_channel_grad.png"
+    )
     fig_summary_dashboard(
-        ablation, pairwise, grad_agg, ig_agg,
-        out_dir / '11_summary_dashboard.png', split_label)
+        ablation, pairwise, grad_agg, ig_agg, out_dir / "11_summary_dashboard.png", split_label
+    )
 
-    print('\n[8/9] Writing numeric summary JSON...')
-    base_iou = float(np.mean(ablation['baseline']['iou']))
-    base_dice = float(np.mean(ablation['baseline']['dice']))
+    print("\n[8/9] Writing numeric summary JSON...")
+    base_iou = float(np.mean(ablation["baseline"]["iou"]))
+    base_dice = float(np.mean(ablation["baseline"]["dice"]))
     summary = {
-        'split': args.split,
-        'n_patches': len(patches),
-        'n_cache_files': len(cache_files),
-        'baseline_iou_mean': base_iou,
-        'baseline_dice_mean': base_dice,
-        'baseline_bottom_err_mean_px':
-            float(np.nanmean(ablation['baseline']['err'])),
-        'channels': CHANNEL_NAMES,
-        'ablation': {
+        "split": args.split,
+        "n_patches": len(patches),
+        "n_cache_files": len(cache_files),
+        "baseline_iou_mean": base_iou,
+        "baseline_dice_mean": base_dice,
+        "baseline_bottom_err_mean_px": float(np.nanmean(ablation["baseline"]["err"])),
+        "channels": CHANNEL_NAMES,
+        "ablation": {
             mode: {
                 CHANNEL_SHORT[c]: {
-                    'iou_mean': float(np.mean(ablation[mode][c]['iou'])),
-                    'dice_mean': float(np.mean(ablation[mode][c]['dice'])),
-                    'err_mean_px':
-                        float(np.nanmean(ablation[mode][c]['err'])),
-                    'iou_drop': base_iou
-                        - float(np.mean(ablation[mode][c]['iou'])),
-                } for c in range(3)
-            } for mode in ['zero', 'mean', 'shuffle']
+                    "iou_mean": float(np.mean(ablation[mode][c]["iou"])),
+                    "dice_mean": float(np.mean(ablation[mode][c]["dice"])),
+                    "err_mean_px": float(np.nanmean(ablation[mode][c]["err"])),
+                    "iou_drop": base_iou - float(np.mean(ablation[mode][c]["iou"])),
+                }
+                for c in range(3)
+            }
+            for mode in ["zero", "mean", "shuffle"]
         },
-        'pairwise_keep_only': {
+        "pairwise_keep_only": {
             CHANNEL_SHORT[c]: {
-                'iou_mean': float(np.mean(pairwise[c]['iou'])),
-                'dice_mean': float(np.mean(pairwise[c]['dice'])),
-            } for c in range(3)
+                "iou_mean": float(np.mean(pairwise[c]["iou"])),
+                "dice_mean": float(np.mean(pairwise[c]["dice"])),
+            }
+            for c in range(3)
         },
-        'pairwise_keep_none': {
-            'iou_mean': float(np.mean(pairwise['none']['iou'])),
-            'dice_mean': float(np.mean(pairwise['none']['dice'])),
+        "pairwise_keep_none": {
+            "iou_mean": float(np.mean(pairwise["none"]["iou"])),
+            "dice_mean": float(np.mean(pairwise["none"]["dice"])),
         },
-        'attribution': {
-            'mean_abs_grad': {
-                CHANNEL_SHORT[c]: float(grad_agg['per_patch'].mean(axis=0)[c])
-                for c in range(3)
+        "attribution": {
+            "mean_abs_grad": {
+                CHANNEL_SHORT[c]: float(grad_agg["per_patch"].mean(axis=0)[c]) for c in range(3)
             },
-            'mean_abs_ig': {
-                CHANNEL_SHORT[c]: float(ig_agg['per_patch'].mean(axis=0)[c])
-                for c in range(3)
+            "mean_abs_ig": {
+                CHANNEL_SHORT[c]: float(ig_agg["per_patch"].mean(axis=0)[c]) for c in range(3)
             },
         },
     }
-    with open(out_dir / 'summary.json', 'w') as f:
+    with open(out_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
-    print('\n[9/9] Done.')
-    print(f'All figures written to {out_dir}')
+    print("\n[9/9] Done.")
+    print(f"All figures written to {out_dir}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

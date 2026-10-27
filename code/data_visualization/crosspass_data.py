@@ -9,6 +9,7 @@ dependency-free .npz so repeat runs are instant.
 
 Used by analyze_crosspass_consistency.py and analyze_failure_mining.py.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,12 +30,12 @@ TZ = "Europe/Oslo"
 LON_MIN, LON_MAX = 10.470, 10.680
 LAT_MIN, LAT_MAX = 59.395, 59.445
 LON_MIDPOINT = 10.58
-HYST_DEG = 0.005          # ~280 m east-west hysteresis buffer
-GAP_SECONDS = 300.0       # break a crossing after this recording gap
-MIN_PINGS = 200           # ignore tiny crossing fragments
-MIN_SPAN_KM = 3.0         # a real crossing covers a good stretch of the route
+HYST_DEG = 0.005  # ~280 m east-west hysteresis buffer
+GAP_SECONDS = 300.0  # break a crossing after this recording gap
+MIN_PINGS = 200  # ignore tiny crossing fragments
+MIN_SPAN_KM = 3.0  # a real crossing covers a good stretch of the route
 
-DIR_H2M, DIR_M2H = 0, 1   # integer direction codes (toward Moss / toward Horten)
+DIR_H2M, DIR_M2H = 0, 1  # integer direction codes (toward Moss / toward Horten)
 
 
 def _iter_crossings(df: pd.DataFrame):
@@ -86,9 +87,14 @@ def _build_table() -> pd.DataFrame:
         chunksize=1_000_000,
     ):
         chunk = chunk.dropna(subset=["timestamp", "lat", "lon", "depth_m"])
-        chunk = chunk[(chunk["lon"] > LON_MIN) & (chunk["lon"] < LON_MAX) &
-                      (chunk["lat"] > LAT_MIN) & (chunk["lat"] < LAT_MAX) &
-                      (chunk["depth_m"] > 0) & (chunk["depth_m"] < 200)]
+        chunk = chunk[
+            (chunk["lon"] > LON_MIN)
+            & (chunk["lon"] < LON_MAX)
+            & (chunk["lat"] > LAT_MIN)
+            & (chunk["lat"] < LAT_MAX)
+            & (chunk["depth_m"] > 0)
+            & (chunk["depth_m"] < 200)
+        ]
         if chunk.empty:
             continue
         ts_local = chunk["timestamp"].dt.tz_localize("UTC").dt.tz_convert(TZ)
@@ -97,8 +103,7 @@ def _build_table() -> pd.DataFrame:
         n_rows += len(chunk)
         print(f"  {n_rows:>11,} pings kept")
 
-    df = (pd.concat(frames, ignore_index=True)
-            .sort_values("ts_local").reset_index(drop=True))
+    df = pd.concat(frames, ignore_index=True).sort_values("ts_local").reset_index(drop=True)
 
     route_km = route_length_m() / 1000.0
     cid = np.full(len(df), -1, dtype=np.int64)
@@ -135,11 +140,16 @@ def load_ping_table(rebuild: bool = False) -> pd.DataFrame:
     """
     if CACHE.exists() and not rebuild:
         z = np.load(CACHE)
-        return pd.DataFrame({
-            "lat": z["lat"], "lon": z["lon"], "depth_m": z["depth_m"],
-            "crossing_id": z["crossing_id"], "direction": z["direction"],
-            "s_km": z["s_km"],
-        })
+        return pd.DataFrame(
+            {
+                "lat": z["lat"],
+                "lon": z["lon"],
+                "depth_m": z["depth_m"],
+                "crossing_id": z["crossing_id"],
+                "direction": z["direction"],
+                "s_km": z["s_km"],
+            }
+        )
 
     df = _build_table()
     CACHE.parent.mkdir(parents=True, exist_ok=True)
@@ -171,8 +181,7 @@ def per_crossing_bin_medians(df: pd.DataFrame, key_cols: list[str]) -> pd.DataFr
     first take the median depth per (cell, crossing) before computing any
     across-crossing statistic. Returns the collapsed long frame.
     """
-    return (df.groupby(key_cols + ["crossing_id"])["depth_m"]
-              .median().reset_index())
+    return df.groupby(key_cols + ["crossing_id"])["depth_m"].median().reset_index()
 
 
 if __name__ == "__main__":

@@ -18,16 +18,31 @@ from pathlib import Path
 RESULTS_CSV = Path(__file__).resolve().parent / "results.csv"
 
 NUMERIC_COLS = [
-    "best_val_iou", "best_epoch", "n_epochs_completed", "num_epochs",
-    "eval_mean_iou", "eval_mean_dice", "eval_mean_bottom_error_m",
-    "eval_std_iou", "wall_time_sec", "encoder_lr", "decoder_lr",
-    "bce_weight", "batch_size",
+    "best_val_iou",
+    "best_epoch",
+    "n_epochs_completed",
+    "num_epochs",
+    "eval_mean_iou",
+    "eval_mean_dice",
+    "eval_mean_bottom_error_m",
+    "eval_std_iou",
+    "wall_time_sec",
+    "encoder_lr",
+    "decoder_lr",
+    "bce_weight",
+    "batch_size",
 ]
 
 DISPLAY_COLS = [
-    "timestamp", "loss_type", "encoder_name", "freeze_strategy",
-    "best_val_iou", "eval_mean_iou", "eval_mean_bottom_error_m",
-    "n_epochs_completed", "wall_time_sec",
+    "timestamp",
+    "loss_type",
+    "encoder_name",
+    "freeze_strategy",
+    "best_val_iou",
+    "eval_mean_iou",
+    "eval_mean_bottom_error_m",
+    "n_epochs_completed",
+    "wall_time_sec",
 ]
 
 GROUPBY_FACTORS = ["loss_type", "encoder_name", "freeze_strategy", "scheduler_type"]
@@ -66,9 +81,9 @@ def print_top(rows: list[dict], n: int = 10, metric: str = "eval_mean_iou"):
         print("No results found.")
         return
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f" TOP {n} RUNS (by {metric})")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     header = f"{'#':>3}  {'loss_type':<12} {'encoder':<14} {'freeze':<8} "
     header += f"{'val_iou':>8} {'eval_iou':>9} {'bot_err_m':>9} "
@@ -82,18 +97,24 @@ def print_top(rows: list[dict], n: int = 10, metric: str = "eval_mean_iou"):
         freeze = str(r.get("freeze_strategy", "?"))[:8]
         val_iou = f"{_num(r.get('best_val_iou')):.4f}"
         eval_iou = f"{_num(r.get('eval_mean_iou')):.4f}" if r.get("eval_mean_iou") else "   --   "
-        bot_err = f"{_num(r.get('eval_mean_bottom_error_m')):.3f}" if r.get("eval_mean_bottom_error_m") else "   --  "
+        bot_err = (
+            f"{_num(r.get('eval_mean_bottom_error_m')):.3f}"
+            if r.get("eval_mean_bottom_error_m")
+            else "   --  "
+        )
         epochs = str(int(_num(r.get("n_epochs_completed"))))
         wall = str(int(_num(r.get("wall_time_sec"))))
-        print(f"{i:>3}  {loss:<12} {enc:<14} {freeze:<8} "
-              f"{val_iou:>8} {eval_iou:>9} {bot_err:>9} "
-              f"{epochs:>6} {wall:>7}")
+        print(
+            f"{i:>3}  {loss:<12} {enc:<14} {freeze:<8} "
+            f"{val_iou:>8} {eval_iou:>9} {bot_err:>9} "
+            f"{epochs:>6} {wall:>7}"
+        )
 
 
 def print_groupby(rows: list[dict]):
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(" GROUP-BY ANALYSIS")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     for factor in GROUPBY_FACTORS:
         groups: dict[str, list[float]] = defaultdict(list)
@@ -108,7 +129,7 @@ def print_groupby(rows: list[dict]):
 
         print(f"\n  By {factor}:")
         print(f"  {'value':<20} {'n':>4} {'mean_iou':>9} {'best_iou':>9} {'std':>7}")
-        print(f"  {'-'*53}")
+        print(f"  {'-' * 53}")
         for name, ious in sorted(groups.items(), key=lambda x: -max(x[1])):
             n = len(ious)
             mean = sum(ious) / n
@@ -118,9 +139,9 @@ def print_groupby(rows: list[dict]):
 
 
 def print_flags(rows: list[dict]):
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(" FLAGS & WARNINGS")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     flags = []
 
@@ -131,7 +152,9 @@ def print_flags(rows: list[dict]):
         completed = _num(r.get("n_epochs_completed"))
         total = _num(r.get("num_epochs"))
         if completed > 0 and total > 0 and completed >= total:
-            flags.append(f"  [{short}] Ran all {int(total)} epochs — may benefit from more training")
+            flags.append(
+                f"  [{short}] Ran all {int(total)} epochs — may benefit from more training"
+            )
 
         best_ep = _num(r.get("best_epoch"))
         if best_ep < 5 and completed > 20:
@@ -140,7 +163,9 @@ def print_flags(rows: list[dict]):
         val_iou = _num(r.get("best_val_iou"))
         eval_iou = _num(r.get("eval_mean_iou"))
         if val_iou > 0 and eval_iou > 0 and (val_iou - eval_iou) > 0.05:
-            flags.append(f"  [{short}] Val IoU={val_iou:.4f} vs Eval IoU={eval_iou:.4f} — possible overfitting")
+            flags.append(
+                f"  [{short}] Val IoU={val_iou:.4f} vs Eval IoU={eval_iou:.4f} — possible overfitting"
+            )
 
         if not r.get("eval_mean_iou"):
             flags.append(f"  [{short}] Missing eval metrics (eval was skipped or failed)")
@@ -153,9 +178,9 @@ def print_flags(rows: list[dict]):
 
 
 def print_suggestions(rows: list[dict]):
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(" SUGGESTIONS")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     loss_types = {r.get("loss_type") for r in rows if r.get("loss_type")}
     encoders = {r.get("encoder_name") for r in rows if r.get("encoder_name")}
@@ -186,7 +211,9 @@ def print_suggestions(rows: list[dict]):
         best_iou = _num(best.get("eval_mean_iou"))
         best_loss = best.get("loss_type", "?")
         best_enc = best.get("encoder_name", "?")
-        suggestions.append(f"\nBest so far: eval_iou={best_iou:.4f} (loss={best_loss}, encoder={best_enc})")
+        suggestions.append(
+            f"\nBest so far: eval_iou={best_iou:.4f} (loss={best_loss}, encoder={best_enc})"
+        )
 
         if best_loss == "tversky":
             suggestions.append("  → Try tversky_sweep to fine-tune alpha/beta")
@@ -206,13 +233,14 @@ def print_suggestions(rows: list[dict]):
 def main():
     p = argparse.ArgumentParser(description="Analyze training results")
     p.add_argument("--csv", type=Path, default=RESULTS_CSV)
-    p.add_argument("--filter", type=str, default=None,
-                   help="Filter rows by keyword in checkpoint_dir")
+    p.add_argument(
+        "--filter", type=str, default=None, help="Filter rows by keyword in checkpoint_dir"
+    )
     p.add_argument("--top", type=int, default=10)
-    p.add_argument("--metric", default="eval_mean_iou",
-                   help="Metric to rank by (default: eval_mean_iou)")
-    p.add_argument("--suggest", action="store_true",
-                   help="Include next-step suggestions")
+    p.add_argument(
+        "--metric", default="eval_mean_iou", help="Metric to rank by (default: eval_mean_iou)"
+    )
+    p.add_argument("--suggest", action="store_true", help="Include next-step suggestions")
     args = p.parse_args()
 
     rows = load_results(args.csv)

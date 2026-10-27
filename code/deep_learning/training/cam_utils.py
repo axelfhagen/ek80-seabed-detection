@@ -21,9 +21,9 @@ def gradcam_target_layer(model):
     smp model (``model.decoder.blocks``). Returns None for architectures without
     a ``decoder.blocks`` attribute (e.g. Segformer), so callers can skip.
     """
-    for inner in (getattr(model, 'model', None), model):
-        decoder = getattr(inner, 'decoder', None)
-        blocks = getattr(decoder, 'blocks', None)
+    for inner in (getattr(model, "model", None), model):
+        decoder = getattr(inner, "decoder", None)
+        blocks = getattr(decoder, "blocks", None)
         if blocks is not None and len(blocks) > 0:
             return blocks[-1]
     return None
@@ -49,8 +49,7 @@ def gradcam_single(model, target_layers, input_chw, target_mask, device):
     from pytorch_grad_cam.utils.model_targets import SemanticSegmentationTarget
 
     inp = torch.from_numpy(input_chw[np.newaxis]).float().to(device)
-    targets = [SemanticSegmentationTarget(category=0,
-                                          mask=target_mask.astype(np.float32))]
+    targets = [SemanticSegmentationTarget(category=0, mask=target_mask.astype(np.float32))]
     with GradCAM(model=model, target_layers=target_layers) as cam:
         grayscale = cam(input_tensor=inp, targets=targets)[0]
     return grayscale
@@ -69,9 +68,10 @@ def channels_to_rgb_composite(patch_chw):
     return np.stack([r, g, b], axis=-1)
 
 
-def overlay_cam(grayscale_cam, base_img_rgb01, alpha=0.55, cmap='jet'):
+def overlay_cam(grayscale_cam, base_img_rgb01, alpha=0.55, cmap="jet"):
     """Blend a Grad-CAM heatmap over an RGB base image."""
     import matplotlib.pyplot as plt
+
     cm = plt.get_cmap(cmap)
     cam_rgb = cm(grayscale_cam)[..., :3]
     return np.clip(alpha * cam_rgb + (1 - alpha) * base_img_rgb01, 0, 1)

@@ -9,9 +9,11 @@ Produces, per raw file:
 
 Output: Figures/basto_failure_analysis/
 """
+
 from __future__ import annotations
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -52,17 +54,18 @@ def build_channels(sv1, sv2, mode):
         vmax = float(np.percentile(finite, 98))
     else:
         vmin, vmax = TRAIN_VMIN, TRAIN_VMAX
-    n1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax,
-                            fill_nan=0.0).astype(np.float32)
-    n2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax,
-                            fill_nan=0.0).astype(np.float32)
+    n1 = normalize_echogram(sv1, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
+    n2 = normalize_echogram(sv2, method="minmax", vmin=vmin, vmax=vmax, fill_nan=0.0).astype(
+        np.float32
+    )
     diff = (n1 - n2).astype(np.float32)
     return np.stack([n1, n2, diff], axis=0), (vmin, vmax)
 
 
 def run_inference(model, channels):
-    pred = predict_full_echogram(model, channels, TARGET_SIZE, DEVICE,
-                                 patch_width=512, stride=256)
+    pred = predict_full_echogram(model, channels, TARGET_SIZE, DEVICE, patch_width=512, stride=256)
     bottom = extract_bottom_line(pred, threshold=0.5)
     n_det = int(np.sum(bottom >= 0))
     return pred, bottom, n_det
@@ -73,7 +76,7 @@ def central_patch(channels):
     _, h, w = channels.shape
     c = w // 2
     start = max(0, c - 256)
-    patch = channels[:, :, start:start + 512]
+    patch = channels[:, :, start : start + 512]
     if patch.shape[2] < 512:
         patch = np.pad(patch, ((0, 0), (0, 0), (0, 512 - patch.shape[2])))
     return gv.resize_to_input(patch)
@@ -104,12 +107,12 @@ def fig_channels(stem, channels, vrange):
         ax.set_xlabel("Ping")
         ax.set_ylabel("Range sample")
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    fig.suptitle(f"Model input channels: {stem}  "
-                 f"(percentile clip {vrange[0]:.0f}..{vrange[1]:.0f} dB)",
-                 fontweight="bold")
+    fig.suptitle(
+        f"Model input channels: {stem}  (percentile clip {vrange[0]:.0f}..{vrange[1]:.0f} dB)",
+        fontweight="bold",
+    )
     fig.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{stem}_01_input_channels.png", dpi=140,
-                facecolor="white")
+    fig.savefig(OUTPUT_DIR / f"{stem}_01_input_channels.png", dpi=140, facecolor="white")
     plt.close(fig)
 
 
@@ -117,14 +120,19 @@ def fig_probmaps(stem, sv2, range_arr, results):
     extent = [0, sv2.shape[1], range_arr[-1], range_arr[0]]
     fig, axes = plt.subplots(1, 3, figsize=(22, 7))
 
-    axes[0].imshow(sv2, aspect="auto", cmap="viridis", extent=extent,
-                   vmin=np.nanpercentile(sv2, 2), vmax=np.nanpercentile(sv2, 98))
+    axes[0].imshow(
+        sv2,
+        aspect="auto",
+        cmap="viridis",
+        extent=extent,
+        vmin=np.nanpercentile(sv2, 2),
+        vmax=np.nanpercentile(sv2, 98),
+    )
     axes[0].set_title("200 kHz echogram (dB)")
     axes[0].set_ylabel("Range (m)")
 
     for ax, (label, pred, bottom, n_det) in zip(axes[1:], results):
-        im = ax.imshow(pred, aspect="auto", cmap="RdYlBu_r", vmin=0, vmax=1,
-                       extent=extent)
+        im = ax.imshow(pred, aspect="auto", cmap="RdYlBu_r", vmin=0, vmax=1, extent=extent)
         valid = bottom >= 0
         if valid.any():
             pp = np.where(valid)[0]
@@ -136,8 +144,7 @@ def fig_probmaps(stem, sv2, range_arr, results):
         ax.set_xlabel("Ping")
     fig.suptitle(f"Seabed probability map: {stem}", fontweight="bold")
     fig.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{stem}_02_probability_maps.png", dpi=140,
-                facecolor="white")
+    fig.savefig(OUTPUT_DIR / f"{stem}_02_probability_maps.png", dpi=140, facecolor="white")
     plt.close(fig)
 
 
@@ -159,8 +166,9 @@ def fig_gradcam(stem, model, channels_fixed):
     axes[1].set_title(f"p(seabed)  max={probs.max():.2f}")
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
     axes[2].imshow(echo, cmap="gray", aspect="auto")
-    cs = axes[2].contourf(cam, levels=np.linspace(0.2, 0.9, 6), cmap="jet",
-                          alpha=0.55, extend="max")
+    cs = axes[2].contourf(
+        cam, levels=np.linspace(0.2, 0.9, 6), cmap="jet", alpha=0.55, extend="max"
+    )
     axes[2].set_title("Grad-CAM attention")
     fig.colorbar(cs, ax=axes[2], fraction=0.046, pad=0.04, label="importance")
     for ax in axes:
@@ -175,15 +183,38 @@ def fig_gradcam(stem, model, channels_fixed):
 def fig_distribution(stem, sv1, sv2, train_sv):
     fig, ax = plt.subplots(figsize=(11, 6))
     bins = np.linspace(-100, 0, 101)
-    ax.hist(sv1[np.isfinite(sv1)].ravel(), bins=bins, density=True, alpha=0.5,
-            color="C0", label="raw 38 kHz power")
-    ax.hist(sv2[np.isfinite(sv2)].ravel(), bins=bins, density=True, alpha=0.5,
-            color="C1", label="raw 200 kHz power")
+    ax.hist(
+        sv1[np.isfinite(sv1)].ravel(),
+        bins=bins,
+        density=True,
+        alpha=0.5,
+        color="C0",
+        label="raw 38 kHz power",
+    )
+    ax.hist(
+        sv2[np.isfinite(sv2)].ravel(),
+        bins=bins,
+        density=True,
+        alpha=0.5,
+        color="C1",
+        label="raw 200 kHz power",
+    )
     if train_sv.size:
-        ax.hist(train_sv, bins=bins, density=True, alpha=0.5, color="C2",
-                label="training Sv 38 kHz (calibrated)")
-    ax.axvspan(TRAIN_VMIN, TRAIN_VMAX, color="green", alpha=0.12,
-               label=f"training clip [{TRAIN_VMIN:.0f},{TRAIN_VMAX:.0f}]")
+        ax.hist(
+            train_sv,
+            bins=bins,
+            density=True,
+            alpha=0.5,
+            color="C2",
+            label="training Sv 38 kHz (calibrated)",
+        )
+    ax.axvspan(
+        TRAIN_VMIN,
+        TRAIN_VMAX,
+        color="green",
+        alpha=0.12,
+        label=f"training clip [{TRAIN_VMIN:.0f},{TRAIN_VMAX:.0f}]",
+    )
     ax.axvline(TRAIN_VMIN, color="green", ls="--", lw=1)
     ax.axvline(TRAIN_VMAX, color="green", ls="--", lw=1)
     ax.set_xlabel("dB")
@@ -191,8 +222,7 @@ def fig_distribution(stem, sv1, sv2, train_sv):
     ax.set_title(f"dB distribution vs training window: {stem}")
     ax.legend(fontsize=10)
     fig.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{stem}_04_db_distribution.png", dpi=140,
-                facecolor="white")
+    fig.savefig(OUTPUT_DIR / f"{stem}_04_db_distribution.png", dpi=140, facecolor="white")
     plt.close(fig)
 
 
@@ -223,38 +253,54 @@ def main():
         res_m = float(range_arr[1] - range_arr[0]) if len(range_arr) > 1 else np.nan
         f1 = sv1[np.isfinite(sv1)]
         in_win = float(np.mean((f1 >= TRAIN_VMIN) & (f1 <= TRAIN_VMAX)))
-        print(f"  shape {sv1.shape}, max range {range_arr[-1]:.1f} m, "
-              f"res {res_m:.3f} m/sample")
-        print(f"  38kHz dB p2/p50/p98: "
-              f"{np.percentile(f1, [2, 50, 98]).round(1)}, "
-              f"frac in [-80,-34]={in_win:.2f}")
+        print(f"  shape {sv1.shape}, max range {range_arr[-1]:.1f} m, res {res_m:.3f} m/sample")
+        print(
+            f"  38kHz dB p2/p50/p98: "
+            f"{np.percentile(f1, [2, 50, 98]).round(1)}, "
+            f"frac in [-80,-34]={in_win:.2f}"
+        )
 
         ch_pct, vr_pct = build_channels(sv1, sv2, "percentile")
         ch_fix, vr_fix = build_channels(sv1, sv2, "fixed")
 
         pred_p, bot_p, nd_p = run_inference(model, ch_pct)
         pred_f, bot_f, nd_f = run_inference(model, ch_fix)
-        print(f"  bottom detected: percentile={nd_p}/{len(bot_p)}, "
-              f"fixed-clip={nd_f}/{len(bot_f)}, "
-              f"pmax pct={pred_p.max():.2f} fix={pred_f.max():.2f}")
+        print(
+            f"  bottom detected: percentile={nd_p}/{len(bot_p)}, "
+            f"fixed-clip={nd_f}/{len(bot_f)}, "
+            f"pmax pct={pred_p.max():.2f} fix={pred_f.max():.2f}"
+        )
 
         fig_channels(stem, ch_pct, vr_pct)
-        fig_probmaps(stem, sv2, range_arr,
-                     [("percentile clip", pred_p, bot_p, nd_p),
-                      ("fixed [-80,-34] clip", pred_f, bot_f, nd_f)])
+        fig_probmaps(
+            stem,
+            sv2,
+            range_arr,
+            [
+                ("percentile clip", pred_p, bot_p, nd_p),
+                ("fixed [-80,-34] clip", pred_f, bot_f, nd_f),
+            ],
+        )
         fig_gradcam(stem, model, ch_fix)
         fig_distribution(stem, sv1, sv2, train_sv)
 
-        summary.append({
-            "file": stem, "max_range_m": range_arr[-1], "res_m": res_m,
-            "frac_in_train_window": in_win,
-            "p2_38": np.percentile(f1, 2), "p98_38": np.percentile(f1, 98),
-            "n_det_percentile": nd_p, "n_det_fixed": nd_f,
-            "pmax_percentile": float(pred_p.max()),
-            "pmax_fixed": float(pred_f.max()),
-        })
+        summary.append(
+            {
+                "file": stem,
+                "max_range_m": range_arr[-1],
+                "res_m": res_m,
+                "frac_in_train_window": in_win,
+                "p2_38": np.percentile(f1, 2),
+                "p98_38": np.percentile(f1, 98),
+                "n_det_percentile": nd_p,
+                "n_det_fixed": nd_f,
+                "pmax_percentile": float(pred_p.max()),
+                "pmax_fixed": float(pred_f.max()),
+            }
+        )
 
     import pandas as pd
+
     df = pd.DataFrame(summary)
     df.to_csv(OUTPUT_DIR / "summary.csv", index=False)
     print("\n=== SUMMARY ===")

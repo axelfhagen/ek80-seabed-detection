@@ -18,11 +18,9 @@ import scipy.signal as sig
 from .dp import _apply_pseudo_tvg
 
 
-def _cfar_1d(column_linear: np.ndarray,
-             n_guard: int,
-             n_train: int,
-             alpha: float,
-             mode: str = 'ca') -> np.ndarray:
+def _cfar_1d(
+    column_linear: np.ndarray, n_guard: int, n_train: int, alpha: float, mode: str = "ca"
+) -> np.ndarray:
     """
     1D CFAR detector on a single depth column (linear power).
 
@@ -44,7 +42,7 @@ def _cfar_1d(column_linear: np.ndarray,
         lag_end = min(lag_end, n)
         lag = column_linear[lag_start:lag_end]
 
-        if mode == 'go':
+        if mode == "go":
             # Greatest-Of: max of leading and lagging averages
             noise_est = max(np.mean(lead), np.mean(lag))
         else:
@@ -64,7 +62,7 @@ def detect_bottom_cfar(
     n_guard: int = 5,
     n_train: int = 20,
     pfa: float = 1e-3,
-    mode: str = 'ca',
+    mode: str = "ca",
     smoothing_window: int = 21,
     smoothing_order: int = 3,
 ) -> np.ndarray:

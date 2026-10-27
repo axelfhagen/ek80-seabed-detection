@@ -9,6 +9,7 @@ Outputs are written to both:
   Figures/synthetic_insertions/
   Latex/Figures/synthetic_insertions/
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,6 +21,7 @@ import numpy as np
 import torch
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -48,10 +50,7 @@ from deep_learning.architectures import create_model  # noqa: E402
 from deep_learning.evaluate import load_file_data  # noqa: E402
 
 DEFAULT_ZARR = DATASET_DIR / "D20240201-T035002.zarr"
-DEFAULT_CHECKPOINT = (
-    PROJECT_ROOT
-    / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
-)
+DEFAULT_CHECKPOINT = PROJECT_ROOT / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "synthetic_insertions"
 LATEX_OUTPUT_DIR = PROJECT_ROOT / "Latex" / "Figures" / "synthetic_insertions"
 

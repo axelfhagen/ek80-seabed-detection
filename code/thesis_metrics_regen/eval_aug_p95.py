@@ -6,6 +6,7 @@ set. The aggregate aug_ablation_summary.csv has no per-file rows, so this re-eva
 file with the augmentation-ablation checkpoints and records per-file IoU / median / P95.
 Appends the result to outputs/headline_summary.json.
 """
+
 import argparse
 import json
 import sys
@@ -40,23 +41,42 @@ def main():
     args = ap.parse_args()
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-    ckpts = sorted((ROOT / "code/checkpoints").glob("exp_*_aug_ablation_*/smp_unet_resnet34_best.pth"))
+    ckpts = sorted(
+        (ROOT / "code/checkpoints").glob("exp_*_aug_ablation_*/smp_unet_resnet34_best.pth")
+    )
     print(f"found {len(ckpts)} aug-ablation checkpoints", flush=True)
     rows = []
     for ck in ckpts:
         cfg = ck.parent.name
         m, *_ = evaluate_file(
-            load_model(ck, device), ZARR, freq1_hz=FREQ1, freq2_hz=FREQ2,
-            target_size=TARGET, device=device, patch_width=512, stride=512,
-            max_range_m=None, max_range_samples=None, vmin=VMIN, vmax=VMAX,
-            threshold=0.5, mask_mode="below")
-        row = {"config": cfg, "iou": float(m.iou),
-               "bottom_error_median_m": float(m.bottom_error_median_m),
-               "bottom_error_p95_m": float(m.bottom_error_p95_m),
-               "bottom_error_mean_m": float(m.bottom_error_mean_m)}
+            load_model(ck, device),
+            ZARR,
+            freq1_hz=FREQ1,
+            freq2_hz=FREQ2,
+            target_size=TARGET,
+            device=device,
+            patch_width=512,
+            stride=512,
+            max_range_m=None,
+            max_range_samples=None,
+            vmin=VMIN,
+            vmax=VMAX,
+            threshold=0.5,
+            mask_mode="below",
+        )
+        row = {
+            "config": cfg,
+            "iou": float(m.iou),
+            "bottom_error_median_m": float(m.bottom_error_median_m),
+            "bottom_error_p95_m": float(m.bottom_error_p95_m),
+            "bottom_error_mean_m": float(m.bottom_error_mean_m),
+        }
         rows.append(row)
-        print(f"  {cfg}: IoU {row['iou']:.3f}  median {row['bottom_error_median_m']:.2f} m  "
-              f"P95 {row['bottom_error_p95_m']:.1f} m", flush=True)
+        print(
+            f"  {cfg}: IoU {row['iou']:.3f}  median {row['bottom_error_median_m']:.2f} m  "
+            f"P95 {row['bottom_error_p95_m']:.1f} m",
+            flush=True,
+        )
 
     p95s = [r["bottom_error_p95_m"] for r in rows]
     summary = {

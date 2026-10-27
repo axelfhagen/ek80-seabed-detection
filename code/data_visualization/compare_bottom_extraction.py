@@ -25,6 +25,7 @@ This sweep is GPU work: run it on Slurm
 (code/deep_learning/training/slurm/run_bottom_extraction_compare.sh), not the
 login node.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,6 +40,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -48,18 +50,28 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from deep_learning.unet_model import create_unet, predict_full_echogram
 from deep_learning.evaluate import (
-    load_file_data, extract_bottom_line, bottom_depth_error,
+    load_file_data,
+    extract_bottom_line,
+    bottom_depth_error,
 )
 from deep_learning.bottom_extraction import (
-    extract_bottom_contiguous, extract_bottom_gated, extract_bottom_dp,
-    extract_bottom_hampel, extract_bottom_otsu, bottom_jumpiness,
+    extract_bottom_contiguous,
+    extract_bottom_gated,
+    extract_bottom_dp,
+    extract_bottom_hampel,
+    extract_bottom_otsu,
+    bottom_jumpiness,
 )
 from data_visualization.thesis_style import apply_thesis_style
 
 ZARR_DIR = PROJECT_ROOT / "Datasets" / "echopype_zarr"
-DEFAULT_CHECKPOINT = (PROJECT_ROOT / "code" / "checkpoints"
-                      / "exp_20260420_082458_cosine_gentle"
-                      / "unet_resnet34_best.pth")
+DEFAULT_CHECKPOINT = (
+    PROJECT_ROOT
+    / "code"
+    / "checkpoints"
+    / "exp_20260420_082458_cosine_gentle"
+    / "unet_resnet34_best.pth"
+)
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "bottom_extraction_methods"
 
 FREQ1 = 38_000
@@ -99,16 +111,18 @@ def method_lines(prob, args):
     """All bottom lines for one probability map."""
     return {
         "baseline": extract_bottom_line(prob, threshold=THRESHOLD),
-        "contiguous": extract_bottom_contiguous(prob, threshold=THRESHOLD,
-                                                min_run=args.min_run),
-        "gated": extract_bottom_gated(prob, threshold=THRESHOLD,
-                                      high_threshold=args.high_threshold,
-                                      max_jump=args.max_jump,
-                                      min_run=max(1, args.min_run // 2)),
+        "contiguous": extract_bottom_contiguous(prob, threshold=THRESHOLD, min_run=args.min_run),
+        "gated": extract_bottom_gated(
+            prob,
+            threshold=THRESHOLD,
+            high_threshold=args.high_threshold,
+            max_jump=args.max_jump,
+            min_run=max(1, args.min_run // 2),
+        ),
         "dp": extract_bottom_dp(prob, smoothness=args.smoothness),
-        "hampel": extract_bottom_hampel(prob, threshold=THRESHOLD,
-                                        window=args.hampel_window,
-                                        n_sigma=args.hampel_sigma),
+        "hampel": extract_bottom_hampel(
+            prob, threshold=THRESHOLD, window=args.hampel_window, n_sigma=args.hampel_sigma
+        ),
         "otsu": extract_bottom_otsu(prob, min_run=args.min_run),
     }
 
@@ -125,13 +139,19 @@ def predict_and_cache(model, zp, device, cache_dir):
         return d["prob"], d["gt_mask"], d["echo"], d["range_arr"]
 
     sv_channels, gt_mask, _gt_idx, range_arr = load_file_data(
-        zp, FREQ1, FREQ2, vmin=-80.0, vmax=-34.0)
-    prob = predict_full_echogram(model, sv_channels, TARGET_SIZE, device,
-                                 patch_width=PATCH_WIDTH, stride=STRIDE)
+        zp, FREQ1, FREQ2, vmin=-80.0, vmax=-34.0
+    )
+    prob = predict_full_echogram(
+        model, sv_channels, TARGET_SIZE, device, patch_width=PATCH_WIDTH, stride=STRIDE
+    )
     echo = sv_channels[1].astype(np.float32)  # 200 kHz normalised
-    np.savez_compressed(cp, prob=prob.astype(np.float32),
-                        gt_mask=gt_mask.astype(np.uint8),
-                        echo=echo, range_arr=range_arr)
+    np.savez_compressed(
+        cp,
+        prob=prob.astype(np.float32),
+        gt_mask=gt_mask.astype(np.uint8),
+        echo=echo,
+        range_arr=range_arr,
+    )
     return prob, gt_mask, echo, range_arr
 
 
@@ -139,11 +159,12 @@ def aggregate_metrics(per_file, jump_threshold_m):
     """Aggregate per-method errors / jumpiness / coverage across all files."""
     out = {}
     for method in ALL_LINES:
-        errs = np.concatenate([r["errors"][method] for r in per_file
-                               if len(r["errors"][method])]) \
-            if any(len(r["errors"][method]) for r in per_file) else np.array([])
-        steps = [r["jump"][method][0] for r in per_file
-                 if not np.isnan(r["jump"][method][0])]
+        errs = (
+            np.concatenate([r["errors"][method] for r in per_file if len(r["errors"][method])])
+            if any(len(r["errors"][method]) for r in per_file)
+            else np.array([])
+        )
+        steps = [r["jump"][method][0] for r in per_file if not np.isnan(r["jump"][method][0])]
         big = sum(r["jump"][method][1] for r in per_file)
         cov = [r["coverage"][method] for r in per_file]
         out[method] = {
@@ -159,8 +180,14 @@ def aggregate_metrics(per_file, jump_threshold_m):
 
 
 def print_table(metrics, title=""):
-    cols = ["bottom_error_mean_m", "bottom_error_median_m", "bottom_error_p95_m",
-            "mean_abs_step_m", "n_big_jumps", "coverage"]
+    cols = [
+        "bottom_error_mean_m",
+        "bottom_error_median_m",
+        "bottom_error_p95_m",
+        "mean_abs_step_m",
+        "n_big_jumps",
+        "coverage",
+    ]
     hdr = ["method"] + cols
     if title:
         print(f"\n[{title}]")
@@ -169,9 +196,12 @@ def print_table(metrics, title=""):
     for method in ALL_LINES:
         m = metrics[method]
         row = [method] + [
-            f"{m['bottom_error_mean_m']:.3f}", f"{m['bottom_error_median_m']:.3f}",
-            f"{m['bottom_error_p95_m']:.3f}", f"{m['mean_abs_step_m']:.3f}",
-            str(m["n_big_jumps"]), f"{m['coverage']:.1%}",
+            f"{m['bottom_error_mean_m']:.3f}",
+            f"{m['bottom_error_median_m']:.3f}",
+            f"{m['bottom_error_p95_m']:.3f}",
+            f"{m['mean_abs_step_m']:.3f}",
+            str(m["n_big_jumps"]),
+            f"{m['coverage']:.1%}",
         ]
         print("| " + " | ".join(row) + " |")
 
@@ -188,8 +218,9 @@ def plot_grid(records, names, method, set_name, out_dir):
         echo, range_arr = rec["echo"], rec["range_arr"]
         n_range, n_pings = echo.shape
         extent = [0, n_pings, range_arr[-1], range_arr[0]]
-        ax.imshow(echo, aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                  origin="upper", extent=extent)
+        ax.imshow(
+            echo, aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper", extent=extent
+        )
 
         pings = np.arange(n_pings)
         for line_key, color, alpha, lw in [
@@ -253,6 +284,7 @@ def run_param_sweeps(per_file_probs, jump_threshold_m):
 
     ``per_file_probs`` is a list of (prob, gt_idx, range_arr) tuples.
     """
+
     def aggregate(lines_per_file):
         errs, steps, big = [], [], 0
         for line, gt_idx, range_arr in lines_per_file:
@@ -274,13 +306,13 @@ def run_param_sweeps(per_file_probs, jump_threshold_m):
 
     thr_rows = []
     for thr in THRESHOLD_GRID:
-        lines = [(extract_bottom_line(prob, threshold=thr), gt, ra)
-                 for prob, gt, ra in per_file_probs]
+        lines = [
+            (extract_bottom_line(prob, threshold=thr), gt, ra) for prob, gt, ra in per_file_probs
+        ]
         thr_rows.append(aggregate(lines))
     smooth_rows = []
     for s in SMOOTHNESS_GRID:
-        lines = [(extract_bottom_dp(prob, smoothness=s), gt, ra)
-                 for prob, gt, ra in per_file_probs]
+        lines = [(extract_bottom_dp(prob, smoothness=s), gt, ra) for prob, gt, ra in per_file_probs]
         smooth_rows.append(aggregate(lines))
 
     def pack(values, rows):
@@ -293,8 +325,7 @@ def run_param_sweeps(per_file_probs, jump_threshold_m):
             "n_big_jumps": [r["n_big_jumps"] for r in rows],
         }
 
-    return (pack(THRESHOLD_GRID, thr_rows),
-            pack(SMOOTHNESS_GRID, smooth_rows))
+    return (pack(THRESHOLD_GRID, thr_rows), pack(SMOOTHNESS_GRID, smooth_rows))
 
 
 def plot_summary_across_checkpoints(summary, out_path):
@@ -332,21 +363,28 @@ def plot_summary_across_checkpoints(summary, out_path):
 
 
 def write_readme(out_dir, summary):
-    lines = ["# Bottom extraction methods", "",
-             "Comparison of per-ping bottom-line extraction methods on the U-Net",
-             "probability map: baseline (first pixel p>=0.5) vs contiguous run,",
-             "temporal gating, DP/Viterbi (step-edge cost), Hampel de-spiking, and",
-             "Otsu adaptive thresholding. Includes detection-threshold and DP",
-             "smoothness sweeps, run across several checkpoints.", "",
-             "- Keywords: bottom detection, seabed, U-Net, post-processing, jump suppression",
-             "- Source: code/data_visualization/compare_bottom_extraction.py", ""]
+    lines = [
+        "# Bottom extraction methods",
+        "",
+        "Comparison of per-ping bottom-line extraction methods on the U-Net",
+        "probability map: baseline (first pixel p>=0.5) vs contiguous run,",
+        "temporal gating, DP/Viterbi (step-edge cost), Hampel de-spiking, and",
+        "Otsu adaptive thresholding. Includes detection-threshold and DP",
+        "smoothness sweeps, run across several checkpoints.",
+        "",
+        "- Keywords: bottom detection, seabed, U-Net, post-processing, jump suppression",
+        "- Source: code/data_visualization/compare_bottom_extraction.py",
+        "",
+    ]
     lines.append("## Checkpoints")
     for ck, d in summary.items():
         best = min(METHODS, key=lambda m: d["metrics"][m]["bottom_error_mean_m"])
         be = d["metrics"][best]["bottom_error_mean_m"]
         base = d["metrics"]["baseline"]["bottom_error_mean_m"]
-        lines.append(f"- {ck} ({d['encoder']}, {d['n_files']} files): best '{best}' "
-                     f"{be:.2f} m vs baseline {base:.2f} m")
+        lines.append(
+            f"- {ck} ({d['encoder']}, {d['n_files']} files): best '{best}' "
+            f"{be:.2f} m vs baseline {base:.2f} m"
+        )
     lines += ["", f"Generated: {datetime.now():%Y-%m-%d %H:%M}", ""]
     (out_dir / "_README.md").write_text("\n".join(lines))
 
@@ -387,7 +425,7 @@ def run_checkpoint(checkpoint, args, device, out_root):
     names = [r["file"] for r in json.loads(eval_metrics.read_text())["per_file"]]
     paths = [ZARR_DIR / n for n in names if (ZARR_DIR / n).exists()]
     if args.max_files:
-        paths = paths[:args.max_files]
+        paths = paths[: args.max_files]
     print(f"\n=== {checkpoint.parent.name} ({encoder}) | {len(paths)} eval files ===")
 
     model = None
@@ -403,8 +441,7 @@ def run_checkpoint(checkpoint, args, device, out_root):
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                prob, gt_mask, echo, range_arr = predict_and_cache(
-                    model, zp, device, cache_dir)
+                prob, gt_mask, echo, range_arr = predict_and_cache(model, zp, device, cache_dir)
         except Exception as e:  # noqa: BLE001
             print(f"  {zp.name}: FAILED - {e}")
             continue
@@ -412,19 +449,23 @@ def run_checkpoint(checkpoint, args, device, out_root):
         gt_idx = extract_bottom_line(gt_mask, threshold=0.5)
         lines = method_lines(prob, args)
         lines["gt"] = gt_idx
-        errors = {m: bottom_depth_error(lines[m], gt_idx, range_arr)
-                  for m in ALL_LINES}
-        jump = {m: bottom_jumpiness(lines[m], range_arr, args.jump_threshold_m)
-                for m in ALL_LINES}
+        errors = {m: bottom_depth_error(lines[m], gt_idx, range_arr) for m in ALL_LINES}
+        jump = {m: bottom_jumpiness(lines[m], range_arr, args.jump_threshold_m) for m in ALL_LINES}
         coverage = {m: float(np.mean(lines[m] >= 0)) for m in ALL_LINES}
-        base_err = float(np.mean(errors["baseline"])) \
-            if len(errors["baseline"]) else float("nan")
+        base_err = float(np.mean(errors["baseline"])) if len(errors["baseline"]) else float("nan")
 
-        per_file.append({
-            "name": zp.stem, "base_err": base_err, "errors": errors,
-            "jump": jump, "coverage": coverage,
-            "echo": echo, "range_arr": range_arr, "lines": lines,
-        })
+        per_file.append(
+            {
+                "name": zp.stem,
+                "base_err": base_err,
+                "errors": errors,
+                "jump": jump,
+                "coverage": coverage,
+                "echo": echo,
+                "range_arr": range_arr,
+                "lines": lines,
+            }
+        )
         sweep_probs.append((np.asarray(prob), gt_idx, range_arr))
         if (i + 1) % 10 == 0:
             print(f"  processed {i + 1}/{len(paths)}")
@@ -437,22 +478,37 @@ def run_checkpoint(checkpoint, args, device, out_root):
     print_table(metrics, title=checkpoint.parent.name)
 
     thr_sweep, smooth_sweep = run_param_sweeps(sweep_probs, args.jump_threshold_m)
-    plot_param_sweep(thr_sweep, "Detection threshold",
-                     f"Threshold sweep (baseline first-edge): {checkpoint.parent.name}",
-                     out_dir / "threshold_sweep.png")
-    plot_param_sweep(smooth_sweep, "DP smoothness",
-                     f"DP smoothness sweep: {checkpoint.parent.name}",
-                     out_dir / "dp_smoothness_sweep.png")
+    plot_param_sweep(
+        thr_sweep,
+        "Detection threshold",
+        f"Threshold sweep (baseline first-edge): {checkpoint.parent.name}",
+        out_dir / "threshold_sweep.png",
+    )
+    plot_param_sweep(
+        smooth_sweep,
+        "DP smoothness",
+        f"DP smoothness sweep: {checkpoint.parent.name}",
+        out_dir / "dp_smoothness_sweep.png",
+    )
 
-    (out_dir / "metrics.json").write_text(json.dumps({
-        "checkpoint": checkpoint.parent.name, "encoder": encoder,
-        "n_files": len(per_file), "metrics": metrics,
-        "threshold_sweep": thr_sweep, "dp_smoothness_sweep": smooth_sweep,
-    }, indent=2))
+    (out_dir / "metrics.json").write_text(
+        json.dumps(
+            {
+                "checkpoint": checkpoint.parent.name,
+                "encoder": encoder,
+                "n_files": len(per_file),
+                "metrics": metrics,
+                "threshold_sweep": thr_sweep,
+                "dp_smoothness_sweep": smooth_sweep,
+            },
+            indent=2,
+        )
+    )
     print(f"Saved -> {out_dir / 'metrics.json'}")
 
-    ranked = sorted([r for r in per_file if not np.isnan(r["base_err"])],
-                    key=lambda r: r["base_err"])
+    ranked = sorted(
+        [r for r in per_file if not np.isnan(r["base_err"])], key=lambda r: r["base_err"]
+    )
     n_sel = min(9, len(ranked))
     rng = random.Random(args.seed)
     sel = {
@@ -465,18 +521,26 @@ def run_checkpoint(checkpoint, args, device, out_root):
         for set_name in SETS:
             plot_grid(records, sel[set_name], method, set_name, out_dir)
 
-    return {"encoder": encoder, "n_files": len(per_file), "metrics": metrics,
-            "threshold_sweep": thr_sweep, "dp_smoothness_sweep": smooth_sweep}
+    return {
+        "encoder": encoder,
+        "n_files": len(per_file),
+        "metrics": metrics,
+        "threshold_sweep": thr_sweep,
+        "dp_smoothness_sweep": smooth_sweep,
+    }
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--checkpoints", nargs="+", default=[str(DEFAULT_CHECKPOINT)],
-                    help="one or more checkpoint .pth paths")
+    ap.add_argument(
+        "--checkpoints",
+        nargs="+",
+        default=[str(DEFAULT_CHECKPOINT)],
+        help="one or more checkpoint .pth paths",
+    )
     ap.add_argument("--device", default=None)
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--max-files", type=int, default=None,
-                    help="cap eval files (debug)")
+    ap.add_argument("--max-files", type=int, default=None, help="cap eval files (debug)")
     ap.add_argument("--min-run", type=int, default=5)
     ap.add_argument("--max-jump", type=int, default=15)
     ap.add_argument("--high-threshold", type=float, default=0.7)
@@ -485,8 +549,9 @@ def main():
     ap.add_argument("--hampel-sigma", type=float, default=3.0)
     ap.add_argument("--jump-threshold-m", type=float, default=5.0)
     ap.add_argument("--output-dir", default=str(OUTPUT_DIR))
-    ap.add_argument("--replot-only", action="store_true",
-                    help="reuse cached probability maps, no model load")
+    ap.add_argument(
+        "--replot-only", action="store_true", help="reuse cached probability maps, no model load"
+    )
     ap.add_argument("--no-changelog", action="store_true")
     args = ap.parse_args()
 
@@ -508,12 +573,10 @@ def main():
         print("No checkpoints produced results.")
         return
 
-    (out_root / "summary_across_checkpoints.json").write_text(
-        json.dumps(summary, indent=2))
+    (out_root / "summary_across_checkpoints.json").write_text(json.dumps(summary, indent=2))
     print(f"Saved -> {out_root / 'summary_across_checkpoints.json'}")
     if len(summary) >= 1:
-        plot_summary_across_checkpoints(
-            summary, out_root / "summary_across_checkpoints.png")
+        plot_summary_across_checkpoints(summary, out_root / "summary_across_checkpoints.png")
 
     write_readme(out_root, summary)
     if not args.no_changelog:

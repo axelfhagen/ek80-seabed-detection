@@ -21,6 +21,7 @@ from the cached broadband Sv (no echopype rerun).
 Usage:
     python code/data_visualization/analyze_shallow_C2_bottomline_strategies.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,6 +37,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "code" / "data_visualization"))
 warnings.filterwarnings("ignore")
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -47,22 +49,23 @@ from deep_learning.unet_model import create_unet, predict_full_echogram
 from data_visualization.thesis_style import apply_thesis_style, savefig, style_colorbar
 
 # ── Constants ──────────────────────────────────────────────────────────────
-STEMS = ["shallow_C2-D20260526-T134234",
-         "shallow_C2-D20260526-T134826",
-         "shallow_C2-D20260526-T135419"]
+STEMS = [
+    "shallow_C2-D20260526-T134234",
+    "shallow_C2-D20260526-T134826",
+    "shallow_C2-D20260526-T135419",
+]
 FREQ1, FREQ2 = 38_000, 200_000
 VMIN, VMAX = -80.0, -34.0
 TARGET_SIZE = (512, 512)
 PATCH_WIDTH, STRIDE = 512, 256
 TAU = 0.5
 SWEEP_TAUS = [0.3, 0.5, 0.7, 0.9]
-DISP_MAX = 9.0   # all strategy lines live in the top few m; zoom there for clarity
+DISP_MAX = 9.0  # all strategy lines live in the top few m; zoom there for clarity
 
 DEFAULT_CKPT_NAME = "chunk_arch_sweep_2"
 SV_CACHE_DIR = PROJECT_ROOT / "Figures" / "shallow_C2_failure" / "cache"
 OUT_DIR = PROJECT_ROOT / "Figures" / "shallow_C2_bottomline_strategies"
-CHECKPOINT = (PROJECT_ROOT / "code/checkpoints" / DEFAULT_CKPT_NAME /
-              "smp_unet_resnet34_best.pth")
+CHECKPOINT = PROJECT_ROOT / "code/checkpoints" / DEFAULT_CKPT_NAME / "smp_unet_resnet34_best.pth"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # strategy name -> colour
@@ -126,7 +129,7 @@ def strat_largest_component_top(prob, tau=TAU):
 
 def strat_max_gradient(prob, tau=TAU, min_grad=0.05):
     """Row of steepest downward probability rise; gated so flat columns are skipped."""
-    grad = np.diff(prob, axis=0)              # (n_range-1, n_pings)
+    grad = np.diff(prob, axis=0)  # (n_range-1, n_pings)
     idx = np.full(prob.shape[1], -1, dtype=np.int64)
     for p in range(prob.shape[1]):
         g = grad[:, p]
@@ -167,12 +170,10 @@ def resample_to_grid(sv2, range2, range1):
 
 
 def load_model():
-    model = create_unet(encoder_name="resnet34", encoder_weights=None,
-                        in_channels=3, classes=1)
+    model = create_unet(encoder_name="resnet34", encoder_weights=None, in_channels=3, classes=1)
     sd = torch.load(CHECKPOINT, map_location=DEVICE, weights_only=False)
     state = sd.get("model_state_dict", sd)
-    model.load_state_dict({k.removeprefix("model."): v
-                           for k, v in state.items()}, strict=False)
+    model.load_state_dict({k.removeprefix("model."): v for k, v in state.items()}, strict=False)
     return model.to(DEVICE).eval()
 
 
@@ -181,20 +182,23 @@ def process(stem, model):
     npings = min(sv1.shape[1], sv2.shape[1])
     sv1 = sv1[:, :npings]
     sv2r = resample_to_grid(sv2, range2, range1)[:, :npings]
-    norm1 = normalize_echogram(sv1, method="minmax", vmin=VMIN, vmax=VMAX,
-                               fill_nan=0.0).astype(np.float32)
-    norm2 = normalize_echogram(sv2r, method="minmax", vmin=VMIN, vmax=VMAX,
-                               fill_nan=0.0).astype(np.float32)
+    norm1 = normalize_echogram(sv1, method="minmax", vmin=VMIN, vmax=VMAX, fill_nan=0.0).astype(
+        np.float32
+    )
+    norm2 = normalize_echogram(sv2r, method="minmax", vmin=VMIN, vmax=VMAX, fill_nan=0.0).astype(
+        np.float32
+    )
     diff = (norm1 - norm2).astype(np.float32)
     chans = np.stack([norm1, norm2, diff], axis=0)
     with torch.no_grad():
-        prob = predict_full_echogram(model, chans, TARGET_SIZE, DEVICE,
-                                     patch_width=PATCH_WIDTH, stride=STRIDE)
+        prob = predict_full_echogram(
+            model, chans, TARGET_SIZE, DEVICE, patch_width=PATCH_WIDTH, stride=STRIDE
+        )
     lines = {name: idx_to_depth(fn(prob), range1) for name, fn in STRATEGIES.items()}
-    sweep = {t: idx_to_depth(strat_first_crossing(prob, t), range1)
-             for t in SWEEP_TAUS}
-    return dict(stem=stem, sv1=sv1, prob=prob, range1=range1,
-                npings=npings, lines=lines, sweep=sweep)
+    sweep = {t: idx_to_depth(strat_first_crossing(prob, t), range1) for t in SWEEP_TAUS}
+    return dict(
+        stem=stem, sv1=sv1, prob=prob, range1=range1, npings=npings, lines=lines, sweep=sweep
+    )
 
 
 # ── Figures ─────────────────────────────────────────────────────────────
@@ -204,8 +208,14 @@ def _overlay_lines(ax, g, lines, color_map, lw=1.6):
         v = np.isfinite(depth)
         if v.any():
             cov = 100 * v.mean()
-            ax.plot(pings[v], depth[v], color=color_map[name], lw=lw, alpha=0.9,
-                    label=f"{name} ({cov:.0f}% cov)")
+            ax.plot(
+                pings[v],
+                depth[v],
+                color=color_map[name],
+                lw=lw,
+                alpha=0.9,
+                label=f"{name} ({cov:.0f}% cov)",
+            )
 
 
 def fig_strategies(g, path):
@@ -213,32 +223,35 @@ def fig_strategies(g, path):
     extent = [0, g["npings"], ra[-1], ra[0]]
     fig, axes = plt.subplots(1, 3, figsize=(28, 8))
 
-    im0 = axes[0].imshow(g["sv1"], aspect="auto", cmap="viridis",
-                         vmin=VMIN, vmax=VMAX, extent=extent)
+    im0 = axes[0].imshow(
+        g["sv1"], aspect="auto", cmap="viridis", vmin=VMIN, vmax=VMAX, extent=extent
+    )
     _overlay_lines(axes[0], g, g["lines"], STRAT_COLORS)
     axes[0].set_title("38 kHz Sv + extraction strategies")
-    style_colorbar(plt.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04),
-                   label="Sv (dB)")
+    style_colorbar(plt.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04), label="Sv (dB)")
     axes[0].legend(loc="lower left", fontsize=11, framealpha=0.9)
 
-    im1 = axes[1].imshow(g["prob"], aspect="auto", cmap="magma", vmin=0, vmax=1,
-                         extent=extent)
+    im1 = axes[1].imshow(g["prob"], aspect="auto", cmap="magma", vmin=0, vmax=1, extent=extent)
     _overlay_lines(axes[1], g, g["lines"], STRAT_COLORS)
     axes[1].set_title("P(bottom) + extraction strategies")
-    style_colorbar(plt.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04),
-                   label="P(bottom)")
+    style_colorbar(plt.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04), label="P(bottom)")
 
     # threshold sweep of the baseline first-crossing
-    axes[2].imshow(g["sv1"], aspect="auto", cmap="viridis",
-                   vmin=VMIN, vmax=VMAX, extent=extent)
+    axes[2].imshow(g["sv1"], aspect="auto", cmap="viridis", vmin=VMIN, vmax=VMAX, extent=extent)
     pings = np.arange(g["npings"])
     cmap = plt.cm.cool(np.linspace(0, 1, len(SWEEP_TAUS)))
     for c, t in zip(cmap, SWEEP_TAUS):
         d = g["sweep"][t]
         v = np.isfinite(d)
         if v.any():
-            axes[2].plot(pings[v], d[v], color=c, lw=1.6, alpha=0.9,
-                         label=f"tau={t} ({100*v.mean():.0f}% cov)")
+            axes[2].plot(
+                pings[v],
+                d[v],
+                color=c,
+                lw=1.6,
+                alpha=0.9,
+                label=f"tau={t} ({100 * v.mean():.0f}% cov)",
+            )
     axes[2].set_title("First-crossing: threshold sweep")
     axes[2].legend(loc="lower left", fontsize=11, framealpha=0.9)
 
@@ -246,9 +259,11 @@ def fig_strategies(g, path):
         ax.set_xlabel("Ping")
         ax.set_ylabel("Depth (m)")
         ax.set_ylim(DISP_MAX, 0)
-    fig.suptitle(f"{g['stem']}: bottom-line extraction strategies "
-                 f"({DEFAULT_CKPT_NAME}), depth zoomed to top {DISP_MAX:.0f} m",
-                 y=1.02)
+    fig.suptitle(
+        f"{g['stem']}: bottom-line extraction strategies "
+        f"({DEFAULT_CKPT_NAME}), depth zoomed to top {DISP_MAX:.0f} m",
+        y=1.02,
+    )
     fig.tight_layout()
     savefig(fig, path)
     plt.close(fig)
@@ -262,19 +277,21 @@ def fig_summary(items, path):
     for ax, g in zip(axes, items):
         ra = g["range1"]
         extent = [0, g["npings"], ra[-1], ra[0]]
-        ax.imshow(g["sv1"], aspect="auto", cmap="viridis",
-                  vmin=VMIN, vmax=VMAX, extent=extent)
+        ax.imshow(g["sv1"], aspect="auto", cmap="viridis", vmin=VMIN, vmax=VMAX, extent=extent)
         _overlay_lines(ax, g, g["lines"], STRAT_COLORS, lw=1.8)
         ax.set_title(g["stem"].split("-")[-1])
         ax.set_xlabel("Ping")
         ax.set_ylabel("Depth (m)")
         ax.set_ylim(DISP_MAX, 0)
-    handles = [Line2D([0], [0], color=c, lw=2.5, label=n)
-               for n, c in STRAT_COLORS.items()]
-    fig.legend(handles=handles, loc="lower center", ncol=len(STRAT_COLORS),
-               bbox_to_anchor=(0.5, -0.02), fontsize=13)
-    fig.suptitle("shallow_C2 dock files: bottom-line extraction strategies on "
-                 "38 kHz Sv", y=1.0)
+    handles = [Line2D([0], [0], color=c, lw=2.5, label=n) for n, c in STRAT_COLORS.items()]
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=len(STRAT_COLORS),
+        bbox_to_anchor=(0.5, -0.02),
+        fontsize=13,
+    )
+    fig.suptitle("shallow_C2 dock files: bottom-line extraction strategies on 38 kHz Sv", y=1.0)
     fig.tight_layout(rect=[0, 0.03, 1, 0.99])
     savefig(fig, path)
     plt.close(fig)
@@ -282,13 +299,14 @@ def fig_summary(items, path):
 
 def write_readme(items):
     import datetime
+
     lines = []
     for g in items:
         parts = []
         for name, d in g["lines"].items():
             v = np.isfinite(d)
             med = np.nanmedian(d[v]) if v.any() else np.nan
-            parts.append(f"{name.split()[0]}={med:.1f}m/{100*v.mean():.0f}%")
+            parts.append(f"{name.split()[0]}={med:.1f}m/{100 * v.mean():.0f}%")
         lines.append(f"  {g['stem']}: " + "  ".join(parts))
     (OUT_DIR / "_README.md").write_text(
         "# shallow_C2 bottom-line extraction strategies\n\n"
@@ -300,7 +318,8 @@ def write_readme(items):
         "Source: code/data_visualization/analyze_shallow_C2_bottomline_strategies.py\n"
         f"Created: {datetime.datetime.now():%Y-%m-%d %H:%M}\n"
         f"Checkpoint: {DEFAULT_CKPT_NAME}\n\n"
-        "Per-file median depth / coverage by strategy:\n" + "\n".join(lines) + "\n")
+        "Per-file median depth / coverage by strategy:\n" + "\n".join(lines) + "\n"
+    )
 
 
 def main():

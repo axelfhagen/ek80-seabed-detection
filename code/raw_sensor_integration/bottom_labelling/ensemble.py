@@ -11,9 +11,9 @@ import numpy as np
 from .detectors import detect_bottom_simple, detect_bottom_edge, detect_bottom_gradient
 
 
-def ensemble_bottom(detections_list: list,
-                     max_deviation: float = 5.0,
-                     primary_count: int = 0) -> np.ndarray:
+def ensemble_bottom(
+    detections_list: list, max_deviation: float = 5.0, primary_count: int = 0
+) -> np.ndarray:
     """
     Combine multiple bottom detection arrays via per-ping median voting.
 
@@ -69,10 +69,12 @@ def ensemble_bottom(detections_list: list,
     return result
 
 
-def post_process_bottom(bottom_range_m: np.ndarray,
-                         max_deviation_m: float = 10.0,
-                         window: int = 31,
-                         fill_gaps: bool = True) -> Tuple[np.ndarray, np.ndarray]:
+def post_process_bottom(
+    bottom_range_m: np.ndarray,
+    max_deviation_m: float = 10.0,
+    window: int = 31,
+    fill_gaps: bool = True,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Remove temporal outliers from bottom detections using a sliding median.
 
@@ -115,9 +117,9 @@ def detect_bottom_ensemble_pipeline(
     frequency_hz: float = 38000.0,
     transducer_draft: float = 0.0,
     minimum_range: float = 10.0,
-    threshold_log_sv: Union[float, str] = 'auto',
+    threshold_log_sv: Union[float, str] = "auto",
     offset: float = 0.5,
-    detectors: tuple = ('simple', 'edge', 'gradient'),
+    detectors: tuple = ("simple", "edge", "gradient"),
     max_deviation: float = 5.0,
     primary_count: int = 2,
     post_process: bool = True,
@@ -138,20 +140,30 @@ def detect_bottom_ensemble_pipeline(
         heave = np.zeros(n_pings)
 
     detector_map = {
-        'simple': lambda: detect_bottom_simple(
-            power_db, range_array, heave, pulse_duration,
+        "simple": lambda: detect_bottom_simple(
+            power_db,
+            range_array,
+            heave,
+            pulse_duration,
             transducer_draft=transducer_draft,
             minimum_range=minimum_range,
-            threshold_log_sv=threshold_log_sv, offset=offset),
-        'edge': lambda: detect_bottom_edge(
-            power_db, range_array, heave, pulse_duration,
+            threshold_log_sv=threshold_log_sv,
+            offset=offset,
+        ),
+        "edge": lambda: detect_bottom_edge(
+            power_db,
+            range_array,
+            heave,
+            pulse_duration,
             frequency_hz=frequency_hz,
             transducer_draft=transducer_draft,
             minimum_range=minimum_range,
-            threshold_log_sv=threshold_log_sv, offset=offset),
-        'gradient': lambda: detect_bottom_gradient(
-            power_db, range_array,
-            minimum_range=minimum_range, offset=offset),
+            threshold_log_sv=threshold_log_sv,
+            offset=offset,
+        ),
+        "gradient": lambda: detect_bottom_gradient(
+            power_db, range_array, minimum_range=minimum_range, offset=offset
+        ),
     }
 
     details = {}
@@ -163,15 +175,16 @@ def detect_bottom_ensemble_pipeline(
         details[name] = result
         results_list.append(result)
 
-    bottom_range = ensemble_bottom(results_list,
-                                   max_deviation=max_deviation,
-                                   primary_count=primary_count)
-    details['ensemble_raw'] = bottom_range.copy()
+    bottom_range = ensemble_bottom(
+        results_list, max_deviation=max_deviation, primary_count=primary_count
+    )
+    details["ensemble_raw"] = bottom_range.copy()
 
     outlier_mask = np.zeros(n_pings, dtype=bool)
     if post_process:
         bottom_range, outlier_mask = post_process_bottom(
-            bottom_range, max_deviation_m=pp_max_deviation_m, window=pp_window)
+            bottom_range, max_deviation_m=pp_max_deviation_m, window=pp_window
+        )
 
-    details['valid_fraction'] = float(np.mean(~np.isnan(bottom_range)))
+    details["valid_fraction"] = float(np.mean(~np.isnan(bottom_range)))
     return bottom_range, outlier_mask, details

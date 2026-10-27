@@ -37,10 +37,11 @@ def test_conformal_pvalues_are_marginally_uniform_under_exchangeability():
     # Marginal (not conditional-on-calibration) uniformity: draw a fresh
     # calibration set of 19 and one test point per replicate.
     rng = np.random.default_rng(7)
-    p = np.array([conformal_pvalues(rng.normal(size=19), rng.normal(size=1), rng)[0]
-                  for _ in range(3000)])
+    p = np.array(
+        [conformal_pvalues(rng.normal(size=19), rng.normal(size=1), rng)[0] for _ in range(3000)]
+    )
     assert np.all((p > 0) & (p <= 1))
-    assert stats.kstest(p, 'uniform').pvalue > 0.01
+    assert stats.kstest(p, "uniform").pvalue > 0.01
 
 
 def test_martingale_with_unit_pvalues_decays_like_one_over_n_plus_one():
@@ -75,11 +76,13 @@ def test_within_survey_distances_returns_one_ks_per_seed():
 
 
 def test_drop_junk_files_removes_files_with_median_error_above_two_metres():
-    scores = {'s': {
-        'file_id': np.array([0, 0, 0, 1, 1, 1]),
-        'abs_err': np.array([0.1, 0.2, 5.0, 3.0, 2.5, 0.1]),   # medians 0.2, 2.5
-        'norm_err': np.arange(6, dtype=float),
-    }}
-    out = drop_junk_files(scores)['s']
-    np.testing.assert_array_equal(out['file_id'], [0, 0, 0])
-    np.testing.assert_array_equal(out['norm_err'], [0.0, 1.0, 2.0])
+    scores = {
+        "s": {
+            "file_id": np.array([0, 0, 0, 1, 1, 1]),
+            "abs_err": np.array([0.1, 0.2, 5.0, 3.0, 2.5, 0.1]),  # medians 0.2, 2.5
+            "norm_err": np.arange(6, dtype=float),
+        }
+    }
+    out = drop_junk_files(scores)["s"]
+    np.testing.assert_array_equal(out["file_id"], [0, 0, 0])
+    np.testing.assert_array_equal(out["norm_err"], [0.0, 1.0, 2.0])

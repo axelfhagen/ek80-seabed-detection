@@ -66,8 +66,7 @@ def _render_table(header: list[str], rows: list[dict]) -> str:
             widths[c] = max(widths[c], len(str(r.get(c, ""))))
 
     def fmt_row(cells: list[str]) -> str:
-        return "  ".join(
-            cells[i].ljust(widths[header[i]]) for i in range(len(header)))
+        return "  ".join(cells[i].ljust(widths[header[i]]) for i in range(len(header)))
 
     out = [fmt_row(header)]
     out.append("  ".join("-" * widths[c] for c in header))
@@ -78,18 +77,23 @@ def _render_table(header: list[str], rows: list[dict]) -> str:
 
 def main():
     ap = argparse.ArgumentParser(description="Show training results log")
-    ap.add_argument("--path", type=Path, default=DEFAULT_LOG_PATH,
-                    help=f"CSV path (default: {DEFAULT_LOG_PATH})")
-    ap.add_argument("--full", action="store_true",
-                    help="Show all columns (default: curated subset)")
-    ap.add_argument("--sort", type=str, default="timestamp",
-                    help="Column to sort by (default: timestamp)")
-    ap.add_argument("--asc", action="store_true",
-                    help="Sort ascending (default: descending)")
-    ap.add_argument("--n", type=int, default=20,
-                    help="Show N most recent rows (0 = all; default: 20)")
-    ap.add_argument("--cols", type=str, default=None,
-                    help="Comma-separated column subset")
+    ap.add_argument(
+        "--path",
+        type=Path,
+        default=DEFAULT_LOG_PATH,
+        help=f"CSV path (default: {DEFAULT_LOG_PATH})",
+    )
+    ap.add_argument(
+        "--full", action="store_true", help="Show all columns (default: curated subset)"
+    )
+    ap.add_argument(
+        "--sort", type=str, default="timestamp", help="Column to sort by (default: timestamp)"
+    )
+    ap.add_argument("--asc", action="store_true", help="Sort ascending (default: descending)")
+    ap.add_argument(
+        "--n", type=int, default=20, help="Show N most recent rows (0 = all; default: 20)"
+    )
+    ap.add_argument("--cols", type=str, default=None, help="Comma-separated column subset")
     args = ap.parse_args()
 
     if not args.path.exists() or args.path.stat().st_size == 0:
@@ -102,8 +106,7 @@ def main():
         return
 
     if args.sort in all_cols:
-        rows.sort(key=lambda r: _sort_key(r.get(args.sort, "")),
-                  reverse=not args.asc)
+        rows.sort(key=lambda r: _sort_key(r.get(args.sort, "")), reverse=not args.asc)
 
     if args.n > 0:
         rows = rows[: args.n]

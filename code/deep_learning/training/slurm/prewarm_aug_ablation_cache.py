@@ -41,5 +41,7 @@ cfg = PipelineConfig(
 )
 
 train_ds, val_ds, all_zarr = build_datasets_from_config(cfg)
-print(f"Pre-warm complete: train={len(train_ds)} patches, "
-      f"val={len(val_ds)} patches, {len(all_zarr)} files")
+print(
+    f"Pre-warm complete: train={len(train_ds)} patches, "
+    f"val={len(val_ds)} patches, {len(all_zarr)} files"
+)

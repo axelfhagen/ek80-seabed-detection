@@ -18,6 +18,7 @@ from itertools import combinations
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +32,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 from deep_learning.training.survey_groups import SURVEYS, get_all_survey_files
 from raw_sensor_integration.preprocessing import load_sv_from_zarr
 from data_visualization.thesis_style import (
-    apply_thesis_style, FIGSIZE_STD, FIGSIZE_HALF, style_colorbar, savefig,
+    apply_thesis_style,
+    FIGSIZE_STD,
+    FIGSIZE_HALF,
+    style_colorbar,
+    savefig,
 )
 
 apply_thesis_style()
@@ -41,9 +46,7 @@ DEPTH_BANDS = {
     "shallow": (0, 50),
     "deep": (50, None),
 }
-SURVEY_COLORS = {
-    name: plt.cm.tab10(i) for i, name in enumerate(SURVEYS)
-}
+SURVEY_COLORS = {name: plt.cm.tab10(i) for i, name in enumerate(SURVEYS)}
 
 
 def sample_sv_from_file(
@@ -62,9 +65,7 @@ def sample_sv_from_file(
     except Exception:
         return None
 
-    range_grid = np.broadcast_to(
-        range_array[:, np.newaxis], sv_db.shape
-    ).ravel()
+    range_grid = np.broadcast_to(range_array[:, np.newaxis], sv_db.shape).ravel()
     sv_flat = sv_db.ravel()
 
     finite_mask = np.isfinite(sv_flat)
@@ -75,8 +76,7 @@ def sample_sv_from_file(
         result = None
     elif len(sv_flat) > n_samples:
         idx = rng.choice(len(sv_flat), size=n_samples, replace=False)
-        result = (sv_flat[idx].astype(np.float32),
-                  range_flat[idx].astype(np.float32))
+        result = (sv_flat[idx].astype(np.float32), range_flat[idx].astype(np.float32))
     else:
         result = (sv_flat.astype(np.float32), range_flat.astype(np.float32))
 
@@ -121,7 +121,8 @@ def collect_sv_samples(
             print(
                 f"\r  {survey_name} [{i + 1}/{len(files)}] "
                 f"({sum(len(s) for s in sv_parts):,} samples)",
-                end="", flush=True,
+                end="",
+                flush=True,
             )
         print()
 
@@ -179,7 +180,8 @@ def plot_kde_overlay(
     for name, data in filtered.items():
         kde = stats.gaussian_kde(data["sv"], bw_method="scott")
         ax.plot(
-            x_grid, kde(x_grid),
+            x_grid,
+            kde(x_grid),
             label=data["label"],
             color=SURVEY_COLORS[name],
         )
@@ -220,17 +222,19 @@ def compute_pairwise_stats(
     for a, b in combinations(keys, 2):
         ks_stat, ks_p = stats.ks_2samp(filtered[a]["sv"], filtered[b]["sv"])
         jsd = float(jensenshannon(histograms[a], histograms[b]))
-        rows.append({
-            "survey_a": a,
-            "survey_b": b,
-            "label_a": filtered[a]["label"],
-            "label_b": filtered[b]["label"],
-            "ks_statistic": ks_stat,
-            "ks_pvalue": ks_p,
-            "jsd": jsd,
-            "n_a": len(filtered[a]["sv"]),
-            "n_b": len(filtered[b]["sv"]),
-        })
+        rows.append(
+            {
+                "survey_a": a,
+                "survey_b": b,
+                "label_a": filtered[a]["label"],
+                "label_b": filtered[b]["label"],
+                "ks_statistic": ks_stat,
+                "ks_pvalue": ks_p,
+                "jsd": jsd,
+                "n_a": len(filtered[a]["sv"]),
+                "n_b": len(filtered[b]["sv"]),
+            }
+        )
 
     return pd.DataFrame(rows)
 
@@ -242,9 +246,7 @@ def plot_heatmap(
     ax: plt.Axes | None = None,
 ) -> plt.Figure:
     """Plot a pairwise distance heatmap."""
-    labels = list(dict.fromkeys(
-        list(pairwise_df["label_a"]) + list(pairwise_df["label_b"])
-    ))
+    labels = list(dict.fromkeys(list(pairwise_df["label_a"]) + list(pairwise_df["label_b"])))
     n = len(labels)
     matrix = np.zeros((n, n))
 
@@ -270,8 +272,7 @@ def plot_heatmap(
     for i in range(n):
         for j in range(n):
             val = matrix[i, j]
-            ax.text(j, i, f"{val:.3f}", ha="center", va="center",
-                    fontsize=11)
+            ax.text(j, i, f"{val:.3f}", ha="center", va="center", fontsize=11)
 
     ax.set_title(title)
     style_colorbar(fig.colorbar(im, ax=ax, shrink=0.8))
@@ -280,22 +281,26 @@ def plot_heatmap(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Compare Sv distributions across survey groups"
-    )
+    parser = argparse.ArgumentParser(description="Compare Sv distributions across survey groups")
     parser.add_argument(
-        "--zarr-dir", type=Path, default=None,
+        "--zarr-dir",
+        type=Path,
+        default=None,
         help="Path to zarr directory (default: Datasets/echopype_zarr)",
     )
     parser.add_argument(
-        "--output-dir", type=Path,
+        "--output-dir",
+        type=Path,
         default=PROJECT_ROOT / "Figures" / "distribution_comparison",
     )
     parser.add_argument("--max-files", type=int, default=20)
     parser.add_argument("--n-per-file", type=int, default=50_000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
-        "--frequencies", type=int, nargs="+", default=FREQUENCIES,
+        "--frequencies",
+        type=int,
+        nargs="+",
+        default=FREQUENCIES,
     )
     args = parser.parse_args()
 
@@ -338,11 +343,11 @@ def main():
 
         pairwise = compute_pairwise_stats(samples)
         print("\nPairwise statistics (full water column):")
-        print(pairwise[["label_a", "label_b", "ks_statistic", "jsd"]]
-              .to_string(index=False))
+        print(pairwise[["label_a", "label_b", "ks_statistic", "jsd"]].to_string(index=False))
 
         fig = plot_heatmap(
-            pairwise, "ks_statistic",
+            pairwise,
+            "ks_statistic",
             f"KS statistic: {freq_label}",
         )
         path = args.output_dir / f"ks_heatmap_{freq_label}.pdf"
@@ -351,7 +356,8 @@ def main():
         print(f"Saved {path}")
 
         fig = plot_heatmap(
-            pairwise, "jsd",
+            pairwise,
+            "jsd",
             f"Jensen-Shannon divergence: {freq_label}",
         )
         path = args.output_dir / f"jsd_heatmap_{freq_label}.pdf"
@@ -361,14 +367,16 @@ def main():
 
         for band_name, band_range in DEPTH_BANDS.items():
             pw_band = compute_pairwise_stats(
-                samples, depth_band=band_range,
+                samples,
+                depth_band=band_range,
             )
             for metric, metric_label in [
                 ("ks_statistic", "KS statistic"),
                 ("jsd", "JSD"),
             ]:
                 fig = plot_heatmap(
-                    pw_band, metric,
+                    pw_band,
+                    metric,
                     f"{metric_label}: {freq_label} ({band_name})",
                 )
                 path = args.output_dir / f"{metric}_heatmap_{freq_label}_{band_name}.pdf"

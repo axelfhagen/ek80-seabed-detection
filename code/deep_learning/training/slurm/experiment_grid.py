@@ -55,8 +55,14 @@ GRIDS["baseline"] = [
 # Compare each run's own validation metrics AND its held-out test-survey
 # numbers (re-eval with --eval-split test) to gauge over-optimism.
 GRIDS["baseline_random_split"] = [
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce", "bce-weight": 0.5,
-     "split": "random_pool", "seed": s}
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "bce-weight": 0.5,
+        "split": "random_pool",
+        "seed": s,
+    }
     for s in (42, 1, 7)
 ]
 
@@ -66,8 +72,14 @@ GRIDS["baseline_random_split"] = [
 # Batch size halved to absorb the doubled activation footprint. Standalone
 # 6h launcher: run_ablation_target_h1024_w512.sh.
 GRIDS["target_size_asym"] = [
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce", "bce-weight": 0.5,
-     "target-size": "1024 512", "batch-size": 4},
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "bce-weight": 0.5,
+        "target-size": "1024 512",
+        "batch-size": 4,
+    },
 ]
 
 # Phase 0.5: Loss ablation — baseline config, only loss changes
@@ -87,14 +99,18 @@ _loss_raw = _expand_grid(
     },
 )
 GRIDS["loss_sweep"] = [
-    c for c in _loss_raw
-    if c["loss-type"] == "dice_bce" or c["bce-weight"] == 0.5
+    c for c in _loss_raw if c["loss-type"] == "dice_bce" or c["bce-weight"] == 0.5
 ]
 
 # geo_seg: depth-regression + curvature (anti-spike) loss test run
 GRIDS["geo_seg_test"] = _expand_grid(
-    fixed={**_COMMON, "encoder": "resnet34", "loss-type": "geo_seg",
-           "bce-weight": 0.5, "geo-depth-scale": 0.1},
+    fixed={
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "geo_seg",
+        "bce-weight": 0.5,
+        "geo-depth-scale": 0.1,
+    },
     variable={
         "geo-reg-weight": [0.05, 0.1],
         "geo-smooth-weight": [0.05, 0.1],
@@ -106,7 +122,7 @@ GRIDS["tversky_sweep"] = _expand_grid(
     fixed={**_COMMON, "encoder": "resnet34", "loss-type": "tversky"},
     variable={
         "tversky-alpha": [0.3, 0.5, 0.7, 0.8],
-        "tversky-beta":  [0.2, 0.3, 0.5],
+        "tversky-beta": [0.2, 0.3, 0.5],
     },
 )
 
@@ -123,39 +139,69 @@ GRIDS["lr_sweep"] = _expand_grid(
 GRIDS["encoder_sweep"] = _expand_grid(
     fixed={**_COMMON, "loss-type": "dice_bce"},
     variable={
-        "encoder": ["resnet34", "resnet50", "efficientnet-b0",
-                     "efficientnet-b3", "mobilenet_v2"],
+        "encoder": ["resnet34", "resnet50", "efficientnet-b0", "efficientnet-b3", "mobilenet_v2"],
     },
 )
 
 # Phase 5: Scheduler comparison
 GRIDS["scheduler_sweep"] = [
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "scheduler-type": "plateau"},
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "scheduler-type": "cosine", "cosine-t0": 10, "cosine-t-mult": 2},
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "scheduler-type": "cosine", "cosine-t0": 25, "cosine-t-mult": 2},
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "scheduler-type": "cosine", "cosine-t0": 50, "cosine-t-mult": 1},
+    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce", "scheduler-type": "plateau"},
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "scheduler-type": "cosine",
+        "cosine-t0": 10,
+        "cosine-t-mult": 2,
+    },
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "scheduler-type": "cosine",
+        "cosine-t0": 25,
+        "cosine-t-mult": 2,
+    },
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "scheduler-type": "cosine",
+        "cosine-t0": 50,
+        "cosine-t-mult": 1,
+    },
 ]
 
 # Phase 6: Freeze strategy comparison
 GRIDS["freeze_sweep"] = [
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "freeze": "encoder"},
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "freeze": "encoder", "unfreeze-after": 25, "encoder-lr": 1e-5},
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "freeze": "stages"},
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "freeze": "none", "encoder-lr": 5e-5, "decoder-lr": 5e-4},
+    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce", "freeze": "encoder"},
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "freeze": "encoder",
+        "unfreeze-after": 25,
+        "encoder-lr": 1e-5,
+    },
+    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce", "freeze": "stages"},
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "freeze": "none",
+        "encoder-lr": 5e-5,
+        "decoder-lr": 5e-4,
+    },
 ]
 
 # Phase 7: Dataset variant sweep (uses --cache-dir)
 GRIDS["dataset_sweep"] = [
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "cache-dir": f"Datasets/patch_datasets/{name}"}
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "cache-dir": f"Datasets/patch_datasets/{name}",
+    }
     for name in [
         "00_baseline",
         "01_wide_patches",
@@ -175,34 +221,83 @@ for c in GRIDS["dataset_sweep"]:
 # Phase 8: Architecture comparison (from-scratch vs transfer learning)
 GRIDS["arch_sweep"] = [
     # smp U-Net pretrained (baseline reference)
-    {**_COMMON, "architecture": "smp_unet", "encoder": "resnet34",
-     "encoder-weights": "imagenet", "freeze": "encoder"},
+    {
+        **_COMMON,
+        "architecture": "smp_unet",
+        "encoder": "resnet34",
+        "encoder-weights": "imagenet",
+        "freeze": "encoder",
+    },
     # smp U-Net from scratch
-    {**_COMMON, "architecture": "smp_unet", "encoder": "resnet34",
-     "encoder-weights": "none", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3},
+    {
+        **_COMMON,
+        "architecture": "smp_unet",
+        "encoder": "resnet34",
+        "encoder-weights": "none",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
     # smp U-Net from scratch (larger encoder)
-    {**_COMMON, "architecture": "smp_unet", "encoder": "resnet50",
-     "encoder-weights": "none", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3},
+    {
+        **_COMMON,
+        "architecture": "smp_unet",
+        "encoder": "resnet50",
+        "encoder-weights": "none",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
     # Vanilla U-Net sizes
-    {**_COMMON, "architecture": "vanilla_unet_small",
-     "freeze": "none", "encoder-lr": 1e-3, "decoder-lr": 1e-3},
-    {**_COMMON, "architecture": "vanilla_unet",
-     "freeze": "none", "encoder-lr": 1e-3, "decoder-lr": 1e-3},
-    {**_COMMON, "architecture": "vanilla_unet_large",
-     "freeze": "none", "encoder-lr": 1e-3, "decoder-lr": 1e-3},
+    {
+        **_COMMON,
+        "architecture": "vanilla_unet_small",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
+    {
+        **_COMMON,
+        "architecture": "vanilla_unet",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
+    {
+        **_COMMON,
+        "architecture": "vanilla_unet_large",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
     # smp FPN from scratch
-    {**_COMMON, "architecture": "smp_fpn", "encoder": "resnet34",
-     "encoder-weights": "none", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3},
+    {
+        **_COMMON,
+        "architecture": "smp_fpn",
+        "encoder": "resnet34",
+        "encoder-weights": "none",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
     # smp DeepLabV3+ from scratch
-    {**_COMMON, "architecture": "smp_deeplabv3plus", "encoder": "resnet34",
-     "encoder-weights": "none", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3},
+    {
+        **_COMMON,
+        "architecture": "smp_deeplabv3plus",
+        "encoder": "resnet34",
+        "encoder-weights": "none",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
     # Lightweight baseline
-    {**_COMMON, "architecture": "lightweight_cnn",
-     "freeze": "none", "encoder-lr": 1e-3, "decoder-lr": 1e-3},
+    {
+        **_COMMON,
+        "architecture": "lightweight_cnn",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+    },
 ]
 
 
@@ -213,15 +308,33 @@ GRIDS["arch_sweep"] = [
 # results.csv (eval_iou ~0.984, bottom_err ~0.6 m on 1728 files).
 GRIDS["attention_sweep"] = [
     # scSE U-Net: spatial+channel attention gates in the decoder.
-    {**_COMMON, "architecture": "smp_unet_scse", "encoder": "resnet34",
-     "encoder-weights": "imagenet", "freeze": "encoder"},
+    {
+        **_COMMON,
+        "architecture": "smp_unet_scse",
+        "encoder": "resnet34",
+        "encoder-weights": "imagenet",
+        "freeze": "encoder",
+    },
     # MAnet: multi-scale attention decoder.
-    {**_COMMON, "architecture": "smp_manet", "encoder": "resnet34",
-     "encoder-weights": "imagenet", "freeze": "encoder", "batch-size": 4},
+    {
+        **_COMMON,
+        "architecture": "smp_manet",
+        "encoder": "resnet34",
+        "encoder-weights": "imagenet",
+        "freeze": "encoder",
+        "batch-size": 4,
+    },
     # SegFormer: MiT-B1 transformer encoder + all-MLP decoder, fine-tuned.
-    {**_COMMON, "architecture": "smp_segformer", "encoder": "mit_b1",
-     "encoder-weights": "imagenet", "freeze": "none",
-     "encoder-lr": 6e-5, "decoder-lr": 6e-4, "batch-size": 4},
+    {
+        **_COMMON,
+        "architecture": "smp_segformer",
+        "encoder": "mit_b1",
+        "encoder-weights": "imagenet",
+        "freeze": "none",
+        "encoder-lr": 6e-5,
+        "decoder-lr": 6e-4,
+        "batch-size": 4,
+    },
 ]
 
 
@@ -234,13 +347,18 @@ GRIDS["attention_sweep"] = [
 #   vanilla_unet bf8  d3   ~121k
 #   lightweight_cnn        ~67k    (depthwise-separable)
 # Compare against the smp_unet baseline (eval_iou ~0.984, bottom_err ~0.6 m).
-_LW_COMMON = {**_COMMON, "loss-type": "dice_bce", "freeze": "none",
-              "encoder-lr": 1e-3, "decoder-lr": 1e-3}
+_LW_COMMON = {
+    **_COMMON,
+    "loss-type": "dice_bce",
+    "freeze": "none",
+    "encoder-lr": 1e-3,
+    "decoder-lr": 1e-3,
+}
 GRIDS["lightweight_sweep"] = [
     {**_LW_COMMON, "architecture": "vanilla_unet", "base-filters": 16, "model-depth": 4},
-    {**_LW_COMMON, "architecture": "vanilla_unet", "base-filters": 8,  "model-depth": 4},
+    {**_LW_COMMON, "architecture": "vanilla_unet", "base-filters": 8, "model-depth": 4},
     {**_LW_COMMON, "architecture": "vanilla_unet", "base-filters": 16, "model-depth": 3},
-    {**_LW_COMMON, "architecture": "vanilla_unet", "base-filters": 8,  "model-depth": 3},
+    {**_LW_COMMON, "architecture": "vanilla_unet", "base-filters": 8, "model-depth": 3},
     {**_LW_COMMON, "architecture": "lightweight_cnn"},
 ]
 
@@ -249,8 +367,13 @@ GRIDS["lightweight_sweep"] = [
 # Best known config is dice_bce + resnet34 + stages (eval_iou=0.9978); sweep
 # bce_weight to test FP/FN balance around the default of 0.5.
 GRIDS["bce_weight_sweep"] = [
-    {**_COMMON, "encoder": "resnet34", "loss-type": "dice_bce",
-     "freeze": "stages", "bce-weight": bw}
+    {
+        **_COMMON,
+        "encoder": "resnet34",
+        "loss-type": "dice_bce",
+        "freeze": "stages",
+        "bce-weight": bw,
+    }
     for bw in [0.3, 0.5, 0.7]
 ]
 
@@ -264,29 +387,55 @@ GRIDS["bce_weight_sweep"] = [
 # unfreeze. Scheduler stays plateau. Sources:
 #   1 attention_sweep[1], 2 arch_sweep[2], 3 arch_sweep[4],
 #   4-6 bce_weight_sweep[1..3].
-_POOL_RERUN = {"split": "pool", "val-fraction": 0.2,
-               "early-stopping-patience": 20}
+_POOL_RERUN = {"split": "pool", "val-fraction": 0.2, "early-stopping-patience": 20}
 _POOL_UNFREEZE = {"unfreeze-after": 20, "encoder-lr": 1e-5}
 GRIDS["pool_rerun"] = [
     # scSE attention U-Net (imagenet, frozen encoder → unfreeze at 20).
-    {**_COMMON, **_POOL_RERUN, **_POOL_UNFREEZE,
-     "architecture": "smp_unet_scse", "encoder": "resnet34",
-     "encoder-weights": "imagenet", "freeze": "encoder",
-     "loss-type": "dice_bce"},
+    {
+        **_COMMON,
+        **_POOL_RERUN,
+        **_POOL_UNFREEZE,
+        "architecture": "smp_unet_scse",
+        "encoder": "resnet34",
+        "encoder-weights": "imagenet",
+        "freeze": "encoder",
+        "loss-type": "dice_bce",
+    },
     # smp U-Net from scratch.
-    {**_COMMON, **_POOL_RERUN,
-     "architecture": "smp_unet", "encoder": "resnet34",
-     "encoder-weights": "none", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3, "loss-type": "dice_bce"},
+    {
+        **_COMMON,
+        **_POOL_RERUN,
+        "architecture": "smp_unet",
+        "encoder": "resnet34",
+        "encoder-weights": "none",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+        "loss-type": "dice_bce",
+    },
     # vanilla U-Net (small) from scratch.
-    {**_COMMON, **_POOL_RERUN,
-     "architecture": "vanilla_unet_small", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3, "loss-type": "dice_bce"},
+    {
+        **_COMMON,
+        **_POOL_RERUN,
+        "architecture": "vanilla_unet_small",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+        "loss-type": "dice_bce",
+    },
     # bce_weight at freeze=stages → unfreeze at 20, for bw in 0.3/0.5/0.7.
-    *[{**_COMMON, **_POOL_RERUN, **_POOL_UNFREEZE,
-       "encoder": "resnet34", "loss-type": "dice_bce",
-       "freeze": "stages", "bce-weight": bw}
-      for bw in (0.3, 0.5, 0.7)],
+    *[
+        {
+            **_COMMON,
+            **_POOL_RERUN,
+            **_POOL_UNFREEZE,
+            "encoder": "resnet34",
+            "loss-type": "dice_bce",
+            "freeze": "stages",
+            "bce-weight": bw,
+        }
+        for bw in (0.3, 0.5, 0.7)
+    ],
 ]
 
 
@@ -300,29 +449,57 @@ GRIDS["pool_rerun"] = [
 _FINAL_POOL = {"split": "pool", "val-fraction": 0.1}
 GRIDS["final_pool"] = [
     # 1. smp U-Net from scratch (arch_sweep[2]).
-    {**_COMMON, **_FINAL_POOL, "architecture": "smp_unet", "encoder": "resnet34",
-     "encoder-weights": "none", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3, "loss-type": "dice_bce"},
+    {
+        **_COMMON,
+        **_FINAL_POOL,
+        "architecture": "smp_unet",
+        "encoder": "resnet34",
+        "encoder-weights": "none",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+        "loss-type": "dice_bce",
+    },
     # 2-4. smp U-Net, dice_bce + freeze=stages, bce_weight 0.3/0.5/0.7
     # (bce_weight_sweep[1..3]).
-    *[{**_COMMON, **_FINAL_POOL, "encoder": "resnet34", "loss-type": "dice_bce",
-       "freeze": "stages", "bce-weight": bw} for bw in (0.3, 0.5, 0.7)],
+    *[
+        {
+            **_COMMON,
+            **_FINAL_POOL,
+            "encoder": "resnet34",
+            "loss-type": "dice_bce",
+            "freeze": "stages",
+            "bce-weight": bw,
+        }
+        for bw in (0.3, 0.5, 0.7)
+    ],
     # 5. scSE attention U-Net, imagenet encoder, frozen (attention_sweep[1]).
-    {**_COMMON, **_FINAL_POOL, "architecture": "smp_unet_scse", "encoder": "resnet34",
-     "encoder-weights": "imagenet", "freeze": "encoder", "loss-type": "dice_bce"},
+    {
+        **_COMMON,
+        **_FINAL_POOL,
+        "architecture": "smp_unet_scse",
+        "encoder": "resnet34",
+        "encoder-weights": "imagenet",
+        "freeze": "encoder",
+        "loss-type": "dice_bce",
+    },
     # 6. vanilla U-Net small from scratch (arch_sweep[4]).
-    {**_COMMON, **_FINAL_POOL, "architecture": "vanilla_unet_small", "freeze": "none",
-     "encoder-lr": 1e-3, "decoder-lr": 1e-3, "loss-type": "dice_bce"},
+    {
+        **_COMMON,
+        **_FINAL_POOL,
+        "architecture": "vanilla_unet_small",
+        "freeze": "none",
+        "encoder-lr": 1e-3,
+        "decoder-lr": 1e-3,
+        "loss-type": "dice_bce",
+    },
 ]
 
 
 # Quick sanity check: arch_sweep with 1 epoch (pipeline validation)
 _TEST_COMMON = {**_COMMON, "epochs": 1}
 del _TEST_COMMON["early-stopping-patience"]
-GRIDS["test_arch"] = [
-    {**cfg, "epochs": 1}
-    for cfg in GRIDS["arch_sweep"]
-]
+GRIDS["test_arch"] = [{**cfg, "epochs": 1} for cfg in GRIDS["arch_sweep"]]
 for c in GRIDS["test_arch"]:
     c.pop("early-stopping-patience", None)
 
@@ -354,8 +531,12 @@ _ABL_COMMON = {
 _BASIC_ON = {"p-hflip": 0.5, "p-gauss-noise": 0.3, "p-brightness": 0.3}
 _BASIC_OFF = {"p-hflip": 0.0, "p-gauss-noise": 0.0, "p-brightness": 0.0}
 # Advanced augmentations all off by default; each config turns on one.
-_ADV_OFF = {"p-channel-dropout": 0.0, "p-ping-dropout-zero": 0.0,
-            "p-ping-dropout-shuffle": 0.0, "p-ping-dropout-noise": 0.0}
+_ADV_OFF = {
+    "p-channel-dropout": 0.0,
+    "p-ping-dropout-zero": 0.0,
+    "p-ping-dropout-shuffle": 0.0,
+    "p-ping-dropout-noise": 0.0,
+}
 
 GRIDS["aug_ablation"] = [
     # 1. baseline: basic augs only, no advanced
@@ -369,9 +550,14 @@ GRIDS["aug_ablation"] = [
     # 5. + ping dropout (noise)
     {**_ABL_COMMON, **_BASIC_ON, **_ADV_OFF, "p-ping-dropout-noise": 0.05},
     # 6. all augmentations (basic + every advanced)
-    {**_ABL_COMMON, **_BASIC_ON, "p-channel-dropout": 0.072,
-     "p-ping-dropout-zero": 0.10, "p-ping-dropout-shuffle": 0.05,
-     "p-ping-dropout-noise": 0.05},
+    {
+        **_ABL_COMMON,
+        **_BASIC_ON,
+        "p-channel-dropout": 0.072,
+        "p-ping-dropout-zero": 0.10,
+        "p-ping-dropout-shuffle": 0.05,
+        "p-ping-dropout-noise": 0.05,
+    },
     # 7. no augmentation at all (basic off, advanced off)
     {**_ABL_COMMON, **_BASIC_OFF, **_ADV_OFF},
 ]
@@ -379,15 +565,13 @@ GRIDS["aug_ablation"] = [
 
 # ── CLI ──────────────────────────────────────────────────────────────────
 
+
 def main():
     p = argparse.ArgumentParser(description="Experiment grid helper")
-    p.add_argument("--grid", required=True, choices=list(GRIDS.keys()),
-                   help="Grid name")
+    p.add_argument("--grid", required=True, choices=list(GRIDS.keys()), help="Grid name")
     p.add_argument("--list", action="store_true", help="Print all configs")
-    p.add_argument("--index", type=int, default=None,
-                   help="Print config at 1-based index as JSON")
-    p.add_argument("--count", action="store_true",
-                   help="Print number of configs")
+    p.add_argument("--index", type=int, default=None, help="Print config at 1-based index as JSON")
+    p.add_argument("--count", action="store_true", help="Print number of configs")
     args = p.parse_args()
 
     grid = GRIDS[args.grid]
@@ -399,8 +583,7 @@ def main():
             print(f"[{i}/{len(grid)}] {cfg}")
     elif args.index is not None:
         if args.index < 1 or args.index > len(grid):
-            print(f"ERROR: index {args.index} out of range [1, {len(grid)}]",
-                  file=sys.stderr)
+            print(f"ERROR: index {args.index} out of range [1, {len(grid)}]", file=sys.stderr)
             sys.exit(1)
         print(json.dumps(grid[args.index - 1]))
     else:

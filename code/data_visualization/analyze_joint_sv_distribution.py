@@ -18,22 +18,27 @@ from pathlib import Path
 import sys
 
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
 import xarray as xr
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT / 'code'))
+sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from data_visualization.thesis_style import (
-    apply_thesis_style, FIGSIZE_STD, FIGSIZE_HALF, FIGSIZE_FULL,
-    style_colorbar, savefig,
+    apply_thesis_style,
+    FIGSIZE_STD,
+    FIGSIZE_HALF,
+    FIGSIZE_FULL,
+    style_colorbar,
+    savefig,
 )
 
-DATASET_DIR = PROJECT_ROOT / 'Datasets' / 'echopype_dataset'
-OUTPUT_DIR = PROJECT_ROOT / 'Figures' / 'joint_sv_distribution'
+DATASET_DIR = PROJECT_ROOT / "Datasets" / "echopype_dataset"
+OUTPUT_DIR = PROJECT_ROOT / "Figures" / "joint_sv_distribution"
 
 # Bottom-band half-width in range samples (~0.095 m per sample → ~0.5 m band).
 BOTTOM_BAND_HALF = 5
@@ -46,8 +51,8 @@ SV_MIN, SV_MAX = -90.0, -20.0
 N_BINS = 140
 
 CLASS_COLORS = {
-    'bottom': '#B5562A',
-    'water': '#3A6FB0',
+    "bottom": "#B5562A",
+    "water": "#3A6FB0",
 }
 
 
@@ -64,10 +69,10 @@ def collect_pixels(
     """
     rng = np.random.default_rng(seed)
     parts = {
-        'bottom': {'s38': [], 's200': []},
-        'water': {'s38': [], 's200': []},
+        "bottom": {"s38": [], "s200": []},
+        "water": {"s38": [], "s200": []},
     }
-    line_parts = {'s38': [], 's200': [], 'depth': []}
+    line_parts = {"s38": [], "s200": [], "depth": []}
 
     for i, zp in enumerate(zarr_paths):
         ds = xr.open_zarr(zp, consolidated=False)
@@ -97,15 +102,15 @@ def collect_pixels(
         bottom_mask_px = (np.abs(dist_to_bottom) <= BOTTOM_BAND_HALF) & valid_ping & finite
         water_mask_px = (dist_to_bottom <= -WATER_MARGIN) & valid_ping & finite
 
-        for name, m in [('bottom', bottom_mask_px), ('water', water_mask_px)]:
+        for name, m in [("bottom", bottom_mask_px), ("water", water_mask_px)]:
             ys, xs = np.where(m)
             if len(ys) == 0:
                 continue
             if len(ys) > n_per_class_per_file:
                 sel = rng.choice(len(ys), size=n_per_class_per_file, replace=False)
                 ys, xs = ys[sel], xs[sel]
-            parts[name]['s38'].append(sv38[ys, xs])
-            parts[name]['s200'].append(sv200[ys, xs])
+            parts[name]["s38"].append(sv38[ys, xs])
+            parts[name]["s200"].append(sv200[ys, xs])
 
         # Exactly the labelled bottom sample, one per valid ping.
         cols = np.where(valid_ping)[0]
@@ -113,28 +118,28 @@ def collect_pixels(
         line38 = sv38[rows, cols]
         line200 = sv200[rows, cols]
         line_finite = np.isfinite(line38) & np.isfinite(line200)
-        line_parts['s38'].append(line38[line_finite])
-        line_parts['s200'].append(line200[line_finite])
-        line_parts['depth'].append(range_m[rows][line_finite])
+        line_parts["s38"].append(line38[line_finite])
+        line_parts["s200"].append(line200[line_finite])
+        line_parts["depth"].append(range_m[rows][line_finite])
 
-        nb = sum(len(a) for a in parts['bottom']['s38'])
-        nw = sum(len(a) for a in parts['water']['s38'])
-        print(
-            f'  [{i + 1}/{len(zarr_paths)}] {zp.name}: '
-            f'bottom={nb:,}  water={nw:,}'
-        )
+        nb = sum(len(a) for a in parts["bottom"]["s38"])
+        nw = sum(len(a) for a in parts["water"]["s38"])
+        print(f"  [{i + 1}/{len(zarr_paths)}] {zp.name}: bottom={nb:,}  water={nw:,}")
 
     out = {}
-    for name in ('bottom', 'water'):
-        s38 = np.concatenate(parts[name]['s38']) if parts[name]['s38'] else np.array([])
-        s200 = np.concatenate(parts[name]['s200']) if parts[name]['s200'] else np.array([])
+    for name in ("bottom", "water"):
+        s38 = np.concatenate(parts[name]["s38"]) if parts[name]["s38"] else np.array([])
+        s200 = np.concatenate(parts[name]["s200"]) if parts[name]["s200"] else np.array([])
         out[name] = np.stack([s38, s200], axis=1)
 
-    bottom_line = np.stack([
-        np.concatenate(line_parts['s38']),
-        np.concatenate(line_parts['s200']),
-        np.concatenate(line_parts['depth']),
-    ], axis=1)
+    bottom_line = np.stack(
+        [
+            np.concatenate(line_parts["s38"]),
+            np.concatenate(line_parts["s200"]),
+            np.concatenate(line_parts["depth"]),
+        ],
+        axis=1,
+    )
     return out, bottom_line
 
 
@@ -144,35 +149,43 @@ def plot_joint_panels(pixels: dict[str, np.ndarray]) -> None:
     bins = np.linspace(SV_MIN, SV_MAX, N_BINS + 1)
 
     for ax, name, title in [
-        (axes[0], 'water', 'Water column'),
-        (axes[1], 'bottom', 'Bottom return'),
+        (axes[0], "water", "Water column"),
+        (axes[1], "bottom", "Bottom return"),
     ]:
         pts = pixels[name]
         h, xe, ye = np.histogram2d(pts[:, 0], pts[:, 1], bins=bins)
         # Show density on log scale so both ridges and tails are visible.
         im = ax.imshow(
-            h.T, origin='lower',
+            h.T,
+            origin="lower",
             extent=[xe[0], xe[-1], ye[0], ye[-1]],
-            aspect='equal', cmap='magma',
+            aspect="equal",
+            cmap="magma",
             norm=LogNorm(vmin=max(1, h.max() / 1e4), vmax=h.max()),
         )
-        ax.plot([SV_MIN, SV_MAX], [SV_MIN, SV_MAX],
-                color='white', linewidth=1.2, linestyle='--', alpha=0.7)
+        ax.plot(
+            [SV_MIN, SV_MAX],
+            [SV_MIN, SV_MAX],
+            color="white",
+            linewidth=1.2,
+            linestyle="--",
+            alpha=0.7,
+        )
         ax.set_xlim(SV_MIN, SV_MAX)
         ax.set_ylim(SV_MIN, SV_MAX)
-        ax.set_xlabel('Sv at 38 kHz (dB re 1 m$^{-1}$)')
-        ax.set_title(f'{title}: n = {len(pts):,}')
+        ax.set_xlabel("Sv at 38 kHz (dB re 1 m$^{-1}$)")
+        ax.set_title(f"{title}: n = {len(pts):,}")
         cbar = fig.colorbar(im, ax=ax, shrink=0.85)
-        style_colorbar(cbar, label='Pixel count')
+        style_colorbar(cbar, label="Pixel count")
 
-    axes[0].set_ylabel('Sv at 200 kHz (dB re 1 m$^{-1}$)')
+    axes[0].set_ylabel("Sv at 200 kHz (dB re 1 m$^{-1}$)")
 
-    fig.suptitle('Joint Sv distribution at 38 vs 200 kHz')
+    fig.suptitle("Joint Sv distribution at 38 vs 200 kHz")
     fig.tight_layout()
-    savefig(fig, OUTPUT_DIR / 'joint_sv_2panel.png')
-    savefig(fig, OUTPUT_DIR / 'joint_sv_2panel.pdf')
+    savefig(fig, OUTPUT_DIR / "joint_sv_2panel.png")
+    savefig(fig, OUTPUT_DIR / "joint_sv_2panel.pdf")
     plt.close(fig)
-    print('Saved joint_sv_2panel.png and joint_sv_2panel.pdf')
+    print("Saved joint_sv_2panel.png and joint_sv_2panel.pdf")
 
 
 def plot_joint_overlay(pixels: dict[str, np.ndarray]) -> None:
@@ -181,7 +194,7 @@ def plot_joint_overlay(pixels: dict[str, np.ndarray]) -> None:
     bins = np.linspace(SV_MIN, SV_MAX, N_BINS + 1)
     centers = 0.5 * (bins[:-1] + bins[1:])
 
-    for name in ('water', 'bottom'):
+    for name in ("water", "bottom"):
         pts = pixels[name]
         h, _, _ = np.histogram2d(pts[:, 0], pts[:, 1], bins=bins)
         h = h.T  # rows = y (Sv_200), cols = x (Sv_38)
@@ -189,32 +202,48 @@ def plot_joint_overlay(pixels: dict[str, np.ndarray]) -> None:
         h = h / h.max()
         levels = np.array([0.02, 0.1, 0.4])
         ax.contour(
-            centers, centers, h, levels=levels,
-            colors=CLASS_COLORS[name], linewidths=[1.0, 1.5, 2.2],
+            centers,
+            centers,
+            h,
+            levels=levels,
+            colors=CLASS_COLORS[name],
+            linewidths=[1.0, 1.5, 2.2],
         )
         # Mean marker.
-        ax.plot(pts[:, 0].mean(), pts[:, 1].mean(),
-                marker='o', color=CLASS_COLORS[name],
-                markeredgecolor='black', markersize=10, zorder=5,
-                label=f'{name.capitalize()} (n = {len(pts):,})')
+        ax.plot(
+            pts[:, 0].mean(),
+            pts[:, 1].mean(),
+            marker="o",
+            color=CLASS_COLORS[name],
+            markeredgecolor="black",
+            markersize=10,
+            zorder=5,
+            label=f"{name.capitalize()} (n = {len(pts):,})",
+        )
 
-    ax.plot([SV_MIN, SV_MAX], [SV_MIN, SV_MAX],
-            color='black', linewidth=1.0, linestyle='--', alpha=0.6,
-            label='Sv$_{38}$ = Sv$_{200}$')
+    ax.plot(
+        [SV_MIN, SV_MAX],
+        [SV_MIN, SV_MAX],
+        color="black",
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.6,
+        label="Sv$_{38}$ = Sv$_{200}$",
+    )
     ax.set_xlim(SV_MIN, SV_MAX)
     ax.set_ylim(SV_MIN, SV_MAX)
-    ax.set_xlabel('Sv at 38 kHz (dB re 1 m$^{-1}$)')
-    ax.set_ylabel('Sv at 200 kHz (dB re 1 m$^{-1}$)')
-    ax.set_title('Bottom vs water column in joint Sv space')
-    ax.legend(loc='lower right', frameon=True)
+    ax.set_xlabel("Sv at 38 kHz (dB re 1 m$^{-1}$)")
+    ax.set_ylabel("Sv at 200 kHz (dB re 1 m$^{-1}$)")
+    ax.set_title("Bottom vs water column in joint Sv space")
+    ax.legend(loc="lower right", frameon=True)
     ax.grid(alpha=0.3)
     ax.set_axisbelow(True)
     fig.tight_layout()
 
-    savefig(fig, OUTPUT_DIR / 'joint_sv_overlay.png')
-    savefig(fig, OUTPUT_DIR / 'joint_sv_overlay.pdf')
+    savefig(fig, OUTPUT_DIR / "joint_sv_overlay.png")
+    savefig(fig, OUTPUT_DIR / "joint_sv_overlay.pdf")
     plt.close(fig)
-    print('Saved joint_sv_overlay.png and joint_sv_overlay.pdf')
+    print("Saved joint_sv_overlay.png and joint_sv_overlay.pdf")
 
 
 def plot_difference_marginal(pixels: dict[str, np.ndarray]) -> None:
@@ -222,29 +251,33 @@ def plot_difference_marginal(pixels: dict[str, np.ndarray]) -> None:
     fig, ax = plt.subplots(figsize=FIGSIZE_STD)
     diff_bins = np.linspace(-30, 30, 121)
 
-    for name in ('water', 'bottom'):
+    for name in ("water", "bottom"):
         pts = pixels[name]
         diff = pts[:, 0] - pts[:, 1]
         ax.hist(
-            diff, bins=diff_bins, density=True,
-            color=CLASS_COLORS[name], alpha=0.55,
-            label=f'{name.capitalize()} (median {np.median(diff):+.1f} dB)',
-            edgecolor='black', linewidth=0.3,
+            diff,
+            bins=diff_bins,
+            density=True,
+            color=CLASS_COLORS[name],
+            alpha=0.55,
+            label=f"{name.capitalize()} (median {np.median(diff):+.1f} dB)",
+            edgecolor="black",
+            linewidth=0.3,
         )
 
-    ax.axvline(0, color='black', linewidth=1.0, linestyle='--', alpha=0.6)
-    ax.set_xlabel('Sv$_{38}$ - Sv$_{200}$ (dB)')
-    ax.set_ylabel('Density')
-    ax.set_title('Frequency difference: bottom and water overlap')
-    ax.legend(loc='upper right', frameon=True)
+    ax.axvline(0, color="black", linewidth=1.0, linestyle="--", alpha=0.6)
+    ax.set_xlabel("Sv$_{38}$ - Sv$_{200}$ (dB)")
+    ax.set_ylabel("Density")
+    ax.set_title("Frequency difference: bottom and water overlap")
+    ax.legend(loc="upper right", frameon=True)
     ax.grid(alpha=0.3)
     ax.set_axisbelow(True)
     fig.tight_layout()
 
-    savefig(fig, OUTPUT_DIR / 'sv_difference_marginal.png')
-    savefig(fig, OUTPUT_DIR / 'sv_difference_marginal.pdf')
+    savefig(fig, OUTPUT_DIR / "sv_difference_marginal.png")
+    savefig(fig, OUTPUT_DIR / "sv_difference_marginal.pdf")
     plt.close(fig)
-    print('Saved sv_difference_marginal.png and sv_difference_marginal.pdf')
+    print("Saved sv_difference_marginal.png and sv_difference_marginal.pdf")
 
 
 def plot_bottom_line_scatter(bottom_line: np.ndarray) -> None:
@@ -257,85 +290,107 @@ def plot_bottom_line_scatter(bottom_line: np.ndarray) -> None:
 
     fig, ax = plt.subplots(figsize=FIGSIZE_HALF)
     sc = ax.scatter(
-        s38, s200, c=depth, cmap='viridis',
-        s=6, alpha=0.4, edgecolors='none',
+        s38,
+        s200,
+        c=depth,
+        cmap="viridis",
+        s=6,
+        alpha=0.4,
+        edgecolors="none",
     )
-    ax.plot([SV_MIN, SV_MAX], [SV_MIN, SV_MAX],
-            color='black', linewidth=1.0, linestyle='--', alpha=0.6,
-            label='Sv$_{38}$ = Sv$_{200}$')
+    ax.plot(
+        [SV_MIN, SV_MAX],
+        [SV_MIN, SV_MAX],
+        color="black",
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.6,
+        label="Sv$_{38}$ = Sv$_{200}$",
+    )
 
     med_diff = float(np.median(s38 - s200))
-    ax.plot(s38.mean(), s200.mean(), marker='o', color='red',
-            markeredgecolor='black', markersize=11, zorder=5,
-            label=f'Mean ({s38.mean():.0f}, {s200.mean():.0f}) dB')
+    ax.plot(
+        s38.mean(),
+        s200.mean(),
+        marker="o",
+        color="red",
+        markeredgecolor="black",
+        markersize=11,
+        zorder=5,
+        label=f"Mean ({s38.mean():.0f}, {s200.mean():.0f}) dB",
+    )
 
     ax.set_xlim(SV_MIN, SV_MAX)
     ax.set_ylim(SV_MIN, SV_MAX)
-    ax.set_xlabel('Sv at 38 kHz (dB re 1 m$^{-1}$)')
-    ax.set_ylabel('Sv at 200 kHz (dB re 1 m$^{-1}$)')
-    ax.set_title(f'Bottom line in joint Sv space: n = {len(s38):,} pings')
+    ax.set_xlabel("Sv at 38 kHz (dB re 1 m$^{-1}$)")
+    ax.set_ylabel("Sv at 200 kHz (dB re 1 m$^{-1}$)")
+    ax.set_title(f"Bottom line in joint Sv space: n = {len(s38):,} pings")
     cbar = fig.colorbar(sc, ax=ax, shrink=0.85)
-    style_colorbar(cbar, label='Bottom depth (m)')
+    style_colorbar(cbar, label="Bottom depth (m)")
     cbar.solids.set_alpha(1.0)
-    ax.legend(loc='upper left', frameon=True)
+    ax.legend(loc="upper left", frameon=True)
     ax.grid(alpha=0.3)
     ax.set_axisbelow(True)
-    fig.text(0.01, 0.01,
-             f'median Sv$_{{38}}$ - Sv$_{{200}}$ = {med_diff:+.1f} dB',
-             fontsize=12, color='#444444')
+    fig.text(
+        0.01,
+        0.01,
+        f"median Sv$_{{38}}$ - Sv$_{{200}}$ = {med_diff:+.1f} dB",
+        fontsize=12,
+        color="#444444",
+    )
     fig.tight_layout()
 
-    savefig(fig, OUTPUT_DIR / 'bottom_line_scatter.png')
-    savefig(fig, OUTPUT_DIR / 'bottom_line_scatter.pdf')
+    savefig(fig, OUTPUT_DIR / "bottom_line_scatter.png")
+    savefig(fig, OUTPUT_DIR / "bottom_line_scatter.pdf")
     plt.close(fig)
-    print('Saved bottom_line_scatter.png and bottom_line_scatter.pdf')
+    print("Saved bottom_line_scatter.png and bottom_line_scatter.pdf")
 
 
 def write_readme(pixels: dict[str, np.ndarray], n_files: int) -> None:
-    n_b = len(pixels['bottom'])
-    n_w = len(pixels['water'])
-    med_b = float(np.median(pixels['bottom'][:, 0] - pixels['bottom'][:, 1]))
-    med_w = float(np.median(pixels['water'][:, 0] - pixels['water'][:, 1]))
-    readme = OUTPUT_DIR / '_README.md'
+    n_b = len(pixels["bottom"])
+    n_w = len(pixels["water"])
+    med_b = float(np.median(pixels["bottom"][:, 0] - pixels["bottom"][:, 1]))
+    med_w = float(np.median(pixels["water"][:, 0] - pixels["water"][:, 1]))
+    readme = OUTPUT_DIR / "_README.md"
     readme.write_text(
-        '# Joint Sv distribution at 38 vs 200 kHz\n\n'
-        'joint-distribution frequency-difference channel-motivation bottom-vs-water EDA\n\n'
-        f'Two-panel 2D histogram of (Sv_38, Sv_200) for bottom-band and water-column '
-        f'pixels from {n_files} Jan 2024 dataset zarrs, overlay contour plot, the '
-        f'1D marginal of Sv_38 - Sv_200 by class (median {med_b:+.1f} dB bottom, '
-        f'{med_w:+.1f} dB water; n_bottom = {n_b:,}, n_water = {n_w:,}), and a '
-        'scatter of the exact labelled bottom line (one point per ping, coloured '
-        'by depth). Motivates the frequency-difference channel in the U-Net input.\n\n'
-        'Source: code/data_visualization/analyze_joint_sv_distribution.py\n\n'
-        f'Created: {datetime.now():%Y-%m-%d %H:%M}\n'
+        "# Joint Sv distribution at 38 vs 200 kHz\n\n"
+        "joint-distribution frequency-difference channel-motivation bottom-vs-water EDA\n\n"
+        f"Two-panel 2D histogram of (Sv_38, Sv_200) for bottom-band and water-column "
+        f"pixels from {n_files} Jan 2024 dataset zarrs, overlay contour plot, the "
+        f"1D marginal of Sv_38 - Sv_200 by class (median {med_b:+.1f} dB bottom, "
+        f"{med_w:+.1f} dB water; n_bottom = {n_b:,}, n_water = {n_w:,}), and a "
+        "scatter of the exact labelled bottom line (one point per ping, coloured "
+        "by depth). Motivates the frequency-difference channel in the U-Net input.\n\n"
+        "Source: code/data_visualization/analyze_joint_sv_distribution.py\n\n"
+        f"Created: {datetime.now():%Y-%m-%d %H:%M}\n"
     )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dataset-dir', type=Path, default=DATASET_DIR,
-                        help='Folder of dataset-format zarrs')
-    parser.add_argument('--max-files', type=int, default=None,
-                        help='Limit number of files (default: all)')
-    parser.add_argument('--n-per-class-per-file', type=int, default=200_000)
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument(
+        "--dataset-dir", type=Path, default=DATASET_DIR, help="Folder of dataset-format zarrs"
+    )
+    parser.add_argument(
+        "--max-files", type=int, default=None, help="Limit number of files (default: all)"
+    )
+    parser.add_argument("--n-per-class-per-file", type=int, default=200_000)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    zarr_paths = sorted(args.dataset_dir.glob('*.zarr'))
+    zarr_paths = sorted(args.dataset_dir.glob("*.zarr"))
     if args.max_files is not None:
         zarr_paths = zarr_paths[: args.max_files]
     if not zarr_paths:
-        raise SystemExit(f'No zarr files in {args.dataset_dir}')
+        raise SystemExit(f"No zarr files in {args.dataset_dir}")
 
     apply_thesis_style()
-    print(f'Loading {len(zarr_paths)} dataset zarrs from {args.dataset_dir}')
-    pixels, bottom_line = collect_pixels(
-        zarr_paths, args.n_per_class_per_file, args.seed
-    )
+    print(f"Loading {len(zarr_paths)} dataset zarrs from {args.dataset_dir}")
+    pixels, bottom_line = collect_pixels(zarr_paths, args.n_per_class_per_file, args.seed)
     print(
-        f'\nTotal pixels: bottom = {len(pixels["bottom"]):,}, '
-        f'water = {len(pixels["water"]):,}, '
-        f'bottom-line pings = {len(bottom_line):,}'
+        f"\nTotal pixels: bottom = {len(pixels['bottom']):,}, "
+        f"water = {len(pixels['water']):,}, "
+        f"bottom-line pings = {len(bottom_line):,}"
     )
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -346,5 +401,5 @@ def main():
     write_readme(pixels, len(zarr_paths))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

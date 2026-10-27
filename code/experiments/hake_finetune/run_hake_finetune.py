@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Isolated Hake fine-tuning experiment for chunk_arch_sweep_2."""
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "code"))
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import torch
@@ -58,9 +60,7 @@ from validation.conformal import (
     extract_bottom_depths,
 )
 
-BASE_CKPT = (
-    ROOT / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
-)
+BASE_CKPT = ROOT / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
 CKPT_DIR = ROOT / "code/checkpoints/hake_finetune_chunk_arch_sweep_2_seed0"
 FIG_DIR = ROOT / "Figures/hake_finetune_chunk_arch_sweep_2"
 CACHE_DIR = ROOT / "code/experiments/hake_finetune/cache"
@@ -73,23 +73,19 @@ def auto_device(value: str) -> str:
 
 
 def valid_hake_stems(limit: int = 0) -> list[str]:
-    raw = [
-        p.stem for p in sorted(RAW_DIR.glob("*.raw"))
-        if not p.name.startswith("._")
-    ]
+    raw = [p.stem for p in sorted(RAW_DIR.glob("*.raw")) if not p.name.startswith("._")]
     stems = [s for s in raw if (ZARR_DIR / f"{s}.zarr").is_dir()]
     skipped = sorted(set(raw) - set(stems))
     if skipped:
         print(
-            f"Skipping {len(skipped)} Hake raw files without valid zarr: "
-            f"{', '.join(skipped)}",
+            f"Skipping {len(skipped)} Hake raw files without valid zarr: {', '.join(skipped)}",
             flush=True,
         )
     return stems[:limit] if limit else stems
 
 
 def groups(stems: list[str], size: int, keep_tail: bool = False) -> list[list[str]]:
-    out = [stems[i:i + size] for i in range(0, len(stems), size)]
+    out = [stems[i : i + size] for i in range(0, len(stems), size)]
     return out if keep_tail else [g for g in out if len(g) == size]
 
 
@@ -102,17 +98,14 @@ def make_split(stems: list[str], size: int, seed: int) -> dict[str, list[str]]:
     n_val = max(1, round(0.15 * len(stems) / size))
     split_groups = {
         "calibration": shuffled[:n_cal],
-        "test": shuffled[n_cal:n_cal + n_test],
-        "val": shuffled[n_cal + n_test:n_cal + n_test + n_val],
-        "train": shuffled[n_cal + n_test + n_val:],
+        "test": shuffled[n_cal : n_cal + n_test],
+        "val": shuffled[n_cal + n_test : n_cal + n_test + n_val],
+        "train": shuffled[n_cal + n_test + n_val :],
     }
     tail = stems[used:]
     if tail:
         split_groups["train"].append(tail)
-    return {
-        name: [stem for group in split_groups[name] for stem in group]
-        for name in split_groups
-    }
+    return {name: [stem for group in split_groups[name] for stem in group] for name in split_groups}
 
 
 def write_manifest(args, split: dict[str, list[str]]) -> None:
@@ -127,14 +120,14 @@ def write_manifest(args, split: dict[str, list[str]]) -> None:
         "counts": {k: len(v) for k, v in split.items()},
         "splits": split,
     }
-    (args.checkpoint_dir / "hake_split_manifest.json").write_text(
-        json.dumps(data, indent=2)
-    )
+    (args.checkpoint_dir / "hake_split_manifest.json").write_text(json.dumps(data, indent=2))
 
 
 def patch_path(args, split_name: str, group: list[str]) -> Path:
     return (
-        args.cache_dir / "patches" / split_name
+        args.cache_dir
+        / "patches"
+        / split_name
         / f"{group[0]}_n{len(group)}_pw{args.patch_width}_s{args.stride}.npz"
     )
 
@@ -158,9 +151,7 @@ def cache_group(args, split_name: str, group: list[str]) -> tuple[Path, int]:
         windows = [(start, start + args.patch_width) for start in starts]
     patches, masks = [], []
     for start, end in windows:
-        p, m = _resize_patch(
-            image[:, :, start:end], mask[:, start:end], tuple(args.target_size)
-        )
+        p, m = _resize_patch(image[:, :, start:end], mask[:, start:end], tuple(args.target_size))
         patches.append(p)
         masks.append(m)
     np.savez_compressed(
@@ -171,9 +162,7 @@ def cache_group(args, split_name: str, group: list[str]) -> tuple[Path, int]:
     return path, len(patches)
 
 
-def build_dataset(
-    args, stems: list[str], split_name: str, augment: bool
-) -> LazyPatchDataset:
+def build_dataset(args, stems: list[str], split_name: str, augment: bool) -> LazyPatchDataset:
     grouped = groups(stems, args.group_size, keep_tail=True)
     if args.smoke:
         grouped = grouped[:1]
@@ -196,9 +185,7 @@ def build_dataset(
             p_ping_dropout_shuffle=0.02,
             p_ping_dropout_noise=0.02,
         )
-    dataset = LazyPatchDataset(
-        index, target_size=tuple(args.target_size), transform=transform
-    )
+    dataset = LazyPatchDataset(index, target_size=tuple(args.target_size), transform=transform)
     print(
         f"  {split_name}: {len(dataset)} patches from {len(grouped)} groups",
         flush=True,
@@ -207,9 +194,7 @@ def build_dataset(
 
 
 def model_from_checkpoint(checkpoint: Path, device: str):
-    model = create_unet(
-        encoder_name="resnet34", encoder_weights=None, in_channels=3
-    )
+    model = create_unet(encoder_name="resnet34", encoder_weights=None, in_channels=3)
     state = torch.load(checkpoint, map_location=device, weights_only=False)
     weights = state.get("model_state_dict", state)
     weights = {k.removeprefix("model."): v for k, v in weights.items()}
@@ -226,9 +211,7 @@ def make_training_model(args, device: str):
         model = model_from_checkpoint(args.base_checkpoint, device)
         print(f"Initialised from checkpoint: {args.base_checkpoint}", flush=True)
         return model
-    model = create_unet(
-        encoder_name="resnet34", encoder_weights=None, in_channels=3
-    )
+    model = create_unet(encoder_name="resnet34", encoder_weights=None, in_channels=3)
     print("Initialised from scratch: ResNet-34 U-Net, no pretrained weights", flush=True)
     return model.to(device)
 
@@ -243,8 +226,7 @@ def atomic_model_save(model, path: Path, epoch: int, metrics: dict, args):
             "val_bottom_mae": float(metrics["bottom_mae"]),
             "init_mode": args.init_mode,
             "base_checkpoint": (
-                str(args.base_checkpoint.resolve())
-                if args.init_mode == "checkpoint" else None
+                str(args.base_checkpoint.resolve()) if args.init_mode == "checkpoint" else None
             ),
         },
         tmp,
@@ -259,12 +241,18 @@ def train(args, split: dict[str, list[str]]) -> Path:
     train_ds = build_dataset(args, split["train"], "train", True)
     val_ds = build_dataset(args, split["val"], "val", False)
     train_loader = DataLoader(
-        train_ds, batch_size=args.batch_size, shuffle=True,
-        num_workers=args.num_workers, pin_memory=device == "cuda",
+        train_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=device == "cuda",
     )
     val_loader = DataLoader(
-        val_ds, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.num_workers, pin_memory=device == "cuda",
+        val_ds,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=device == "cuda",
     )
     model = make_training_model(args, device)
     freeze_encoder_stages(model, args.freeze_stages)
@@ -277,16 +265,25 @@ def train(args, split: dict[str, list[str]]) -> Path:
     )
     loss = build_loss("dice_bce", bce_weight=0.5)
     scaler = torch.amp.GradScaler() if device == "cuda" else None
-    history = {f"{side}_{metric}": [] for side in ("train", "val")
-               for metric in ("loss", "iou", "dice", "bottom_mae")}
+    history = {
+        f"{side}_{metric}": []
+        for side in ("train", "val")
+        for metric in ("loss", "iou", "dice", "bottom_mae")
+    }
     best = math.inf
     stale = 0
     best_path = args.checkpoint_dir / "smp_unet_resnet34_best.pth"
     epochs = 1 if args.smoke else args.epochs
     for epoch in range(epochs):
         tr = train_one_epoch(
-            model, train_loader, optimizer, loss, device, scaler=scaler,
-            mask_mode="below", grad_clip_norm=1.0,
+            model,
+            train_loader,
+            optimizer,
+            loss,
+            device,
+            scaler=scaler,
+            mask_mode="below",
+            grad_clip_norm=1.0,
         )
         va = validate(model, val_loader, loss, device, mask_mode="below")
         scheduler.step(va["bottom_mae"])
@@ -305,9 +302,7 @@ def train(args, split: dict[str, list[str]]) -> Path:
             atomic_model_save(model, best_path, epoch, va, args)
         else:
             stale += 1
-        (args.checkpoint_dir / "training_history.json").write_text(
-            json.dumps(history, indent=2)
-        )
+        (args.checkpoint_dir / "training_history.json").write_text(json.dumps(history, indent=2))
         if stale >= args.early_stopping_patience:
             print(f"Early stopping after epoch {epoch + 1}", flush=True)
             break
@@ -389,8 +384,13 @@ def plot_overlay(name, result, before, after, path):
     ref_d = depth_from_indices(result["label_idx_crop"], ranges)
     for ax, prob, title in zip(axes, (before, after), ("Original", "Fine-tuned")):
         ax.imshow(
-            result["sv1_crop"], aspect="auto", cmap="viridis", vmin=-80, vmax=-34,
-            origin="upper", extent=extent,
+            result["sv1_crop"],
+            aspect="auto",
+            cmap="viridis",
+            vmin=-80,
+            vmax=-34,
+            origin="upper",
+            extent=extent,
         )
         pred_d = extract_bottom_depths(prob, ranges, threshold=0.5)
         pings = np.arange(len(ref_d))
@@ -410,9 +410,7 @@ def plot_overlay(name, result, before, after, path):
 
 def plot_comparison(summary: dict, path: Path, title: str):
     depth_key = (
-        "mean_depth_mae_m"
-        if "mean_depth_mae_m" in summary["original"]
-        else "mean_bottom_error_m"
+        "mean_depth_mae_m" if "mean_depth_mae_m" in summary["original"] else "mean_bottom_error_m"
     )
     keys = ("mean_iou", "mean_dice", depth_key)
     labels = ("IoU", "Dice", "Depth MAE (m)")
@@ -424,8 +422,11 @@ def plot_comparison(summary: dict, path: Path, title: str):
     for i, name in enumerate(names):
         offset = (i - (len(names) - 1) / 2) * width
         ax.bar(
-            x + offset, [summary[name][k] for k in keys],
-            width, label=name.replace("_", " "), color=colors[i % len(colors)],
+            x + offset,
+            [summary[name][k] for k in keys],
+            width,
+            label=name.replace("_", " "),
+            color=colors[i % len(colors)],
         )
     ax.set_xticks(x, labels)
     ax.set_title(title)
@@ -450,30 +451,35 @@ def evaluate_hake(args, split, base, tuned) -> dict:
     overlay_dir = args.figure_dir / "hake_overlays"
     overlay_dir.mkdir(parents=True, exist_ok=True)
     for i, group in enumerate(grouped, 1):
-        name = f"{group[0]}+{len(group)-1}more"
+        name = f"{group[0]}+{len(group) - 1}more"
         print(f"  Hake eval [{i}/{len(grouped)}] {name}", flush=True)
         result = prepare_group(group)
         probs = {}
         for tag, model in models.items():
             probs[tag] = predict_full_echogram(
-                model, result["sv_channels"], tuple(args.target_size), device,
-                patch_width=args.patch_width, stride=args.stride,
+                model,
+                result["sv_channels"],
+                tuple(args.target_size),
+                device,
+                patch_width=args.patch_width,
+                stride=args.stride,
             )
             row = hake_metrics(name, result, probs[tag])
             metrics[tag].append(row)
             csv_rows.append({"model": tag, **asdict(row)})
         if i <= args.max_overlay_groups:
             plot_overlay(
-                name, result, probs["original"], probs["finetuned"],
+                name,
+                result,
+                probs["original"],
+                probs["finetuned"],
                 overlay_dir / f"{name}_before_after.png",
             )
         del result, probs
         gc.collect()
     summary = {tag: metric_summary(rows) for tag, rows in metrics.items()}
     write_csv(args.figure_dir / "hake_test_metrics.csv", csv_rows)
-    (args.figure_dir / "hake_test_summary.json").write_text(
-        json.dumps(summary, indent=2)
-    )
+    (args.figure_dir / "hake_test_summary.json").write_text(json.dumps(summary, indent=2))
     plot_comparison(summary, args.figure_dir / "hake_metric_bars.png", "Hake test metrics")
     return summary
 
@@ -484,8 +490,7 @@ def score_cache_path(args, model_tag: str, domain: str, stem: str) -> Path:
 
 def save_scores(path, prob, mask, pred_d, ref_d, sigma):
     valid = (
-        np.isfinite(pred_d) & np.isfinite(ref_d) & np.isfinite(sigma)
-        & (pred_d > 0) & (ref_d > 0)
+        np.isfinite(pred_d) & np.isfinite(ref_d) & np.isfinite(sigma) & (pred_d > 0) & (ref_d > 0)
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
@@ -501,7 +506,7 @@ def evaluate_basto(args, base, tuned) -> dict:
     device = auto_device(args.device)
     paths = get_split_files()["test"]
     if args.max_basto_files:
-        paths = paths[:args.max_basto_files]
+        paths = paths[: args.max_basto_files]
     if args.smoke:
         paths = paths[:2]
     summaries = {}
@@ -511,9 +516,18 @@ def evaluate_basto(args, base, tuned) -> dict:
         for i, path in enumerate(paths, 1):
             print(f"  Basto {tag} [{i}/{len(paths)}] {path.name}", flush=True)
             metric, prob, mask, sv, ranges = evaluate_file(
-                model, path, 38_000, 200_000, tuple(args.target_size), device,
-                patch_width=args.patch_width, stride=args.stride,
-                vmin=-80, vmax=-34, mask_mode="below", line_thickness=3,
+                model,
+                path,
+                38_000,
+                200_000,
+                tuple(args.target_size),
+                device,
+                patch_width=args.patch_width,
+                stride=args.stride,
+                vmin=-80,
+                vmax=-34,
+                mask_mode="below",
+                line_thickness=3,
             )
             rows.append(
                 {
@@ -532,7 +546,11 @@ def evaluate_basto(args, base, tuned) -> dict:
                 pred_d = extract_bottom_depths(prob, ranges, threshold=0.5)
                 ref_d = extract_bottom_depths(mask.astype(np.float32), ranges, threshold=0.5)
                 save_scores(
-                    score_path, prob, mask, pred_d, ref_d,
+                    score_path,
+                    prob,
+                    mask,
+                    pred_d,
+                    ref_d,
                     compute_transition_width(prob, ranges),
                 )
             del prob, mask, sv
@@ -542,10 +560,13 @@ def evaluate_basto(args, base, tuned) -> dict:
             "mean_iou": float(np.mean([r["iou"] for r in rows])),
             "mean_dice": float(np.mean([r["dice"] for r in rows])),
             "mean_bottom_error_m": float(
-                np.mean([
-                    r["bottom_error_mean_m"] for r in rows
-                    if np.isfinite(r["bottom_error_mean_m"])
-                ])
+                np.mean(
+                    [
+                        r["bottom_error_mean_m"]
+                        for r in rows
+                        if np.isfinite(r["bottom_error_mean_m"])
+                    ]
+                )
             ),
             "std_iou": float(np.std([r["iou"] for r in rows])),
         }
@@ -553,12 +574,8 @@ def evaluate_basto(args, base, tuned) -> dict:
         del model
         if device == "cuda":
             torch.cuda.empty_cache()
-    (args.figure_dir / "basto_test_summary.json").write_text(
-        json.dumps(summaries, indent=2)
-    )
-    plot_comparison(
-        summaries, args.figure_dir / "basto_metric_bars.png", "Basto test metrics"
-    )
+    (args.figure_dir / "basto_test_summary.json").write_text(json.dumps(summaries, indent=2))
+    plot_comparison(summaries, args.figure_dir / "basto_metric_bars.png", "Basto test metrics")
     return summaries
 
 
@@ -569,14 +586,22 @@ def score_hake_file(args, model, device, tag, stem) -> Path | None:
     try:
         result = prepare_group([stem])
         prob = predict_full_echogram(
-            model, result["sv_channels"], tuple(args.target_size), device,
-            patch_width=args.patch_width, stride=args.stride,
+            model,
+            result["sv_channels"],
+            tuple(args.target_size),
+            device,
+            patch_width=args.patch_width,
+            stride=args.stride,
         )
         ranges = result["range_crop"]
         pred_d = extract_bottom_depths(prob, ranges, threshold=0.5)
         ref_d = depth_from_indices(result["label_idx_crop"], ranges)
         save_scores(
-            path, prob, result["label_mask"], pred_d, ref_d,
+            path,
+            prob,
+            result["label_mask"],
+            pred_d,
+            ref_d,
             compute_transition_width(prob, ranges),
         )
         return path
@@ -591,17 +616,30 @@ def score_basto_file(args, model, device, tag, zarr) -> Path | None:
         return path
     try:
         sv, mask, _, ranges = load_file_data(
-            zarr, 38_000, 200_000, vmin=-80, vmax=-34,
-            mask_mode="below", line_thickness=3,
+            zarr,
+            38_000,
+            200_000,
+            vmin=-80,
+            vmax=-34,
+            mask_mode="below",
+            line_thickness=3,
         )
         prob = predict_full_echogram(
-            model, sv, tuple(args.target_size), device,
-            patch_width=args.patch_width, stride=args.stride,
+            model,
+            sv,
+            tuple(args.target_size),
+            device,
+            patch_width=args.patch_width,
+            stride=args.stride,
         )
         pred_d = extract_bottom_depths(prob, ranges, threshold=0.5)
         ref_d = extract_bottom_depths(mask.astype(np.float32), ranges, threshold=0.5)
         save_scores(
-            path, prob, mask, pred_d, ref_d,
+            path,
+            prob,
+            mask,
+            pred_d,
+            ref_d,
             compute_transition_width(prob, ranges),
         )
         return path
@@ -636,8 +674,8 @@ def score_sets(args, split, model, device, tag) -> dict:
     cal = basto_split["calibration"]
     test = basto_split["test"]
     if args.max_basto_score_files:
-        cal = cal[:args.max_basto_score_files]
-        test = test[:args.max_basto_score_files]
+        cal = cal[: args.max_basto_score_files]
+        test = test[: args.max_basto_score_files]
     if args.smoke:
         cal, test = cal[:2], test[:2]
     all_paths = list(cal) + list(test)
@@ -662,8 +700,11 @@ def score_sets(args, split, model, device, tag) -> dict:
 
 
 def concatenated(domain, files, key):
-    arrays = [domain["scores"][f][key] for f in files
-              if f in domain["scores"] and domain["scores"][f][key].size]
+    arrays = [
+        domain["scores"][f][key]
+        for f in files
+        if f in domain["scores"] and domain["scores"][f][key].size
+    ]
     return np.concatenate(arrays) if arrays else np.array([])
 
 
@@ -721,9 +762,7 @@ def coverage_rows(model_tag, source_name, target_name, source, target):
 
 def weighted_quantile(arrays: list[np.ndarray], q: float) -> float:
     sorted_arrays = [
-        np.sort(arr[np.isfinite(arr)])
-        for arr in arrays
-        if arr.size and np.isfinite(arr).any()
+        np.sort(arr[np.isfinite(arr)]) for arr in arrays if arr.size and np.isfinite(arr).any()
     ]
     if not sorted_arrays:
         return float("nan")
@@ -732,10 +771,9 @@ def weighted_quantile(arrays: list[np.ndarray], q: float) -> float:
     while lo < hi:
         mid = (lo + hi) // 2
         value = candidates[mid]
-        cdf = np.mean([
-            np.searchsorted(arr, value, side="right") / len(arr)
-            for arr in sorted_arrays
-        ])
+        cdf = np.mean(
+            [np.searchsorted(arr, value, side="right") / len(arr) for arr in sorted_arrays]
+        )
         if cdf >= q:
             hi = mid
         else:
@@ -783,8 +821,7 @@ def pooled_calibration_domain(domains: dict) -> dict:
 
 def plot_coverage(rows, path):
     labels = [
-        f"{r['model']}\n{r['calibration_domain']}->{r['test_domain']}\n{r['method']}"
-        for r in rows
+        f"{r['model']}\n{r['calibration_domain']}->{r['test_domain']}\n{r['method']}" for r in rows
     ]
     fig, ax = plt.subplots(figsize=(max(10, 0.45 * len(rows)), 5.2))
     colors = ["#4c78a8" if r["model"] == "original" else "#f58518" for r in rows]
@@ -812,19 +849,15 @@ def conformal(args, split, base, tuned) -> list[dict]:
     for tag, domains in sets.items():
         pooled = pooled_calibration_domain(domains)
         for source, target in (
-            ("basto", "hake"), ("hake", "hake"),
-            ("basto", "basto"), ("hake", "basto"),
+            ("basto", "hake"),
+            ("hake", "hake"),
+            ("basto", "basto"),
+            ("hake", "basto"),
         ):
-            rows += coverage_rows(
-                tag, source, target, domains[source], domains[target]
-            )
+            rows += coverage_rows(tag, source, target, domains[source], domains[target])
         for target in ("hake", "basto"):
-            rows += coverage_rows(
-                tag, "pooled", target, pooled, domains[target]
-            )
-            rows += balanced_pooled_rows(
-                tag, target, domains, domains[target]
-            )
+            rows += coverage_rows(tag, "pooled", target, pooled, domains[target])
+            rows += balanced_pooled_rows(tag, target, domains, domains[target])
     write_csv(args.figure_dir / "conformal_results.csv", rows)
     plot_coverage(rows, args.figure_dir / "conformal_coverage_bars.png")
     return rows
@@ -890,9 +923,7 @@ def prepare(args):
     if args.resume_existing and manifest.exists():
         split = json.loads(manifest.read_text())["splits"]
     else:
-        split = make_split(
-            valid_hake_stems(args.max_hake_files), args.group_size, args.seed
-        )
+        split = make_split(valid_hake_stems(args.max_hake_files), args.group_size, args.seed)
         write_manifest(args, split)
     print("Hake split counts:", {k: len(v) for k, v in split.items()}, flush=True)
     return split

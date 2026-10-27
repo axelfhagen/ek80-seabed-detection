@@ -6,7 +6,6 @@ strongest continuous horizontal edge using Sobel gradients, thresholding,
 morphological cleanup, and curve fitting. No acoustic domain assumptions.
 """
 
-
 import numpy as np
 import scipy.ndimage as ndi
 import scipy.signal as sig

@@ -7,7 +7,10 @@ import numpy as np
 import pytest
 
 from raw_sensor_integration.preprocessing import (
-    downsample_depth, extract_patches, normalize_echogram, preprocess_for_unet,
+    downsample_depth,
+    extract_patches,
+    normalize_echogram,
+    preprocess_for_unet,
 )
 
 
@@ -30,7 +33,7 @@ def test_downsample_depth_pools_along_axis0_and_drops_remainder():
 
 
 def test_preprocess_for_unet_pads_short_echogram_symmetrically_with_floor():
-    power = np.full((8, 3), -10.0)       # -> 2 rows after factor-4 max pooling
+    power = np.full((8, 3), -10.0)  # -> 2 rows after factor-4 max pooling
     power[:4, 0] = -60.0
     out = preprocess_for_unet(power, depth_factor=4, target_height=6)
     assert out.shape == (6, 3)
@@ -43,16 +46,15 @@ def test_extract_patches_slides_along_pings_and_skips_empty_labels():
     n_range, n_pings = 4, 10
     sv = np.tile(np.linspace(-80, -34, n_range)[:, None], (1, n_pings))
     mask = np.zeros((n_range, n_pings), dtype=np.uint8)
-    mask[3, 6:] = 1                    # bottom only in pings 6..9
+    mask[3, 6:] = 1  # bottom only in pings 6..9
 
-    all_patches = list(extract_patches(sv, mask, patch_width=4, stride=2,
-                                       require_bottom=False))
-    assert len(all_patches) == 4       # starts 0, 2, 4, 6
+    all_patches = list(extract_patches(sv, mask, patch_width=4, stride=2, require_bottom=False))
+    assert len(all_patches) == 4  # starts 0, 2, 4, 6
     img, lbl = all_patches[0]
     assert img.shape == (1, 4, 4) and img.dtype == np.float32
     assert lbl.shape == (4, 4)
     np.testing.assert_allclose(img[0, :, 0], [0, 1 / 3, 2 / 3, 1], atol=1e-6)
 
     with_bottom = list(extract_patches(sv, mask, patch_width=4, stride=2))
-    assert len(with_bottom) == 2       # patches starting at 4 and 6
+    assert len(with_bottom) == 2  # patches starting at 4 and 6
     np.testing.assert_array_equal(with_bottom[0][1], mask[:, 4:8])

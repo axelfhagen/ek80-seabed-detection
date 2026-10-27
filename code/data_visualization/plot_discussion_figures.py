@@ -2,6 +2,7 @@
 
 Output: Figures/discussion/
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -10,6 +11,7 @@ import shutil
 import sys
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -148,8 +150,9 @@ def plot_worst_file_overlay():
     )
 
     extent = [0, n_pings, range_arr[-1], range_arr[0]]
-    im = ax0.imshow(echo, aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                    origin="upper", extent=extent)
+    im = ax0.imshow(
+        echo, aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper", extent=extent
+    )
     ax0.plot(pings, ref_depth, color="#00d5ff", linewidth=2.0, label="Reference label")
     ax0.plot(pings, pred_depth, color="#d7191c", linewidth=2.0, label="U-Net prediction")
     ax0.set_ylabel("Range (m)")
@@ -160,18 +163,14 @@ def plot_worst_file_overlay():
         loc="lower left",
         frameon=True,
         framealpha=0.90,
-        title=(
-            f"IoU={iou:.3f}, median gap={med_gap:.1f} m, "
-            f"p95={p95_gap:.1f} m"
-        ),
+        title=(f"IoU={iou:.3f}, median gap={med_gap:.1f} m, p95={p95_gap:.1f} m"),
     )
     legend._legend_box.align = "left"
     cbar = fig.colorbar(im, ax=ax0, pad=0.012, fraction=0.025)
     style_colorbar(cbar, label="Normalised echogram intensity")
 
     ax1.plot(pings, abs_gap, color="#333333", linewidth=1.7)
-    ax1.axhline(med_gap, color="#d7191c",
-                linestyle=":", linewidth=2.0, label="Median gap")
+    ax1.axhline(med_gap, color="#d7191c", linestyle=":", linewidth=2.0, label="Median gap")
     ax1.set_ylabel("Gap (m)")
     ax1.set_xlabel("Ping")
     ax1.set_xlim(0, n_pings)

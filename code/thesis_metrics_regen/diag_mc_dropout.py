@@ -6,6 +6,7 @@ deviation, the p=0.2 median, and the Spearman correlation between the MC boundar
 single-pass prediction entropy. Writes outputs/mc_dropout_summary.json and regenerates the
 sweep and diagnostics figures into Latex/Figures/regen_2026/.
 """
+
 import argparse
 import json
 import sys
@@ -15,6 +16,7 @@ import numpy as np
 import torch
 from scipy import stats
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -26,7 +28,9 @@ from deep_learning.evaluate import load_file_data, extract_bottom_line  # noqa: 
 from deep_learning.training.survey_groups import get_survey_files  # noqa: E402
 from validation.uncertainty import mc_dropout_predict, prediction_entropy  # noqa: E402
 from data_visualization.analyze_mc_dropout_uncertainty import (  # noqa: E402
-    bottom_line_distribution, _strip_dropout)
+    bottom_line_distribution,
+    _strip_dropout,
+)
 
 CKPT = ROOT / "code/checkpoints/chunk_arch_sweep_2/smp_unet_resnet34_best.pth"
 FIG_DIR = ROOT / "Latex/Figures/regen_2026"
@@ -65,8 +69,16 @@ def main():
     data = []
     for zp in files:
         sv, gt, gt_idx, rng_arr = load_file_data(
-            zp, FREQ1, FREQ2, max_range_m=None, max_range_samples=None,
-            vmin=VMIN, vmax=VMAX, mask_mode="below", line_thickness=1)
+            zp,
+            FREQ1,
+            FREQ2,
+            max_range_m=None,
+            max_range_samples=None,
+            vmin=VMIN,
+            vmax=VMAX,
+            mask_mode="below",
+            line_thickness=1,
+        )
         data.append((zp.stem, sv, rng_arr))
 
     # Sweep: median seabed-boundary std vs dropout rate.
@@ -74,11 +86,17 @@ def main():
     for p in RATES:
         stds = []
         for name, sv, rng_arr in data:
-            det = predict_full_echogram(model, sv, TARGET, device,
-                                        patch_width=512, stride=256)
+            det = predict_full_echogram(model, sv, TARGET, device, patch_width=512, stride=256)
             _, _, all_preds = mc_dropout_predict(
-                model, sv, TARGET, device, n_samples=args.n_samples,
-                patch_width=512, stride=256, dropout_p=p)
+                model,
+                sv,
+                TARGET,
+                device,
+                n_samples=args.n_samples,
+                patch_width=512,
+                stride=256,
+                dropout_p=p,
+            )
             _strip_dropout(model)
             _, _, _, std_d, _, _ = bottom_line_distribution(all_preds, det, rng_arr)
             stds.append(std_d[np.isfinite(std_d)])
@@ -89,11 +107,17 @@ def main():
     # At p=0.2: median + Spearman(MC std, single-pass entropy) at the boundary.
     boundary_std_all, entropy_all = [], []
     for name, sv, rng_arr in data:
-        det = predict_full_echogram(model, sv, TARGET, device,
-                                    patch_width=512, stride=256)
+        det = predict_full_echogram(model, sv, TARGET, device, patch_width=512, stride=256)
         _, std_prob, all_preds = mc_dropout_predict(
-            model, sv, TARGET, device, n_samples=args.n_samples,
-            patch_width=512, stride=256, dropout_p=0.2)
+            model,
+            sv,
+            TARGET,
+            device,
+            n_samples=args.n_samples,
+            patch_width=512,
+            stride=256,
+            dropout_p=0.2,
+        )
         _strip_dropout(model)
         ent = prediction_entropy(det)
         det_line = extract_bottom_line(det, 0.5)

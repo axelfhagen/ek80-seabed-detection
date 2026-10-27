@@ -43,8 +43,9 @@ class LightweightCNN(SegmentationModel):
     channels    : filter counts per encoder stage
     """
 
-    def __init__(self, in_channels: int = 3, classes: int = 1,
-                 channels: tuple[int, ...] = (16, 32, 64)):
+    def __init__(
+        self, in_channels: int = 3, classes: int = 1, channels: tuple[int, ...] = (16, 32, 64)
+    ):
         super().__init__()
         self._channels = channels
 
@@ -67,7 +68,8 @@ class LightweightCNN(SegmentationModel):
         ch_in = channels[-1] * 2
         for ch_out in rev:
             self.dec_stages.append(
-                nn.Conv2d(ch_in, ch_out, 1, bias=False))  # 1x1 reduce after upsample
+                nn.Conv2d(ch_in, ch_out, 1, bias=False)
+            )  # 1x1 reduce after upsample
             self.dec_convs.append(_DSBlock(ch_out * 2, ch_out))  # after concat with skip
             ch_in = ch_out
 
@@ -84,10 +86,10 @@ class LightweightCNN(SegmentationModel):
         x = self.bottleneck(x)
 
         # Decoder
-        for proj, conv, skip in zip(self.dec_stages, self.dec_convs,
-                                     reversed(skips)):
+        for proj, conv, skip in zip(self.dec_stages, self.dec_convs, reversed(skips)):
             x = nn.functional.interpolate(
-                x, size=skip.shape[2:], mode="bilinear", align_corners=False)
+                x, size=skip.shape[2:], mode="bilinear", align_corners=False
+            )
             x = proj(x)
             x = torch.cat([x, skip], dim=1)
             x = conv(x)

@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -73,9 +74,7 @@ def _summary_from_sv_band(sv_band: np.ndarray) -> dict:
     if not finite_mask.any():
         return {}
     flat = sv_band[finite_mask]
-    q05, q10, q25, q50, q75, q90 = np.quantile(
-        flat, [0.05, 0.10, 0.25, 0.50, 0.75, 0.90]
-    )
+    q05, q10, q25, q50, q75, q90 = np.quantile(flat, [0.05, 0.10, 0.25, 0.50, 0.75, 0.90])
 
     return {
         "n_samples": int(flat.size),
@@ -103,7 +102,9 @@ def noise_floor_from_file(
     """
     try:
         sv_db, range_array, *_ = load_sv_from_zarr(
-            zarr_path, freq_hz, max_range_m=band_m[1] + 1.0,
+            zarr_path,
+            freq_hz,
+            max_range_m=band_m[1] + 1.0,
         )
     except Exception:
         return None
@@ -117,10 +118,12 @@ def noise_floor_from_file(
     summary = _summary_from_sv_band(sv_band)
     if not summary:
         return None
-    summary.update({
-        "file": zarr_path.name,
-        "datetime": _parse_file_datetime(zarr_path),
-    })
+    summary.update(
+        {
+            "file": zarr_path.name,
+            "datetime": _parse_file_datetime(zarr_path),
+        }
+    )
     return summary
 
 
@@ -132,6 +135,7 @@ def noise_floor_from_file_multifreq(
     """Compute noise-floor stats for several frequencies, opening the zarr once."""
     try:
         import xarray as xr
+
         ds = xr.open_zarr(zarr_path, consolidated=False)
     except Exception:
         return None
@@ -157,9 +161,7 @@ def noise_floor_from_file_multifreq(
                 sv = ds.Sv.isel(channel=freq_idx)
                 echo_range = ds.echo_range.isel(channel=freq_idx)
                 with np.errstate(all="ignore"):
-                    range_array = np.nanmean(
-                        echo_range.values, axis=0
-                    ).astype(np.float64)
+                    range_array = np.nanmean(echo_range.values, axis=0).astype(np.float64)
                 valid_range = ~np.isnan(range_array)
                 if not valid_range.all():
                     keep = np.where(valid_range)[0]
@@ -168,9 +170,7 @@ def noise_floor_from_file_multifreq(
                 range_mask_xr = (range_array >= lo) & (range_array < hi)
                 if not range_mask_xr.any():
                     continue
-                sv_band = sv.isel(
-                    range_sample=np.where(range_mask_xr)[0]
-                ).values
+                sv_band = sv.isel(range_sample=np.where(range_mask_xr)[0]).values
                 sv_band = sv_band.astype(np.float32)
             else:
                 sv = ds.sv.sel(frequency=freq_used)
@@ -185,11 +185,13 @@ def noise_floor_from_file_multifreq(
             summary = _summary_from_sv_band(sv_band)
             if not summary:
                 continue
-            summary.update({
-                "file": zarr_path.name,
-                "datetime": _parse_file_datetime(zarr_path),
-                "freq_used_hz": freq_used,
-            })
+            summary.update(
+                {
+                    "file": zarr_path.name,
+                    "datetime": _parse_file_datetime(zarr_path),
+                    "freq_used_hz": freq_used,
+                }
+            )
             out[freq_hz] = summary
     finally:
         ds.close()
@@ -227,9 +229,9 @@ def collect_per_file_stats(
                 rows.append(stats)
                 n_ok += 1
             print(
-                f"\r  {survey_name} [{i + 1}/{len(files)}] "
-                f"ok={n_ok}",
-                end="", flush=True,
+                f"\r  {survey_name} [{i + 1}/{len(files)}] ok={n_ok}",
+                end="",
+                flush=True,
             )
         print()
 
@@ -268,13 +270,12 @@ def collect_per_file_stats_multifreq(
                     rows_by_freq[freq_hz].append(stats)
             print(
                 f"\r  {survey_name} [{i + 1}/{len(files)}] ok={n_ok}",
-                end="", flush=True,
+                end="",
+                flush=True,
             )
         print()
 
-    return {
-        freq_hz: pd.DataFrame(rows) for freq_hz, rows in rows_by_freq.items()
-    }
+    return {freq_hz: pd.DataFrame(rows) for freq_hz, rows in rows_by_freq.items()}
 
 
 def summarize_per_survey(per_file: pd.DataFrame) -> pd.DataFrame:
@@ -297,22 +298,22 @@ def summarize_per_survey(per_file: pd.DataFrame) -> pd.DataFrame:
         medians = sub["median"].to_numpy()
         if not nf.size:
             continue
-        out.append({
-            "survey": survey_name,
-            "label": SURVEYS[survey_name]["label"],
-            "season": SURVEYS[survey_name]["season"],
-            "n_files": int(len(sub)),
-            "n_files_open_water": int(nf.size),
-            "noise_floor_median": float(np.median(nf)),
-            "noise_floor_mean": float(nf.mean()),
-            "noise_floor_std": float(nf.std()),
-            "noise_floor_iqr": float(
-                np.quantile(nf, 0.75) - np.quantile(nf, 0.25)
-            ),
-            "noise_floor_p10": float(np.quantile(nf, 0.10)),
-            "noise_floor_p90": float(np.quantile(nf, 0.90)),
-            "raw_median_of_medians": float(np.median(medians)),
-        })
+        out.append(
+            {
+                "survey": survey_name,
+                "label": SURVEYS[survey_name]["label"],
+                "season": SURVEYS[survey_name]["season"],
+                "n_files": int(len(sub)),
+                "n_files_open_water": int(nf.size),
+                "noise_floor_median": float(np.median(nf)),
+                "noise_floor_mean": float(nf.mean()),
+                "noise_floor_std": float(nf.std()),
+                "noise_floor_iqr": float(np.quantile(nf, 0.75) - np.quantile(nf, 0.25)),
+                "noise_floor_p10": float(np.quantile(nf, 0.10)),
+                "noise_floor_p90": float(np.quantile(nf, 0.90)),
+                "raw_median_of_medians": float(np.median(medians)),
+            }
+        )
     return pd.DataFrame(out)
 
 
@@ -324,7 +325,10 @@ def plot_violin(
     """Per-survey violins of per-file noise-floor medians, one panel per frequency."""
     freqs = sorted(per_file_by_freq.keys())
     fig, axes = plt.subplots(
-        len(freqs), 1, figsize=(11, 4.0 * len(freqs)), sharex=True,
+        len(freqs),
+        1,
+        figsize=(11, 4.0 * len(freqs)),
+        sharex=True,
     )
     if len(freqs) == 1:
         axes = [axes]
@@ -347,8 +351,12 @@ def plot_violin(
 
         if data:
             parts = ax.violinplot(
-                data, positions=positions, widths=0.75, showmeans=False,
-                showmedians=True, showextrema=False,
+                data,
+                positions=positions,
+                widths=0.75,
+                showmeans=False,
+                showmedians=True,
+                showextrema=False,
             )
             for body, c in zip(parts["bodies"], colors):
                 body.set_facecolor(c)
@@ -361,7 +369,11 @@ def plot_violin(
             jitter = (np.random.default_rng(seed=i).random(vals.size) - 0.5) * 0.18
             ax.scatter(
                 np.full_like(vals, i, dtype=float) + jitter,
-                vals, s=8, color="black", alpha=0.35, linewidths=0,
+                vals,
+                s=8,
+                color="black",
+                alpha=0.35,
+                linewidths=0,
             )
 
         ax.set_xticks(range(len(survey_order)))
@@ -392,7 +404,10 @@ def plot_timeline(
     """Per-file medians plotted against file timestamp to expose drift."""
     freqs = sorted(per_file_by_freq.keys())
     fig, axes = plt.subplots(
-        len(freqs), 1, figsize=(12, 4.0 * len(freqs)), sharex=True,
+        len(freqs),
+        1,
+        figsize=(12, 4.0 * len(freqs)),
+        sharex=True,
     )
     if len(freqs) == 1:
         axes = [axes]
@@ -410,14 +425,21 @@ def plot_timeline(
             if sub.empty:
                 continue
             ax.scatter(
-                sub["datetime"], sub["noise_floor"],
-                s=14, color=palette[s], alpha=0.7,
-                edgecolors="none", label=SURVEYS[s]["label"],
+                sub["datetime"],
+                sub["noise_floor"],
+                s=14,
+                color=palette[s],
+                alpha=0.7,
+                edgecolors="none",
+                label=SURVEYS[s]["label"],
             )
             ax.hlines(
                 sub["noise_floor"].median(),
-                sub["datetime"].min(), sub["datetime"].max(),
-                color=palette[s], linewidth=1.6, alpha=0.9,
+                sub["datetime"].min(),
+                sub["datetime"].max(),
+                color=palette[s],
+                linewidth=1.6,
+                alpha=0.9,
             )
 
         ax.set_ylabel(r"Noise-floor estimate (dB)")
@@ -443,26 +465,34 @@ def plot_timeline(
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Per-survey noise-floor estimate (median Sv in a "
-            "guaranteed-water depth band)."
+            "Per-survey noise-floor estimate (median Sv in a guaranteed-water depth band)."
         ),
     )
     parser.add_argument("--zarr-dir", type=Path, default=None)
     parser.add_argument(
-        "--output-dir", type=Path,
+        "--output-dir",
+        type=Path,
         default=PROJECT_ROOT / "Figures" / "distribution_comparison" / "noise_floor",
     )
     parser.add_argument(
-        "--band", type=float, nargs=2, default=list(DEFAULT_BAND_M),
+        "--band",
+        type=float,
+        nargs=2,
+        default=list(DEFAULT_BAND_M),
         metavar=("LO_M", "HI_M"),
         help="Range gate in meters (default 5 15).",
     )
     parser.add_argument(
-        "--frequencies", type=int, nargs="+", default=FREQUENCIES,
+        "--frequencies",
+        type=int,
+        nargs="+",
+        default=FREQUENCIES,
         help="Frequencies in Hz (default 38000 200000).",
     )
     parser.add_argument(
-        "--max-files", type=int, default=None,
+        "--max-files",
+        type=int,
+        default=None,
         help="Optional per-survey cap on the number of files processed.",
     )
     parser.add_argument("--seed", type=int, default=42)
@@ -492,9 +522,7 @@ def main():
         per_file = per_file_by_freq[freq_hz]
         per_file["freq_hz"] = freq_hz
 
-        per_file_path = (
-            args.output_dir / f"noise_floor_per_file_{freq_label}.csv"
-        )
+        per_file_path = args.output_dir / f"noise_floor_per_file_{freq_label}.csv"
         per_file.to_csv(per_file_path, index=False)
         print(f"Saved {per_file_path}")
 
@@ -508,11 +536,13 @@ def main():
         print(summary.to_string(index=False))
 
     plot_violin(
-        per_file_by_freq, band_m=band,
+        per_file_by_freq,
+        band_m=band,
         output_path=args.output_dir / "noise_floor_violin.pdf",
     )
     plot_timeline(
-        per_file_by_freq, band_m=band,
+        per_file_by_freq,
+        band_m=band,
         output_path=args.output_dir / "noise_floor_timeline.pdf",
     )
 

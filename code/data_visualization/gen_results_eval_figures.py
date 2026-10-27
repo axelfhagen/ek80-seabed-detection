@@ -27,6 +27,7 @@ import warnings
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,16 +39,23 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from data_visualization.thesis_style import (
-    apply_thesis_style, savefig, style_colorbar,
-    REFERENCE_BOTTOM_COLOR, UNET_PREDICTION_COLOR,
+    apply_thesis_style,
+    savefig,
+    style_colorbar,
+    REFERENCE_BOTTOM_COLOR,
+    UNET_PREDICTION_COLOR,
 )
 from deep_learning.unet_model import create_unet
-from deep_learning.evaluate import (
-    evaluate_file, extract_bottom_line, bottom_depth_error)
+from deep_learning.evaluate import evaluate_file, extract_bottom_line, bottom_depth_error
 
 ZARR_DIR = PROJECT_ROOT / "Datasets" / "echopype_zarr"
-CKPT = (PROJECT_ROOT / "code" / "checkpoints" /
-        "exp_20260420_080950_finetune_stages" / "unet_resnet34_best.pth")
+CKPT = (
+    PROJECT_ROOT
+    / "code"
+    / "checkpoints"
+    / "exp_20260420_080950_finetune_stages"
+    / "unet_resnet34_best.pth"
+)
 STAGED_EVAL = CKPT.parent / "eval_metrics.json"
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "results_eval"
 
@@ -76,9 +84,9 @@ def basto_val_files():
 
 def oct_2024_files(n):
     from deep_learning.training.survey_groups import SURVEYS
+
     prefixes = tuple(SURVEYS["oct_2024"]["date_prefixes"])
-    files = sorted(p.name for p in ZARR_DIR.glob("*.zarr")
-                   if p.name.startswith(prefixes))
+    files = sorted(p.name for p in ZARR_DIR.glob("*.zarr") if p.name.startswith(prefixes))
     if n and n < len(files):
         idx = np.linspace(0, len(files) - 1, n).astype(int)
         files = [files[i] for i in idx]
@@ -88,6 +96,7 @@ def oct_2024_files(n):
 # ---------------------------------------------------------------------------
 # Inference + global accumulation
 # ---------------------------------------------------------------------------
+
 
 def run_basto(model, device, files):
     """Evaluate the Basto val files; accumulate calibration and threshold
@@ -108,15 +117,31 @@ def run_basto(model, device, files):
     for i, fn_name in enumerate(files, 1):
         path = str(ZARR_DIR / fn_name)
         metrics, pred, gt, sv, range_arr = evaluate_file(
-            model, path, FREQ1, FREQ2, TARGET, device,
-            patch_width=PATCH_W, stride=STRIDE, vmin=VMIN, vmax=VMAX)
-        per_file.append({"file": fn_name, "iou": metrics.iou,
-                         "dice": metrics.dice,
-                         "err_median": metrics.bottom_error_median_m,
-                         "err_p95": metrics.bottom_error_p95_m})
-        print(f"[{i}/{len(files)}] {fn_name}  IoU={metrics.iou:.4f} "
-              f"med={metrics.bottom_error_median_m:.2f} "
-              f"p95={metrics.bottom_error_p95_m:.2f}")
+            model,
+            path,
+            FREQ1,
+            FREQ2,
+            TARGET,
+            device,
+            patch_width=PATCH_W,
+            stride=STRIDE,
+            vmin=VMIN,
+            vmax=VMAX,
+        )
+        per_file.append(
+            {
+                "file": fn_name,
+                "iou": metrics.iou,
+                "dice": metrics.dice,
+                "err_median": metrics.bottom_error_median_m,
+                "err_p95": metrics.bottom_error_p95_m,
+            }
+        )
+        print(
+            f"[{i}/{len(files)}] {fn_name}  IoU={metrics.iou:.4f} "
+            f"med={metrics.bottom_error_median_m:.2f} "
+            f"p95={metrics.bottom_error_p95_m:.2f}"
+        )
 
         pred_flat = pred.ravel()
         gt_flat = gt.astype(bool).ravel()
@@ -125,8 +150,7 @@ def run_basto(model, device, files):
         idx = np.clip(np.digitize(pred_flat, bin_edges) - 1, 0, N_BINS - 1)
         bin_count += np.bincount(idx, minlength=N_BINS)
         bin_pred_sum += np.bincount(idx, weights=pred_flat, minlength=N_BINS)
-        bin_pos_sum += np.bincount(idx, weights=gt_flat.astype(float),
-                                   minlength=N_BINS)
+        bin_pos_sum += np.bincount(idx, weights=gt_flat.astype(float), minlength=N_BINS)
 
         # Threshold sweep (global confusion counts + depth errors).
         gt_bottom_idx = extract_bottom_line(gt.astype(np.float32), 0.5)
@@ -141,17 +165,19 @@ def run_basto(model, device, files):
                 err_lists[k].append(e)
 
         # Keep panel data for selected files.
-        panels[fn_name] = {"sv0": sv[0], "pred": pred, "range": range_arr,
-                           "gt_idx": gt_bottom_idx,
-                           "iou": metrics.iou,
-                           "err_median": metrics.bottom_error_median_m,
-                           "err_p95": metrics.bottom_error_p95_m}
+        panels[fn_name] = {
+            "sv0": sv[0],
+            "pred": pred,
+            "range": range_arr,
+            "gt_idx": gt_bottom_idx,
+            "iou": metrics.iou,
+            "err_median": metrics.bottom_error_median_m,
+            "err_p95": metrics.bottom_error_p95_m,
+        }
 
     eps = 1e-7
-    mean_pred = np.where(bin_count > 0, bin_pred_sum / np.maximum(bin_count, 1),
-                         np.nan)
-    obs_freq = np.where(bin_count > 0, bin_pos_sum / np.maximum(bin_count, 1),
-                        np.nan)
+    mean_pred = np.where(bin_count > 0, bin_pred_sum / np.maximum(bin_count, 1), np.nan)
+    obs_freq = np.where(bin_count > 0, bin_pos_sum / np.maximum(bin_count, 1), np.nan)
     total = bin_count.sum()
     ece = float(np.nansum(bin_count * np.abs(obs_freq - mean_pred)) / total)
 
@@ -161,13 +187,10 @@ def run_basto(model, device, files):
         "dice": (2 * tp + eps) / (2 * tp + fp + fn + eps),
         "precision": (tp + eps) / (tp + fp + eps),
         "recall": (tp + eps) / (tp + fn + eps),
-        "err_mean": np.array([np.mean(np.concatenate(e)) if e else np.nan
-                              for e in err_lists]),
-        "err_median": np.array([np.median(np.concatenate(e)) if e else np.nan
-                                for e in err_lists]),
+        "err_mean": np.array([np.mean(np.concatenate(e)) if e else np.nan for e in err_lists]),
+        "err_median": np.array([np.median(np.concatenate(e)) if e else np.nan for e in err_lists]),
     }
-    calib = {"bin_count": bin_count, "mean_pred": mean_pred,
-             "obs_freq": obs_freq, "ece": ece}
+    calib = {"bin_count": bin_count, "mean_pred": mean_pred, "obs_freq": obs_freq, "ece": ece}
     return per_file, calib, sweep, panels
 
 
@@ -175,29 +198,40 @@ def run_basto(model, device, files):
 # Figures
 # ---------------------------------------------------------------------------
 
+
 def plot_reliability(calib):
     bin_edges = np.linspace(0.0, 1.0, N_BINS + 1)
     centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
     valid = calib["bin_count"] > 0
 
-    fig, (ax, axc) = plt.subplots(
-        2, 1, figsize=(8, 8), height_ratios=[3, 1], sharex=True)
-    ax.plot([0, 1], [0, 1], "--", color="black", lw=1.5,
-            label="Perfect calibration")
-    ax.plot(calib["mean_pred"][valid], calib["obs_freq"][valid],
-            "o-", color="#d62728", lw=2.2, ms=7, label="Model")
+    fig, (ax, axc) = plt.subplots(2, 1, figsize=(8, 8), height_ratios=[3, 1], sharex=True)
+    ax.plot([0, 1], [0, 1], "--", color="black", lw=1.5, label="Perfect calibration")
+    ax.plot(
+        calib["mean_pred"][valid],
+        calib["obs_freq"][valid],
+        "o-",
+        color="#d62728",
+        lw=2.2,
+        ms=7,
+        label="Model",
+    )
     ax.set_ylabel("Observed positive fraction")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.legend(loc="upper left")
     ax.grid(alpha=0.3)
-    ax.text(0.97, 0.05, f"ECE = {calib['ece']:.4f}", transform=ax.transAxes,
-            ha="right", va="bottom",
-            bbox=dict(boxstyle="round", fc="white", ec="0.6"))
+    ax.text(
+        0.97,
+        0.05,
+        f"ECE = {calib['ece']:.4f}",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        bbox=dict(boxstyle="round", fc="white", ec="0.6"),
+    )
 
     frac = calib["bin_count"] / calib["bin_count"].sum()
-    axc.bar(centers, frac, width=1.0 / N_BINS * 0.9, color="#1f77b4",
-            alpha=0.8)
+    axc.bar(centers, frac, width=1.0 / N_BINS * 0.9, color="#1f77b4", alpha=0.8)
     axc.set_yscale("log")
     axc.set_xlabel("Predicted probability")
     axc.set_ylabel("Frac.\\ of\npixels")
@@ -212,8 +246,7 @@ def plot_threshold_sweep(sweep):
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(t, sweep["iou"], "o-", label="IoU", color="#d62728", lw=2.2)
     ax.plot(t, sweep["dice"], "s-", label="Dice", color="#9467bd", lw=2.2)
-    ax.plot(t, sweep["precision"], "^-", label="Precision", color="#2ca02c",
-            lw=2.0)
+    ax.plot(t, sweep["precision"], "^-", label="Precision", color="#2ca02c", lw=2.0)
     ax.plot(t, sweep["recall"], "v-", label="Recall", color="#1f77b4", lw=2.0)
     ax.set_xlabel("Classification threshold")
     ax.set_ylabel("Pixel metric")
@@ -222,8 +255,7 @@ def plot_threshold_sweep(sweep):
     ax.grid(alpha=0.3)
 
     ax2 = ax.twinx()
-    ax2.plot(t, sweep["err_median"], "D--", color="black", lw=2.0,
-             label="Median depth dev.")
+    ax2.plot(t, sweep["err_median"], "D--", color="black", lw=2.0, label="Median depth dev.")
     ax2.set_ylabel("Median depth deviation (m)")
     ax2.spines["top"].set_visible(False)
     best = t[int(np.argmax(sweep["iou"]))]
@@ -262,30 +294,37 @@ def plot_panels(panels, selected, labels):
         ylim = min(ymax * 1.35, range_arr[-1])
 
         axe = axes[row, 0]
-        axe.imshow(sv0, aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                   extent=extent, origin="upper")
-        axe.plot(np.arange(len(gt_d)), gt_d, "--",
-                 color=REFERENCE_BOTTOM_COLOR, lw=2.0,
-                 label="Reference")
-        axe.plot(np.arange(len(pred_d)), pred_d, "-",
-                 color=UNET_PREDICTION_COLOR, lw=1.6,
-                 label="U-Net")
+        axe.imshow(
+            sv0, aspect="auto", cmap="viridis", vmin=0, vmax=1, extent=extent, origin="upper"
+        )
+        axe.plot(
+            np.arange(len(gt_d)),
+            gt_d,
+            "--",
+            color=REFERENCE_BOTTOM_COLOR,
+            lw=2.0,
+            label="Reference",
+        )
+        axe.plot(
+            np.arange(len(pred_d)), pred_d, "-", color=UNET_PREDICTION_COLOR, lw=1.6, label="U-Net"
+        )
         axe.set_ylim(ylim, 0)
         axe.set_ylabel("Depth (m)")
-        axe.set_title(f"{lab}: {fn_name.replace('.zarr', '')}  "
-                      f"IoU={p['iou']:.3f}", fontsize=15)
+        axe.set_title(f"{lab}: {fn_name.replace('.zarr', '')}  IoU={p['iou']:.3f}", fontsize=15)
         if row == 0:
             axe.legend(loc="upper right", fontsize=13)
         if row == n - 1:
             axe.set_xlabel("Ping")
 
         axp = axes[row, 1]
-        im = axp.imshow(pred, aspect="auto", cmap="magma", vmin=0, vmax=1,
-                        extent=extent, origin="upper")
+        im = axp.imshow(
+            pred, aspect="auto", cmap="magma", vmin=0, vmax=1, extent=extent, origin="upper"
+        )
         axp.set_ylim(ylim, 0)
-        axp.set_title(f"Predicted probability  "
-                      f"(med {p['err_median']:.1f} m, P95 {p['err_p95']:.1f} m)",
-                      fontsize=15)
+        axp.set_title(
+            f"Predicted probability  (med {p['err_median']:.1f} m, P95 {p['err_p95']:.1f} m)",
+            fontsize=15,
+        )
         if row == n - 1:
             axp.set_xlabel("Ping")
         cbar = fig.colorbar(im, ax=axp, fraction=0.046, pad=0.02)
@@ -301,30 +340,45 @@ def plot_cross_survey(basto, oct_files_metrics):
 
     fig, ax = plt.subplots(figsize=(9, 6))
     data = [basto_iou, oct_iou]
-    parts = ax.violinplot(data, positions=[0, 1], showextrema=False,
-                          widths=0.7)
+    parts = ax.violinplot(data, positions=[0, 1], showextrema=False, widths=0.7)
     for pc, c in zip(parts["bodies"], ["#2ca02c", "#1f77b4"]):
         pc.set_facecolor(c)
         pc.set_alpha(0.4)
     rng = np.random.default_rng(0)
     for i, (vals, c) in enumerate(zip(data, ["#2ca02c", "#1f77b4"])):
-        ax.scatter(rng.normal(i, 0.04, len(vals)), vals, s=28, color=c,
-                   edgecolor="black", linewidth=0.4, alpha=0.7, zorder=3)
-        ax.plot([i - 0.25, i + 0.25], [np.median(vals)] * 2, color="black",
-                lw=2.5, zorder=4)
+        ax.scatter(
+            rng.normal(i, 0.04, len(vals)),
+            vals,
+            s=28,
+            color=c,
+            edgecolor="black",
+            linewidth=0.4,
+            alpha=0.7,
+            zorder=3,
+        )
+        ax.plot([i - 0.25, i + 0.25], [np.median(vals)] * 2, color="black", lw=2.5, zorder=4)
     ax.set_xticks([0, 1])
-    ax.set_xticklabels([f"Basto Jan 2024\n(in-distribution, n={len(basto_iou)})",
-                        f"Oct 2024\n(held-out survey, n={len(oct_iou)})"])
+    ax.set_xticklabels(
+        [
+            f"Basto Jan 2024\n(in-distribution, n={len(basto_iou)})",
+            f"Oct 2024\n(held-out survey, n={len(oct_iou)})",
+        ]
+    )
     ax.set_ylabel("Per-file IoU")
     ax.set_ylim(0.0, 1.005)
     ax.grid(axis="y", alpha=0.3)
     # Inset focusing on the bulk (clip out catastrophic failures).
     n_fail = int(np.sum(oct_iou < 0.5))
-    ax.text(0.5, 0.04,
-            f"Oct 2024: median {np.median(oct_iou):.4f}, "
-            f"{n_fail} files $<$ 0.5 IoU",
-            transform=ax.transAxes, ha="center", va="bottom", fontsize=13,
-            bbox=dict(boxstyle="round", fc="white", ec="0.6"))
+    ax.text(
+        0.5,
+        0.04,
+        f"Oct 2024: median {np.median(oct_iou):.4f}, {n_fail} files $<$ 0.5 IoU",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=13,
+        bbox=dict(boxstyle="round", fc="white", ec="0.6"),
+    )
     fig.tight_layout()
     savefig(fig, OUTPUT_DIR / "cross_survey_generalization.pdf")
     plt.close(fig)
@@ -332,8 +386,9 @@ def plot_cross_survey(basto, oct_files_metrics):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--n-oct", type=int, default=100,
-                    help="number of held-out Oct 2024 files to evaluate")
+    ap.add_argument(
+        "--n-oct", type=int, default=100, help="number of held-out Oct 2024 files to evaluate"
+    )
     ap.add_argument("--skip-oct", action="store_true")
     args = ap.parse_args()
 
@@ -345,8 +400,10 @@ def main():
 
     val_files = basto_val_files()
     per_file, calib, sweep, panels = run_basto(model, device, val_files)
-    print(f"\nBasto mean IoU = {np.mean([r['iou'] for r in per_file]):.4f} "
-          f"(reference 0.9815)   ECE = {calib['ece']:.4f}")
+    print(
+        f"\nBasto mean IoU = {np.mean([r['iou'] for r in per_file]):.4f} "
+        f"(reference 0.9815)   ECE = {calib['ece']:.4f}"
+    )
 
     plot_reliability(calib)
     best_t = plot_threshold_sweep(sweep)
@@ -363,7 +420,9 @@ def main():
     seen, fsel, flab = set(), [], []
     for f, l in zip(sel, labs):
         if f not in seen:
-            seen.add(f); fsel.append(f); flab.append(l)
+            seen.add(f)
+            fsel.append(f)
+            flab.append(l)
     plot_panels(panels, fsel, flab)
 
     oct_metrics = []
@@ -373,19 +432,30 @@ def main():
         for i, fn_name in enumerate(oct_files, 1):
             try:
                 m, _, _, _, _ = evaluate_file(
-                    model, str(ZARR_DIR / fn_name), FREQ1, FREQ2, TARGET,
-                    device, patch_width=PATCH_W, stride=STRIDE,
-                    vmin=VMIN, vmax=VMAX)
-                oct_metrics.append({"file": fn_name, "iou": m.iou,
-                                    "err_median": m.bottom_error_median_m})
+                    model,
+                    str(ZARR_DIR / fn_name),
+                    FREQ1,
+                    FREQ2,
+                    TARGET,
+                    device,
+                    patch_width=PATCH_W,
+                    stride=STRIDE,
+                    vmin=VMIN,
+                    vmax=VMAX,
+                )
+                oct_metrics.append(
+                    {"file": fn_name, "iou": m.iou, "err_median": m.bottom_error_median_m}
+                )
             except Exception as e:
                 print(f"  skip {fn_name}: {e}")
             if i % 20 == 0:
                 print(f"  {i}/{len(oct_files)}")
         oct_iou = np.array([m["iou"] for m in oct_metrics])
-        print(f"Oct 2024 mean IoU = {oct_iou.mean():.4f}  "
-              f"median = {np.median(oct_iou):.4f}  "
-              f"min = {oct_iou.min():.4f}  n<0.5 = {int(np.sum(oct_iou < 0.5))}")
+        print(
+            f"Oct 2024 mean IoU = {oct_iou.mean():.4f}  "
+            f"median = {np.median(oct_iou):.4f}  "
+            f"min = {oct_iou.min():.4f}  n<0.5 = {int(np.sum(oct_iou < 0.5))}"
+        )
         plot_cross_survey(per_file, oct_metrics)
 
     # Dump numbers for the thesis text.
@@ -393,8 +463,9 @@ def main():
         "ece": calib["ece"],
         "best_threshold": float(best_t),
         "basto_mean_iou": float(np.mean([r["iou"] for r in per_file])),
-        "threshold_sweep": {k: (v.tolist() if isinstance(v, np.ndarray) else v)
-                            for k, v in sweep.items()},
+        "threshold_sweep": {
+            k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in sweep.items()
+        },
         "oct_2024": oct_metrics,
         "panels": fsel,
     }

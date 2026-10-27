@@ -20,6 +20,7 @@ from .metrics import get_bottom_line, compute_mask_metrics
 # Patch-level de-normalisation
 # ---------------------------------------------------------------------------
 
+
 def _denormalise_patch(patch_channel, vmin=-80.0, vmax=-34.0):
     """Reverse [0,1] normalisation to approximate dB values."""
     return patch_channel * (vmax - vmin) + vmin
@@ -37,6 +38,7 @@ def _build_range_array(n_samples, sample_interval=0.0001, sound_velocity=1490.0)
 # Score a candidate mask against the patch
 # ---------------------------------------------------------------------------
 
+
 def _score_mask(patch, mask):
     """Score a mask using a subset of quality metrics.
 
@@ -48,22 +50,22 @@ def _score_mask(patch, mask):
     score = 0.0
     n = 0
 
-    bc = m.get('boundary_contrast')
+    bc = m.get("boundary_contrast")
     if bc is not None and not np.isnan(bc):
         score += bc * 2.0
         n += 2.0
 
-    snr = m.get('bottom_snr')
+    snr = m.get("bottom_snr")
     if snr is not None and not np.isnan(snr):
         score += snr * 2.0
         n += 2.0
 
-    edge = m.get('mask_edge_intensity')
+    edge = m.get("mask_edge_intensity")
     if edge is not None and not np.isnan(edge):
         score += edge * 1.5
         n += 1.5
 
-    curv = m.get('bottom_curvature')
+    curv = m.get("bottom_curvature")
     if curv is not None and not np.isnan(curv):
         # Lower curvature is better — invert
         score += max(0, 1.0 - curv / 50.0) * 1.0
@@ -75,6 +77,7 @@ def _score_mask(patch, mask):
 # ---------------------------------------------------------------------------
 # Re-labelling
 # ---------------------------------------------------------------------------
+
 
 def relabel_patch(patch, mask, vmin=-80.0, vmax=-34.0, methods=None):
     """Try multiple detection methods and keep the best mask.
@@ -93,19 +96,21 @@ def relabel_patch(patch, mask, vmin=-80.0, vmax=-34.0, methods=None):
     score_improvement : float — score difference (positive = improved)
     """
     from raw_sensor_integration.bottom_labelling.dp import (
-        detect_bottom_tvg, detect_bottom_dp,
+        detect_bottom_tvg,
+        detect_bottom_dp,
     )
     from raw_sensor_integration.bottom_labelling.morphological import (
         detect_bottom_morphological,
     )
     from raw_sensor_integration.bottom_labelling.utilities import (
-        bottom_to_sample_index, create_bottom_mask,
+        bottom_to_sample_index,
+        create_bottom_mask,
     )
 
     available_methods = {
-        'tvg': detect_bottom_tvg,
-        'dp': detect_bottom_dp,
-        'morphological': detect_bottom_morphological,
+        "tvg": detect_bottom_tvg,
+        "dp": detect_bottom_dp,
+        "morphological": detect_bottom_morphological,
     }
 
     if methods is None:
@@ -118,7 +123,7 @@ def relabel_patch(patch, mask, vmin=-80.0, vmax=-34.0, methods=None):
     original_score = _score_mask(patch, mask)
     best_mask = mask
     best_score = original_score
-    best_method = 'original'
+    best_method = "original"
 
     for method_name in methods:
         if method_name not in available_methods:
@@ -128,7 +133,7 @@ def relabel_patch(patch, mask, vmin=-80.0, vmax=-34.0, methods=None):
         try:
             bottom_range_m = detect_fn(ch0_db, range_array)
             bottom_idx = bottom_to_sample_index(bottom_range_m, range_array)
-            candidate = create_bottom_mask(H, W, bottom_idx, mode='below')
+            candidate = create_bottom_mask(H, W, bottom_idx, mode="below")
 
             if candidate.max() == 0:
                 continue
@@ -147,6 +152,7 @@ def relabel_patch(patch, mask, vmin=-80.0, vmax=-34.0, methods=None):
 # ---------------------------------------------------------------------------
 # Targeted fixes
 # ---------------------------------------------------------------------------
+
 
 def smooth_erratic_bottom(mask, max_jump=30):
     """Median-filter the bottom line to remove single-ping spikes.
@@ -193,7 +199,7 @@ def smooth_erratic_bottom(mask, max_jump=30):
     new_mask = np.zeros_like(mask)
     for j in range(W):
         if new_bottom[j] >= 0:
-            new_mask[new_bottom[j]:, j] = 1
+            new_mask[new_bottom[j] :, j] = 1
 
     return new_mask
 
@@ -226,6 +232,6 @@ def fill_bottom_gaps(mask):
     # Rebuild mask
     new_mask = np.zeros_like(mask)
     for j in range(W):
-        new_mask[new_bottom[j]:, j] = 1
+        new_mask[new_bottom[j] :, j] = 1
 
     return new_mask

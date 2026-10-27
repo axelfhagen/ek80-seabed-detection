@@ -12,8 +12,8 @@ import numpy as np
 # Threshold sensitivity
 # ---------------------------------------------------------------------------
 
-def threshold_sensitivity(prediction, gt_mask, range_array,
-                          thresholds=None):
+
+def threshold_sensitivity(prediction, gt_mask, range_array, thresholds=None):
     """Evaluate segmentation metrics across a range of probability thresholds.
 
     Parameters
@@ -37,13 +37,13 @@ def threshold_sensitivity(prediction, gt_mask, range_array,
     gt_bottom_idx = extract_bottom_line(gt_mask.astype(np.float32), threshold=0.5)
 
     results = {
-        'thresholds': [],
-        'iou': [],
-        'dice': [],
-        'precision': [],
-        'recall': [],
-        'bottom_error_mean_m': [],
-        'bottom_error_median_m': [],
+        "thresholds": [],
+        "iou": [],
+        "dice": [],
+        "precision": [],
+        "recall": [],
+        "bottom_error_mean_m": [],
+        "bottom_error_median_m": [],
     }
 
     eps = 1e-7
@@ -61,19 +61,18 @@ def threshold_sensitivity(prediction, gt_mask, range_array,
         recall = (tp + eps) / (tp + fn + eps)
 
         pred_bottom_idx = extract_bottom_line(prediction, threshold=t)
-        errors_m = bottom_depth_error(pred_bottom_idx, gt_bottom_idx,
-                                      range_array)
+        errors_m = bottom_depth_error(pred_bottom_idx, gt_bottom_idx, range_array)
 
-        err_mean = float(np.mean(errors_m)) if len(errors_m) > 0 else float('nan')
-        err_median = float(np.median(errors_m)) if len(errors_m) > 0 else float('nan')
+        err_mean = float(np.mean(errors_m)) if len(errors_m) > 0 else float("nan")
+        err_median = float(np.median(errors_m)) if len(errors_m) > 0 else float("nan")
 
-        results['thresholds'].append(float(t))
-        results['iou'].append(iou)
-        results['dice'].append(dice)
-        results['precision'].append(precision)
-        results['recall'].append(recall)
-        results['bottom_error_mean_m'].append(err_mean)
-        results['bottom_error_median_m'].append(err_median)
+        results["thresholds"].append(float(t))
+        results["iou"].append(iou)
+        results["dice"].append(dice)
+        results["precision"].append(precision)
+        results["recall"].append(recall)
+        results["bottom_error_mean_m"].append(err_mean)
+        results["bottom_error_median_m"].append(err_median)
 
     return results
 
@@ -81,6 +80,7 @@ def threshold_sensitivity(prediction, gt_mask, range_array,
 # ---------------------------------------------------------------------------
 # Calibration
 # ---------------------------------------------------------------------------
+
 
 def calibration_curve(prediction, gt_mask, n_bins=10):
     """Compute a reliability diagram and Expected Calibration Error (ECE).

@@ -40,6 +40,7 @@ from validation.conformal import (
 # conformal_quantile
 # ---------------------------------------------------------------------------
 
+
 def test_conformal_quantile_uses_finite_sample_level_with_linear_interpolation():
     # n=10, alpha=0.2: k = ceil(11*0.8) = ceil(8.8) = 9, level = 9/10.
     # np.quantile position = 0.9*(10-1) = 8.1 -> between sorted[8]=9 and
@@ -67,9 +68,9 @@ def test_conformal_quantile_rejects_empty_calibration_set():
 
 @pytest.mark.xfail(
     reason="conformal.py:64 uses np.quantile linear interpolation; the "
-           "split-conformal rule selects exactly the k-th order statistic "
-           "(k = ceil((n+1)(1-alpha))), here the 9th smallest = 9. Current "
-           "result 9.1 is conservative but not the stated rule.",
+    "split-conformal rule selects exactly the k-th order statistic "
+    "(k = ceil((n+1)(1-alpha))), here the 9th smallest = 9. Current "
+    "result 9.1 is conservative but not the stated rule.",
     strict=True,
 )
 def test_conformal_quantile_selects_exact_kth_order_statistic():
@@ -108,6 +109,7 @@ def test_coverage_curve_returns_quantile_per_alpha():
 # Two-sided (signed) quantile
 # ---------------------------------------------------------------------------
 
+
 def test_two_sided_quantile_splits_alpha_between_tails():
     # n=12, alpha=0.5, scores 0..11.
     # hi: ceil(13*0.75)=ceil(9.75)=10 -> level 10/12, pos 10/12*11 = 9.1667
@@ -126,6 +128,7 @@ def test_two_sided_quantile_small_n_falls_back_to_min_and_max():
 # ---------------------------------------------------------------------------
 # Constant-width band
 # ---------------------------------------------------------------------------
+
 
 def test_calibrate_depth_keeps_only_finite_positive_pairs():
     pred = [10.0, 12.0, np.nan, 0.0, 15.0]
@@ -157,6 +160,7 @@ def test_evaluate_coverage_without_valid_pings_returns_nan():
 # Profile-based band
 # ---------------------------------------------------------------------------
 
+
 def _gt_mask_from_bottom(bottom_rows, n_range):
     m = np.zeros((n_range, len(bottom_rows)), dtype=np.uint8)
     for j, b in enumerate(bottom_rows):
@@ -182,8 +186,8 @@ def test_calibrate_profile_window_takes_max_probability_current_behaviour():
 
 @pytest.mark.xfail(
     reason="conformal.py:258 takes max(prob) over the +/-margin window; the "
-           "docstring says the window 'picks the most favourable probability', "
-           "i.e. the one minimizing the score (closest to 0.5): min(0.2,0.4,0.5)=0.2.",
+    "docstring says the window 'picks the most favourable probability', "
+    "i.e. the one minimizing the score (closest to 0.5): min(0.2,0.4,0.5)=0.2.",
     strict=True,
 )
 def test_calibrate_profile_window_picks_most_favourable_probability():
@@ -200,11 +204,13 @@ def test_calibrate_profile_skips_pings_without_gt_bottom():
 
 def test_predict_profile_band_spans_tau_and_one_minus_tau_crossings():
     rng_arr = np.arange(6, dtype=float)
-    prob = np.column_stack([
-        [0, 0.1, 0.3, 0.6, 0.85, 1.0],   # crosses 0.2 at row 2, 0.8 at row 4
-        [0, 0, 0, 0, 0, 0],              # no bottom
-        [0, 0.3, 0.5, 0.5, 0.5, 0.5],    # never reaches 0.8 -> range[-1]
-    ])
+    prob = np.column_stack(
+        [
+            [0, 0.1, 0.3, 0.6, 0.85, 1.0],  # crosses 0.2 at row 2, 0.8 at row 4
+            [0, 0, 0, 0, 0, 0],  # no bottom
+            [0, 0.3, 0.5, 0.5, 0.5, 0.5],  # never reaches 0.8 -> range[-1]
+        ]
+    )
     upper, lower, width = predict_profile_band(prob, rng_arr, q_hat=0.3)
     np.testing.assert_allclose(upper, [2.0, np.nan, 1.0])
     np.testing.assert_allclose(lower, [4.0, np.nan, 5.0])
@@ -213,35 +219,36 @@ def test_predict_profile_band_spans_tau_and_one_minus_tau_crossings():
 
 def test_evaluate_profile_coverage_separates_depth_and_detection_coverage():
     rng_arr = np.arange(6, dtype=float)
-    col_band = [0, 0.1, 0.3, 0.6, 0.85, 1.0]   # band [2, 4] at q_hat=0.3
+    col_band = [0, 0.1, 0.3, 0.6, 0.85, 1.0]  # band [2, 4] at q_hat=0.3
     zeros = [0.0] * 6
     prob = np.column_stack([col_band, col_band, zeros, zeros])
     gt = _gt_mask_from_bottom([3, 5, -1, 2], 6)
     # ping0: gt 3 in [2,4] covered; ping1: gt 5 not covered;
     # ping2: both no bottom (detection ok); ping3: gt bottom, no prediction.
     res = evaluate_profile_coverage([prob], [gt], [rng_arr], q_hat=0.3)
-    assert res['depth_coverage'] == pytest.approx(0.5)
-    assert res['detection_coverage'] == pytest.approx(0.75)
-    assert res['n_depth_pings'] == 2
-    assert res['n_total_pings'] == 4
-    assert res['mean_band_width_m'] == pytest.approx(2.0)
-    assert res['median_band_width_m'] == pytest.approx(2.0)
+    assert res["depth_coverage"] == pytest.approx(0.5)
+    assert res["detection_coverage"] == pytest.approx(0.75)
+    assert res["n_depth_pings"] == 2
+    assert res["n_total_pings"] == 4
+    assert res["mean_band_width_m"] == pytest.approx(2.0)
+    assert res["median_band_width_m"] == pytest.approx(2.0)
 
 
 # ---------------------------------------------------------------------------
 # Locally-weighted, signed, CQR
 # ---------------------------------------------------------------------------
 
+
 def test_locally_weighted_scores_divide_by_floored_sigma():
-    scores = calibrate_locally_weighted([10, 10, 10], [11, 13, 10.2], [2.0, 0.1, np.nan],
-                                        epsilon=0.5)
+    scores = calibrate_locally_weighted(
+        [10, 10, 10], [11, 13, 10.2], [2.0, 0.1, np.nan], epsilon=0.5
+    )
     # ping0: 1/2; ping1: 3/max(0.1,0.5)=6; ping2: sigma NaN -> dropped
     np.testing.assert_allclose(scores, [0.5, 6.0])
 
 
 def test_locally_weighted_band_scales_with_floored_sigma():
-    upper, lower, width = predict_locally_weighted_band([10.0, 20.0], [0.1, 4.0], 2.0,
-                                                        epsilon=0.5)
+    upper, lower, width = predict_locally_weighted_band([10.0, 20.0], [0.1, 4.0], 2.0, epsilon=0.5)
     np.testing.assert_allclose(upper, [9.0, 12.0])
     np.testing.assert_allclose(lower, [11.0, 28.0])
     np.testing.assert_allclose(width, [2.0, 16.0])
@@ -278,8 +285,8 @@ def test_cqr_band_with_negative_q_hat_shrinks_interval():
 
 @pytest.mark.xfail(
     reason="conformal.py:688-690 predict_cqr_band docstring promises the band "
-           "is 'clipped to be ordered', but no clipping is applied: q_hat=-1.5 "
-           "on [9, 11] yields upper=10.5 > lower=9.5 and negative width.",
+    "is 'clipped to be ordered', but no clipping is applied: q_hat=-1.5 "
+    "on [9, 11] yields upper=10.5 > lower=9.5 and negative width.",
     strict=True,
 )
 def test_cqr_band_is_ordered_even_for_large_negative_q_hat():
@@ -291,6 +298,7 @@ def test_cqr_band_is_ordered_even_for_large_negative_q_hat():
 # ---------------------------------------------------------------------------
 # Pixel-level sets and depth extraction
 # ---------------------------------------------------------------------------
+
 
 def test_calibrate_pixel_score_is_one_minus_true_class_probability():
     prob = np.array([[0.9, 0.2], [0.4, 0.7]])

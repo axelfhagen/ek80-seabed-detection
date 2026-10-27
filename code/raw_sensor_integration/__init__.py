@@ -19,6 +19,15 @@ try:
 except ImportError:
     pass
 
-__all__ = ['raw_parser', 'metadata', 'ping_parser', 'bottom_detection',
-           'bottom_labelling', 'visualization', 'gps_parser', 'preprocessing',
-           'zarr_dataset', 'data_loader']
+__all__ = [
+    "raw_parser",
+    "metadata",
+    "ping_parser",
+    "bottom_detection",
+    "bottom_labelling",
+    "visualization",
+    "gps_parser",
+    "preprocessing",
+    "zarr_dataset",
+    "data_loader",
+]

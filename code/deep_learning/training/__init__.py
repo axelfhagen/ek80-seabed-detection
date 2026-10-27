@@ -3,4 +3,4 @@
 from . import config
 from . import train
 
-__all__ = ['config', 'train']
+__all__ = ["config", "train"]

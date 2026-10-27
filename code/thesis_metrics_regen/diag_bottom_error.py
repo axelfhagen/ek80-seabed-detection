@@ -7,6 +7,7 @@ chunk_arch_sweep_2 over its held-out Oct-2024 evaluation files, writes the array
 corrected median / P95 into the regen outputs, and regenerates the distribution figure into
 Latex/Figures/regen_2026/.
 """
+
 import argparse
 import json
 import random
@@ -17,6 +18,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -58,8 +60,7 @@ def signed_errors(prediction, gt_mask, range_array):
     if not valid.any():
         return np.array([])
     n = len(range_array)
-    return (range_array[np.clip(pi[valid], 0, n - 1)]
-            - range_array[np.clip(gi[valid], 0, n - 1)])
+    return range_array[np.clip(pi[valid], 0, n - 1)] - range_array[np.clip(gi[valid], 0, n - 1)]
 
 
 def main():
@@ -83,8 +84,16 @@ def main():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 _, pred, gt, _, ra = evaluate_file(
-                    model, zp, FREQ1, FREQ2, TARGET, device,
-                    vmin=-80.0, vmax=-34.0, threshold=THRESH)
+                    model,
+                    zp,
+                    FREQ1,
+                    FREQ2,
+                    TARGET,
+                    device,
+                    vmin=-80.0,
+                    vmax=-34.0,
+                    threshold=THRESH,
+                )
             allerr.append(signed_errors(pred, gt, ra))
         except Exception as e:  # noqa: BLE001
             print(f"  {zp.name}: FAIL {e}", flush=True)

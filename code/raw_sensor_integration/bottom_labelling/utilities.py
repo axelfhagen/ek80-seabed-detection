@@ -19,20 +19,21 @@ from ..ping_parser import NT_EPOCH_OFFSET as _NT_EPOCH_OFFSET
 SOUND_VELOCITY = 1500.0  # m/s
 
 _BEAM_WIDTH = {
-    '18000': 11.0,
-    '38000': 7.1,
-    '70000': 7.1,
-    '120000': 7.1,
-    '200000': 7.1,
-    '364000': 7.1,
+    "18000": 11.0,
+    "38000": 7.1,
+    "70000": 7.1,
+    "120000": 7.1,
+    "200000": 7.1,
+    "364000": 7.1,
 }
 
 
 # ── Range / coordinate utilities ──────────────────────────────────────────
 
-def build_range_array(sample_count: int,
-                      sample_interval: float,
-                      sound_velocity: float = SOUND_VELOCITY) -> np.ndarray:
+
+def build_range_array(
+    sample_count: int, sample_interval: float, sound_velocity: float = SOUND_VELOCITY
+) -> np.ndarray:
     """
     Build range-from-transducer array (meters) for a channel.
 
@@ -72,8 +73,8 @@ def range_to_depth(range_m, heave_m, draft_m, offset_m=0.0):
 
 # ── MRU0 heave parsing ───────────────────────────────────────────────────
 
-def parse_mru0_datagrams(raw_data: bytes,
-                          mru0_offsets: List[int]) -> List[Tuple[datetime, float]]:
+
+def parse_mru0_datagrams(raw_data: bytes, mru0_offsets: List[int]) -> List[Tuple[datetime, float]]:
     """
     Parse MRU0 (motion reference unit) datagrams from raw file bytes.
 
@@ -102,23 +103,23 @@ def parse_mru0_datagrams(raw_data: bytes,
         try:
             if offset < 4:
                 continue
-            dgram_len = struct.unpack('<I', raw_data[offset - 4:offset])[0]
+            dgram_len = struct.unpack("<I", raw_data[offset - 4 : offset])[0]
             if dgram_len < 24 or dgram_len > 1024:
                 continue
             pos = offset + 4  # skip 'MRU0' tag
-            nt_time = struct.unpack('<q', raw_data[pos:pos + 8])[0]
+            nt_time = struct.unpack("<q", raw_data[pos : pos + 8])[0]
             unix_time = (nt_time - _NT_EPOCH_OFFSET) / 10_000_000
             ts = datetime.utcfromtimestamp(unix_time)
-            heave = struct.unpack('<f', raw_data[pos + 8:pos + 12])[0]
+            heave = struct.unpack("<f", raw_data[pos + 8 : pos + 12])[0]
             results.append((ts, heave))
         except Exception:
             continue
     return results
 
 
-def interpolate_heave_to_pings(mru_times: List[datetime],
-                                heave_values: np.ndarray,
-                                ping_times: List[datetime]) -> np.ndarray:
+def interpolate_heave_to_pings(
+    mru_times: List[datetime], heave_values: np.ndarray, ping_times: List[datetime]
+) -> np.ndarray:
     """
     Linearly interpolate heave values onto ping timestamps.
 
@@ -150,12 +151,15 @@ def interpolate_heave_to_pings(mru_times: List[datetime],
 
 # ── Visualization and masking ─────────────────────────────────────────────
 
-def overlay_bottom_on_echogram(ax,
-                                bottom_range_m: np.ndarray,
-                                range_array: np.ndarray,
-                                color: str = 'red',
-                                linewidth: float = 1.5,
-                                label: str = 'Bottom') -> None:
+
+def overlay_bottom_on_echogram(
+    ax,
+    bottom_range_m: np.ndarray,
+    range_array: np.ndarray,
+    color: str = "red",
+    linewidth: float = 1.5,
+    label: str = "Bottom",
+) -> None:
     """
     Draw a bottom detection line on an existing echogram axes.
 
@@ -168,12 +172,10 @@ def overlay_bottom_on_echogram(ax,
     pixel_rows = np.interp(bottom_range_m, range_array, np.arange(len(range_array)))
     pixel_rows[np.isnan(bottom_range_m)] = np.nan
 
-    ax.plot(ping_indices, pixel_rows, color=color, linewidth=linewidth,
-            label=label, alpha=0.85)
+    ax.plot(ping_indices, pixel_rows, color=color, linewidth=linewidth, label=label, alpha=0.85)
 
 
-def bottom_to_sample_index(bottom_range_m: np.ndarray,
-                            range_array: np.ndarray) -> np.ndarray:
+def bottom_to_sample_index(bottom_range_m: np.ndarray, range_array: np.ndarray) -> np.ndarray:
     """
     Convert bottom range (meters from transducer) to integer sample indices.
 
@@ -182,20 +184,18 @@ def bottom_to_sample_index(bottom_range_m: np.ndarray,
     indices = np.full(len(bottom_range_m), -1, dtype=np.int64)
     valid = ~np.isnan(bottom_range_m)
     if valid.any():
-        pixel_rows = np.interp(
-            bottom_range_m[valid], range_array, np.arange(len(range_array))
-        )
-        indices[valid] = np.clip(
-            np.round(pixel_rows).astype(np.int64), 0, len(range_array) - 1
-        )
+        pixel_rows = np.interp(bottom_range_m[valid], range_array, np.arange(len(range_array)))
+        indices[valid] = np.clip(np.round(pixel_rows).astype(np.int64), 0, len(range_array) - 1)
     return indices
 
 
-def create_bottom_mask(n_samples: int,
-                        n_pings: int,
-                        bottom_indices: np.ndarray,
-                        mode: str = 'line',
-                        line_thickness: int = 1) -> np.ndarray:
+def create_bottom_mask(
+    n_samples: int,
+    n_pings: int,
+    bottom_indices: np.ndarray,
+    mode: str = "line",
+    line_thickness: int = 1,
+) -> np.ndarray:
     """
     Create a binary segmentation mask from bottom sample indices.
 
@@ -225,7 +225,7 @@ def create_bottom_mask(n_samples: int,
         idx = int(bottom_indices[i])
         if idx < 0:
             continue
-        if mode == 'below':
+        if mode == "below":
             mask[idx:, i] = 1
         else:  # 'line'
             row_start = max(0, idx - half)
@@ -235,18 +235,17 @@ def create_bottom_mask(n_samples: int,
     return mask
 
 
-def save_bottom_detections(bottom_range_m: np.ndarray,
-                            ping_times: List[datetime],
-                            channel_id: str,
-                            output_path: str) -> None:
+def save_bottom_detections(
+    bottom_range_m: np.ndarray, ping_times: List[datetime], channel_id: str, output_path: str
+) -> None:
     """
     Save bottom detections to a CSV file.
 
     Columns: ping_time, channel_id, bottom_range_m
     """
-    with open(output_path, 'w', newline='') as f:
+    with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(['ping_time', 'channel_id', 'bottom_range_m'])
+        writer.writerow(["ping_time", "channel_id", "bottom_range_m"])
         for t, d in zip(ping_times, bottom_range_m):
-            depth_str = '' if np.isnan(d) else f'{d:.4f}'
+            depth_str = "" if np.isnan(d) else f"{d:.4f}"
             writer.writerow([t.isoformat(), channel_id, depth_str])

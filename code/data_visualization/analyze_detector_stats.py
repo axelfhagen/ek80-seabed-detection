@@ -19,6 +19,7 @@ from itertools import combinations
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,7 +33,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 from data_visualization.thesis_style import apply_thesis_style, savefig
 from raw_sensor_integration.preprocessing import load_sv_from_zarr
 from raw_sensor_integration.bottom_labelling import (
-    detect_bottom_simple, detect_bottom_edge, detect_bottom_gradient,
+    detect_bottom_simple,
+    detect_bottom_edge,
+    detect_bottom_gradient,
 )
 
 ZARR_DIR = PROJECT_ROOT / "Datasets" / "echopype_zarr"
@@ -71,7 +74,8 @@ def gather(files, cache: Path, recompute: bool) -> dict:
     for i, fn in enumerate(files, 1):
         p = ZARR_DIR / fn
         if not p.exists():
-            print(f"[miss] {fn}"); continue
+            print(f"[miss] {fn}")
+            continue
         print(f"[{i}/{len(files)}] {fn}")
         det = run_detectors(p)
         row = {"file": fn}
@@ -96,10 +100,16 @@ def paired_stats(a, b):
     except ValueError:
         p_w = np.nan
     sd = diff.std(ddof=1)
-    return {"n": int(m.sum()), "mean_diff": float(diff.mean()),
-            "ci": float(1.96 * sd / np.sqrt(m.sum())) if m.sum() else np.nan,
-            "dz": float(diff.mean() / sd) if sd > 0 else 0.0,
-            "p_t": float(p_t), "p_w": float(p_w), "a": a, "b": b}
+    return {
+        "n": int(m.sum()),
+        "mean_diff": float(diff.mean()),
+        "ci": float(1.96 * sd / np.sqrt(m.sum())) if m.sum() else np.nan,
+        "dz": float(diff.mean() / sd) if sd > 0 else 0.0,
+        "p_t": float(p_t),
+        "p_w": float(p_w),
+        "a": a,
+        "b": b,
+    }
 
 
 def plot(data: dict):
@@ -130,19 +140,23 @@ def plot(data: dict):
         ax.set_title(f"{x} vs {y}: p={s['p_t']:.3f} ({sig})")
         ax.set_xlabel("mean depth of pair (m)")
         ax.set_ylabel(f"{x} minus {y} (m)")
-        ax.legend(); ax.grid(alpha=0.3)
+        ax.legend()
+        ax.grid(alpha=0.3)
 
     # Row 2a: per-file depth across detectors
     ax = fig.add_subplot(2, 3, 4)
     xs = np.arange(len(DETECTORS))
     for i in range(len(rows)):
         ax.plot(xs, [depth[d][i] for d in DETECTORS], "-o", ms=5, lw=1.0, alpha=0.5)
-    ax.plot(xs, [np.nanmean(depth[d]) for d in DETECTORS], "-s",
-            color="black", lw=3, ms=11, zorder=5)
-    ax.set_xticks(xs); ax.set_xticklabels(DETECTORS)
+    ax.plot(
+        xs, [np.nanmean(depth[d]) for d in DETECTORS], "-s", color="black", lw=3, ms=11, zorder=5
+    )
+    ax.set_xticks(xs)
+    ax.set_xticklabels(DETECTORS)
     ax.set_ylabel("mean bottom depth (m)")
     ax.set_title("per-file depth across detectors")
-    ax.invert_yaxis(); ax.grid(alpha=0.3)
+    ax.invert_yaxis()
+    ax.grid(alpha=0.3)
 
     # Row 2b: detection rate distribution
     ax = fig.add_subplot(2, 3, 5)
@@ -152,8 +166,9 @@ def plot(data: dict):
         patch.set_facecolor("#cfe3f0")
     rng = np.random.default_rng(0)
     for i, vals in enumerate(rdata):
-        ax.scatter(rng.normal(i + 1, 0.04, len(vals)), vals, s=24,
-                   color="#1f5f80", alpha=0.6, zorder=3)
+        ax.scatter(
+            rng.normal(i + 1, 0.04, len(vals)), vals, s=24, color="#1f5f80", alpha=0.6, zorder=3
+        )
     ax.set_ylabel("valid-ping fraction")
     ax.set_title("detection rate per file")
     ax.grid(axis="y", alpha=0.3)
@@ -161,22 +176,40 @@ def plot(data: dict):
     # Row 2c: pairwise stats text
     ax = fig.add_subplot(2, 3, 6)
     ax.axis("off")
-    lines = ["paired tests: mean depth", "",
-             f"{'pair':<16}{'D(m)':>8}{'dz':>7}{'p_t':>8}{'p_w':>8}"]
+    lines = [
+        "paired tests: mean depth",
+        "",
+        f"{'pair':<16}{'D(m)':>8}{'dz':>7}{'p_t':>8}{'p_w':>8}",
+    ]
     summary = []
     for x, y in pairs:
         s = paired_stats(depth[x], depth[y])
-        lines.append(f"{x+'-'+y:<16}{s['mean_diff']:>+8.1f}{s['dz']:>7.2f}"
-                     f"{s['p_t']:>8.3f}{s['p_w']:>8.3f}")
+        lines.append(
+            f"{x + '-' + y:<16}{s['mean_diff']:>+8.1f}{s['dz']:>7.2f}"
+            f"{s['p_t']:>8.3f}{s['p_w']:>8.3f}"
+        )
         summary.append([x, y, s["n"], s["mean_diff"], s["dz"], s["p_t"], s["p_w"]])
-    lines += ["", "paired tests: detection rate", "",
-              f"{'pair':<16}{'Drate':>8}{'dz':>7}{'p_t':>8}{'p_w':>8}"]
+    lines += [
+        "",
+        "paired tests: detection rate",
+        "",
+        f"{'pair':<16}{'Drate':>8}{'dz':>7}{'p_t':>8}{'p_w':>8}",
+    ]
     for x, y in pairs:
         s = paired_stats(rate[x], rate[y])
-        lines.append(f"{x+'-'+y:<16}{s['mean_diff']:>+8.3f}{s['dz']:>7.2f}"
-                     f"{s['p_t']:>8.3f}{s['p_w']:>8.3f}")
-    ax.text(0.0, 1.0, "\n".join(lines), family="monospace", fontsize=13,
-            va="top", transform=ax.transAxes)
+        lines.append(
+            f"{x + '-' + y:<16}{s['mean_diff']:>+8.3f}{s['dz']:>7.2f}"
+            f"{s['p_t']:>8.3f}{s['p_w']:>8.3f}"
+        )
+    ax.text(
+        0.0,
+        1.0,
+        "\n".join(lines),
+        family="monospace",
+        fontsize=13,
+        va="top",
+        transform=ax.transAxes,
+    )
 
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     out = OUTPUT_DIR / "detector_comparison.pdf"

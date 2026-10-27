@@ -12,6 +12,7 @@ dropout-rate sweep shows how the band scales with p.
 
 Output: Figures/mc_dropout_uncertainty/
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,6 +24,7 @@ import numpy as np
 import torch
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -30,7 +32,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from data_visualization.thesis_style import (
-    apply_thesis_style, FIGSIZE_FULL, FIGSIZE_STD, style_colorbar, savefig,
+    apply_thesis_style,
+    FIGSIZE_FULL,
+    FIGSIZE_STD,
+    style_colorbar,
+    savefig,
 )
 from infer_test_raw import load_model, prepare_raw_channels, TARGET_SIZE, PATCH_WIDTH
 from deep_learning.unet_model import predict_full_echogram
@@ -41,13 +47,10 @@ OUTPUT_DIR = PROJECT_ROOT / "Figures" / "mc_dropout_uncertainty"
 DEFAULT_RAW_DIR = str(PROJECT_ROOT / "Datasets" / "raw_files")
 
 # The canonical best model (survey split, referenced across recent analyses).
-DEFAULT_CHECKPOINT = (
-    "code/checkpoints/exp_20260513_100101_arch_sweep_2/smp_unet_resnet34_best.pth"
-)
+DEFAULT_CHECKPOINT = "code/checkpoints/exp_20260513_100101_arch_sweep_2/smp_unet_resnet34_best.pth"
 
 
-def bottom_line_distribution(all_preds, det_prob, range_arr, threshold=0.5,
-                             search_m=25.0):
+def bottom_line_distribution(all_preds, det_prob, range_arr, threshold=0.5, search_m=25.0):
     """Per-ping bottom-depth stats over the MC samples.
 
     The naive first-crossing rule is unstable here: dropout occasionally lifts
@@ -101,8 +104,9 @@ def bottom_line_distribution(all_preds, det_prob, range_arr, threshold=0.5,
     return mean_d, q025, q975, std_d, flip_rate, n_valid
 
 
-def plot_per_file(name, sv_channels, range_arr, std_prob,
-                  mean_d, q025, q975, std_d, flip_rate, save_path):
+def plot_per_file(
+    name, sv_channels, range_arr, std_prob, mean_d, q025, q975, std_d, flip_rate, save_path
+):
     echogram = sv_channels[1]  # 200 kHz, normalised [0, 1]
     n_range, n_pings = echogram.shape
     extent = [0, n_pings, range_arr[-1], range_arr[0]]
@@ -110,18 +114,27 @@ def plot_per_file(name, sv_channels, range_arr, std_prob,
     valid = np.isfinite(mean_d)
 
     fig, (ax0, ax1, ax2) = plt.subplots(
-        3, 1, figsize=(FIGSIZE_FULL[0], FIGSIZE_FULL[1] + 4),
-        gridspec_kw={"height_ratios": [3, 3, 1.4]})
+        3,
+        1,
+        figsize=(FIGSIZE_FULL[0], FIGSIZE_FULL[1] + 4),
+        gridspec_kw={"height_ratios": [3, 3, 1.4]},
+    )
 
     # 1) echogram + mean bottom line + 95% boundary band
-    im0 = ax0.imshow(echogram, aspect="auto", cmap="viridis", vmin=0, vmax=1,
-                     origin="upper", extent=extent)
+    im0 = ax0.imshow(
+        echogram, aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper", extent=extent
+    )
     if valid.any():
-        ax0.fill_between(pings[valid], q025[valid], q975[valid],
-                         color="orange", alpha=0.6, linewidth=0,
-                         label="95% MC boundary band")
-        ax0.plot(pings[valid], mean_d[valid], color="red", linewidth=1.4,
-                 label="Mean bottom")
+        ax0.fill_between(
+            pings[valid],
+            q025[valid],
+            q975[valid],
+            color="orange",
+            alpha=0.6,
+            linewidth=0,
+            label="95% MC boundary band",
+        )
+        ax0.plot(pings[valid], mean_d[valid], color="red", linewidth=1.4, label="Mean bottom")
     cbar0 = fig.colorbar(im0, ax=ax0, pad=0.01)
     style_colorbar(cbar0, label="Normalised Sv")
     ax0.set_ylabel("Range (m)")
@@ -129,28 +142,33 @@ def plot_per_file(name, sv_channels, range_arr, std_prob,
     ax0.legend(loc="upper right", framealpha=0.9)
 
     # 2) per-pixel MC standard deviation
-    im1 = ax1.imshow(std_prob, aspect="auto", cmap="magma",
-                     origin="upper", extent=extent,
-                     vmin=0, vmax=max(1e-3, float(np.percentile(std_prob, 99.5))))
+    im1 = ax1.imshow(
+        std_prob,
+        aspect="auto",
+        cmap="magma",
+        origin="upper",
+        extent=extent,
+        vmin=0,
+        vmax=max(1e-3, float(np.percentile(std_prob, 99.5))),
+    )
     if valid.any():
-        ax1.plot(pings[valid], mean_d[valid], color="cyan", linewidth=0.8,
-                 alpha=0.8)
+        ax1.plot(pings[valid], mean_d[valid], color="cyan", linewidth=0.8, alpha=0.8)
     cbar1 = fig.colorbar(im1, ax=ax1, pad=0.01)
     style_colorbar(cbar1, label="MC std of p")
     ax1.set_ylabel("Range (m)")
     ax1.set_title("Per-pixel predictive standard deviation")
 
     # 3) per-ping boundary std and near-surface flip rate
-    ax2.plot(pings[valid], std_d[valid], color="darkorange", linewidth=1.3,
-             label="Boundary std (m)")
+    ax2.plot(
+        pings[valid], std_d[valid], color="darkorange", linewidth=1.3, label="Boundary std (m)"
+    )
     ax2.set_ylabel("Boundary std (m)", color="darkorange")
     ax2.tick_params(axis="y", labelcolor="darkorange")
     ax2.set_xlabel("Ping")
     ax2.set_xlim(0, n_pings)
     ax2b = ax2.twinx()
     fvalid = np.isfinite(flip_rate)
-    ax2b.plot(pings[fvalid], flip_rate[fvalid], color="steelblue",
-              linewidth=1.0, alpha=0.7)
+    ax2b.plot(pings[fvalid], flip_rate[fvalid], color="steelblue", linewidth=1.0, alpha=0.7)
     ax2b.set_ylabel("Flip rate", color="steelblue")
     ax2b.set_ylim(0, 1.02)
     ax2b.tick_params(axis="y", labelcolor="steelblue")
@@ -163,23 +181,27 @@ def plot_per_file(name, sv_channels, range_arr, std_prob,
     plt.close(fig)
 
 
-def plot_spaghetti(name, all_preds, sv_channels, range_arr, save_path,
-                   threshold=0.5):
+def plot_spaghetti(name, all_preds, sv_channels, range_arr, save_path, threshold=0.5):
     echogram = sv_channels[1]
     n_samples, n_range, n_pings = all_preds.shape
     extent = [0, n_pings, range_arr[-1], range_arr[0]]
     pings = np.arange(n_pings)
 
     fig, ax = plt.subplots(figsize=FIGSIZE_FULL)
-    ax.imshow(echogram, aspect="auto", cmap="viridis", vmin=0, vmax=1,
-              origin="upper", extent=extent)
+    ax.imshow(
+        echogram, aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper", extent=extent
+    )
     for s in range(n_samples):
         line = extract_bottom_line(all_preds[s], threshold=threshold)
         valid = line >= 0
         if valid.any():
-            ax.plot(pings[valid],
-                    range_arr[np.clip(line[valid], 0, n_range - 1)],
-                    color="red", linewidth=0.5, alpha=0.25)
+            ax.plot(
+                pings[valid],
+                range_arr[np.clip(line[valid], 0, n_range - 1)],
+                color="red",
+                linewidth=0.5,
+                alpha=0.25,
+            )
     ax.set_ylabel("Range (m)")
     ax.set_xlabel("Ping")
     ax.set_title(f"{n_samples} MC-Dropout bottom-line samples")
@@ -190,15 +212,13 @@ def plot_spaghetti(name, all_preds, sv_channels, range_arr, save_path,
 
 
 def plot_aggregate(std_all, ent_at_std, band_all, n_files, save_path):
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(FIGSIZE_FULL[0],
-                                                   FIGSIZE_FULL[1] - 1))
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(FIGSIZE_FULL[0], FIGSIZE_FULL[1] - 1))
 
     # per-ping bottom-depth std distribution
     band = band_all[np.isfinite(band_all)]
     ax0.hist(band, bins=60, color="darkorange", alpha=0.85)
     med = float(np.median(band)) if band.size else float("nan")
-    ax0.axvline(med, color="black", linestyle="--", linewidth=1.2,
-                label=f"median {med:.2f} m")
+    ax0.axvline(med, color="black", linestyle="--", linewidth=1.2, label=f"median {med:.2f} m")
     ax0.set_xlabel("Per-ping seabed-boundary std (m)")
     ax0.set_ylabel("Ping count")
     ax0.set_title("Seabed-boundary uncertainty")
@@ -229,24 +249,29 @@ def plot_aggregate(std_all, ent_at_std, band_all, n_files, save_path):
     plt.close(fig)
 
 
-def plot_dropout_sweep(name, model, sv_channels, det_prob, range_arr, device,
-                       ps, n_samples, save_path):
+def plot_dropout_sweep(
+    name, model, sv_channels, det_prob, range_arr, device, ps, n_samples, save_path
+):
     """Sweep the dropout rate (model must be dropout-free on entry/exit)."""
     med_band, med_pix = [], []
     for p in ps:
         _, std_prob, all_preds = mc_dropout_predict(
-            model, sv_channels, TARGET_SIZE, device,
-            n_samples=n_samples, patch_width=PATCH_WIDTH, stride=256,
-            dropout_p=p)
+            model,
+            sv_channels,
+            TARGET_SIZE,
+            device,
+            n_samples=n_samples,
+            patch_width=PATCH_WIDTH,
+            stride=256,
+            dropout_p=p,
+        )
         _strip_dropout(model)  # next p starts from a clean model
-        _, _, _, std_d, _, _ = bottom_line_distribution(
-            all_preds, det_prob, range_arr)
+        _, _, _, std_d, _, _ = bottom_line_distribution(all_preds, det_prob, range_arr)
         med_band.append(float(np.nanmedian(std_d)))
         med_pix.append(float(np.median(std_prob)))
 
     fig, ax = plt.subplots(figsize=FIGSIZE_STD)
-    ax.plot(ps, med_band, marker="o", color="darkorange",
-            label="median seabed-boundary std (m)")
+    ax.plot(ps, med_band, marker="o", color="darkorange", label="median seabed-boundary std (m)")
     ax.set_xlabel("Dropout rate p")
     ax.set_ylabel("Median boundary std (m)")
     ax.set_title(f"Uncertainty vs dropout rate: {name}")
@@ -260,6 +285,7 @@ def plot_dropout_sweep(name, model, sv_channels, det_prob, range_arr, device,
 def _strip_dropout(model):
     """Undo add_mc_dropout so a fresh dropout rate can be injected."""
     import torch.nn as nn
+
     for block in model.decoder.blocks:
         for conv_relu in [block.conv1, block.conv2]:
             keep = [m for m in conv_relu if not isinstance(m, nn.Dropout2d)]
@@ -296,10 +322,13 @@ def main():
     ap.add_argument("--dropout-p", type=float, default=0.2)
     ap.add_argument("--device", default=None)
     ap.add_argument("--files", nargs="*", default=None)
-    ap.add_argument("--max-below-frac", type=float, default=0.88,
-                    help="skip files where the deterministic model collapses")
-    ap.add_argument("--no-sweep", action="store_true",
-                    help="skip the dropout-rate sweep figure")
+    ap.add_argument(
+        "--max-below-frac",
+        type=float,
+        default=0.88,
+        help="skip files where the deterministic model collapses",
+    )
+    ap.add_argument("--no-sweep", action="store_true", help="skip the dropout-rate sweep figure")
     args = ap.parse_args()
 
     apply_thesis_style()
@@ -309,8 +338,7 @@ def main():
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
-    raw_files = sorted(p for p in Path(args.raw_dir).rglob("*.raw")
-                       if not p.name.startswith("._"))
+    raw_files = sorted(p for p in Path(args.raw_dir).rglob("*.raw") if not p.name.startswith("._"))
     if args.files:
         wanted = set(args.files)
         raw_files = [p for p in raw_files if p.stem in wanted]
@@ -331,7 +359,8 @@ def main():
         name = rf.stem
         try:
             sv_channels, sv1, sv2, range_arr = prepare_raw_channels(
-                str(rf), max_pings=args.max_pings)
+                str(rf), max_pings=args.max_pings
+            )
         except Exception as e:
             print(f"  skip {name}: {e}")
             continue
@@ -343,8 +372,8 @@ def main():
 
         # deterministic single pass: collapse guard + entropy reference
         det_prob = predict_full_echogram(
-            model, sv_channels, TARGET_SIZE, device,
-            patch_width=PATCH_WIDTH, stride=256)
+            model, sv_channels, TARGET_SIZE, device, patch_width=PATCH_WIDTH, stride=256
+        )
         below_frac = float(det_prob.mean())
         if below_frac > args.max_below_frac:
             print(f"  skip {name}: model collapsed (below frac {below_frac:.2f})")
@@ -354,20 +383,37 @@ def main():
         print(f"[{n_done}/{args.n_files}] {name} (below frac {below_frac:.2f})")
 
         _, std_prob, all_preds = mc_dropout_predict(
-            model, sv_channels, TARGET_SIZE, device,
-            n_samples=args.n_samples, patch_width=PATCH_WIDTH, stride=256,
-            dropout_p=args.dropout_p)
+            model,
+            sv_channels,
+            TARGET_SIZE,
+            device,
+            n_samples=args.n_samples,
+            patch_width=PATCH_WIDTH,
+            stride=256,
+            dropout_p=args.dropout_p,
+        )
         _strip_dropout(model)  # keep model dropout-free for det passes / sweep
 
         det_entropy = prediction_entropy(det_prob)
-        mean_d, q025, q975, std_d, flip_rate, n_valid = \
-            bottom_line_distribution(all_preds, det_prob, range_arr)
+        mean_d, q025, q975, std_d, flip_rate, n_valid = bottom_line_distribution(
+            all_preds, det_prob, range_arr
+        )
 
-        plot_per_file(name, sv_channels, range_arr, std_prob,
-                      mean_d, q025, q975, std_d, flip_rate,
-                      out_dir / f"{name}_mc_uncertainty.png")
-        plot_spaghetti(name, all_preds, sv_channels, range_arr,
-                       out_dir / f"{name}_mc_spaghetti.png")
+        plot_per_file(
+            name,
+            sv_channels,
+            range_arr,
+            std_prob,
+            mean_d,
+            q025,
+            q975,
+            std_d,
+            flip_rate,
+            out_dir / f"{name}_mc_uncertainty.png",
+        )
+        plot_spaghetti(
+            name, all_preds, sv_channels, range_arr, out_dir / f"{name}_mc_spaghetti.png"
+        )
 
         std_chunks.append(std_prob.ravel())
         ent_chunks.append(det_entropy.ravel())
@@ -375,26 +421,33 @@ def main():
 
         med_band = float(np.nanmedian(std_d))
         mean_flip = float(np.nanmean(flip_rate))
-        print(f"  median boundary std: {med_band:.3f} m, "
-              f"mean flip rate: {mean_flip:.2f}, "
-              f"max per-pixel std: {std_prob.max():.3f}")
+        print(
+            f"  median boundary std: {med_band:.3f} m, "
+            f"mean flip rate: {mean_flip:.2f}, "
+            f"max per-pixel std: {std_prob.max():.3f}"
+        )
 
         if not args.no_sweep and not swept:
             plot_dropout_sweep(
-                name, model, sv_channels, det_prob, range_arr, device,
-                ps=[0.05, 0.1, 0.2, 0.3, 0.4], n_samples=args.n_samples,
-                save_path=out_dir / "dropout_rate_sweep.pdf")
+                name,
+                model,
+                sv_channels,
+                det_prob,
+                range_arr,
+                device,
+                ps=[0.05, 0.1, 0.2, 0.3, 0.4],
+                n_samples=args.n_samples,
+                save_path=out_dir / "dropout_rate_sweep.pdf",
+            )
             swept = True
 
     if std_chunks:
         std_all = np.concatenate(std_chunks)
         ent_all = np.concatenate(ent_chunks)
         band_all = np.concatenate(band_chunks)
-        plot_aggregate(std_all, ent_all, band_all, n_done,
-                       out_dir / "mc_dropout_diagnostics.pdf")
+        plot_aggregate(std_all, ent_all, band_all, n_done, out_dir / "mc_dropout_diagnostics.pdf")
 
-    write_readme(out_dir, n_done, args.n_samples, args.dropout_p,
-                 Path(args.checkpoint).parent.name)
+    write_readme(out_dir, n_done, args.n_samples, args.dropout_p, Path(args.checkpoint).parent.name)
     print(f"Done. Output in {out_dir}")
 
 

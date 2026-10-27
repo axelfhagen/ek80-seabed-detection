@@ -41,8 +41,7 @@ VARIANTS = [
 ]
 
 
-def partition_zarr_paths(zarr_dir: Path, chunk_index: int,
-                         num_chunks: int) -> list[Path]:
+def partition_zarr_paths(zarr_dir: Path, chunk_index: int, num_chunks: int) -> list[Path]:
     """Return the zarr paths assigned to this chunk."""
     all_paths = sorted(zarr_dir.glob("*.zarr"))
     if not all_paths:
@@ -63,8 +62,9 @@ def partition_zarr_paths(zarr_dir: Path, chunk_index: int,
     return all_paths[start:end]
 
 
-def process_variant(variant: DatasetVariant, zarr_paths: list[Path],
-                    output_root: Path, chunk_index: int) -> dict:
+def process_variant(
+    variant: DatasetVariant, zarr_paths: list[Path], output_root: Path, chunk_index: int
+) -> dict:
     """Process one variant for the given zarr partition."""
     cache_dir = output_root / variant.name
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -114,12 +114,11 @@ def process_variant(variant: DatasetVariant, zarr_paths: list[Path],
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate patches for a chunk of zarr files")
-    parser.add_argument("--chunk-index", type=int, required=True,
-                        help="0-based index of this chunk")
-    parser.add_argument("--num-chunks", type=int, required=True,
-                        help="Total number of chunks")
+    parser = argparse.ArgumentParser(description="Generate patches for a chunk of zarr files")
+    parser.add_argument(
+        "--chunk-index", type=int, required=True, help="0-based index of this chunk"
+    )
+    parser.add_argument("--num-chunks", type=int, required=True, help="Total number of chunks")
     parser.add_argument("--zarr-dir", type=Path, default=ZARR_DIR)
     parser.add_argument("--output-root", type=Path, default=OUTPUT_ROOT)
     args = parser.parse_args()
@@ -128,22 +127,21 @@ def main():
         print(f"chunk-index must be in [0, {args.num_chunks - 1}]")
         sys.exit(1)
 
-    zarr_paths = partition_zarr_paths(args.zarr_dir, args.chunk_index,
-                                     args.num_chunks)
+    zarr_paths = partition_zarr_paths(args.zarr_dir, args.chunk_index, args.num_chunks)
     total_zarr = len(sorted(args.zarr_dir.glob("*.zarr")))
 
-    print(f"Chunk {args.chunk_index}/{args.num_chunks}: "
-          f"{len(zarr_paths)} zarr files (of {total_zarr} total)")
+    print(
+        f"Chunk {args.chunk_index}/{args.num_chunks}: "
+        f"{len(zarr_paths)} zarr files (of {total_zarr} total)"
+    )
     print(f"Output: {args.output_root}")
     print()
 
     for variant in VARIANTS:
         print(f"{'=' * 60}")
         print(f"Variant: {variant.name}")
-        summary = process_variant(variant, zarr_paths, args.output_root,
-                                  args.chunk_index)
-        print(f"  → {summary['total_patches']} patches in "
-              f"{summary['elapsed_sec']:.1f}s")
+        summary = process_variant(variant, zarr_paths, args.output_root, args.chunk_index)
+        print(f"  → {summary['total_patches']} patches in {summary['elapsed_sec']:.1f}s")
 
     print(f"\n{'=' * 60}")
     print("Chunk complete.")

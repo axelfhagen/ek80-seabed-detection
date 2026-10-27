@@ -15,6 +15,7 @@ what was applied when building the existing labeled zarrs:
 Both bottoms are converted to range from transducer and overlaid on the
 Sv echogram. Output PNGs go to Figures/bottom_label_comparison/.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,22 +39,31 @@ FREQ_HZ = 38_000
 PULSE_DURATION = 0.001024  # standard 1 ms EK80 pulse
 
 
-def run_crimac_ensemble(sv_2d: np.ndarray, ranges: np.ndarray,
-                        heave: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def run_crimac_ensemble(
+    sv_2d: np.ndarray, ranges: np.ndarray, heave: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return (simple, edge, ensemble_median) bottom ranges in meters."""
     from raw_sensor_integration.bottom_labelling import (
-        detect_bottom_simple, detect_bottom_edge,
+        detect_bottom_simple,
+        detect_bottom_edge,
     )
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         simple = detect_bottom_simple(
-            sv_2d, ranges, heave, PULSE_DURATION,
+            sv_2d,
+            ranges,
+            heave,
+            PULSE_DURATION,
             minimum_range=CRIM_PARAMS["minimum_range"],
             threshold_log_sv=CRIM_PARAMS["threshold_log_sv"],
             offset=CRIM_PARAMS["offset"],
         )
         edge = detect_bottom_edge(
-            sv_2d, ranges, heave, PULSE_DURATION,
+            sv_2d,
+            ranges,
+            heave,
+            PULSE_DURATION,
             frequency_hz=FREQ_HZ,
             minimum_range=CRIM_PARAMS["minimum_range"],
             threshold_log_sv=CRIM_PARAMS["threshold_log_sv"],
@@ -86,6 +96,7 @@ def load_38k_echogram(zarr_path: Path):
     heave : (n_pings,)        float — meters.
     """
     import xarray as xr
+
     ds = xr.open_zarr(zarr_path, consolidated=False)
     freqs = ds.frequency_nominal.values
     ch_idx = int(np.argmin(np.abs(freqs - FREQ_HZ)))
@@ -111,6 +122,7 @@ def load_38k_echogram(zarr_path: Path):
 def plot_one(zarr_path: Path, out_path: Path) -> dict:
     """Build the comparison figure for one file. Returns summary stats."""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -138,18 +150,39 @@ def plot_one(zarr_path: Path, out_path: Path) -> dict:
 
     # ── Figure ───────────────────────────────────────────────────────────
     fig, (ax_e, ax_d) = plt.subplots(
-        2, 1, figsize=(14, 7), sharex=True,
+        2,
+        1,
+        figsize=(14, 7),
+        sharex=True,
         gridspec_kw={"height_ratios": [3, 1], "hspace": 0.04},
         constrained_layout=True,
     )
 
     extent = [0, n_pings, float(ranges[-1]), float(ranges[0])]
-    ax_e.imshow(sv, aspect="auto", origin="upper", extent=extent,
-                vmin=-80, vmax=-34, cmap="viridis", interpolation="nearest")
-    ax_e.plot(pings, crim_ens, color="#ff3b30", lw=1.0,
-              label=f"CRIMAC ensemble ({crim_valid_pct:.0f}% valid)")
-    ax_e.plot(pings, ep_bottom, color="#ffd60a", lw=1.0,
-              label=f"echopype basic ({ep_valid_pct:.0f}% valid)")
+    ax_e.imshow(
+        sv,
+        aspect="auto",
+        origin="upper",
+        extent=extent,
+        vmin=-80,
+        vmax=-34,
+        cmap="viridis",
+        interpolation="nearest",
+    )
+    ax_e.plot(
+        pings,
+        crim_ens,
+        color="#ff3b30",
+        lw=1.0,
+        label=f"CRIMAC ensemble ({crim_valid_pct:.0f}% valid)",
+    )
+    ax_e.plot(
+        pings,
+        ep_bottom,
+        color="#ffd60a",
+        lw=1.0,
+        label=f"echopype basic ({ep_valid_pct:.0f}% valid)",
+    )
     ax_e.set_ylabel("Range (m)")
     ax_e.set_xlim(0, n_pings)
     ax_e.set_ylim(float(ranges[-1]), float(ranges[0]))
@@ -213,16 +246,19 @@ def main() -> None:
         try:
             stats = plot_one(zp, out_path)
             rows.append(stats)
-            print(f"[{i+1:>2}/{len(selected)}] {zp.stem}: "
-                  f"crim {stats['crim_valid_pct']:.0f}%, "
-                  f"ep {stats['ep_valid_pct']:.0f}%, "
-                  f"Δmedian {stats['median_diff_m']:+.2f} m, "
-                  f"|Δ|≤1m {stats['within_1m_pct']:.0f}%")
+            print(
+                f"[{i + 1:>2}/{len(selected)}] {zp.stem}: "
+                f"crim {stats['crim_valid_pct']:.0f}%, "
+                f"ep {stats['ep_valid_pct']:.0f}%, "
+                f"Δmedian {stats['median_diff_m']:+.2f} m, "
+                f"|Δ|≤1m {stats['within_1m_pct']:.0f}%"
+            )
         except Exception as exc:
-            print(f"[{i+1:>2}/{len(selected)}] {zp.stem}: FAILED — {exc}")
+            print(f"[{i + 1:>2}/{len(selected)}] {zp.stem}: FAILED — {exc}")
 
     if rows:
         import csv
+
         summary_path = args.out_dir / "summary.csv"
         with open(summary_path, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))

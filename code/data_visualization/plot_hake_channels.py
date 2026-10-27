@@ -9,6 +9,7 @@ Usage:
     python code/data_visualization/plot_hake_channels.py \
         --stems Hake-D20230804-T204958 Hake-D20230804-T205531 Hake-D20230804-T210109
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -39,7 +41,7 @@ EXAMPLE_STEMS = [
     "Hake-D20230804-T204958",
     "Hake-D20230804-T205531",
     "Hake-D20230804-T210109",
-]   # same slope transect as the hake_transfer failure example
+]  # same slope transect as the hake_transfer failure example
 DISPLAY_MIN_M = 0.0
 DISPLAY_MAX_M = None
 
@@ -82,21 +84,34 @@ def _range_window(sv, rng, display_min_m, display_max_m):
     keep = (rng >= display_min_m) & (rng <= display_max_m)
     if not keep.any():
         raise ValueError(
-            f"No samples in requested display window "
-            f"{display_min_m:.1f}-{display_max_m:.1f} m")
+            f"No samples in requested display window {display_min_m:.1f}-{display_max_m:.1f} m"
+        )
     return sv[keep], rng[keep]
 
 
 def parse_args():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stems", nargs="+", default=EXAMPLE_STEMS,
-                    help="one or more Hake zarr stems to stitch along ping")
-    ap.add_argument("--output-name", default=None,
-                    help="output PDF stem; defaults to hake_channels_<stems>")
-    ap.add_argument("--display-min-m", type=float, default=DISPLAY_MIN_M,
-                    help="minimum displayed range in metres")
-    ap.add_argument("--display-max-m", type=float, default=DISPLAY_MAX_M,
-                    help="maximum displayed range in metres; defaults to full 38 kHz range")
+    ap.add_argument(
+        "--stems",
+        nargs="+",
+        default=EXAMPLE_STEMS,
+        help="one or more Hake zarr stems to stitch along ping",
+    )
+    ap.add_argument(
+        "--output-name", default=None, help="output PDF stem; defaults to hake_channels_<stems>"
+    )
+    ap.add_argument(
+        "--display-min-m",
+        type=float,
+        default=DISPLAY_MIN_M,
+        help="minimum displayed range in metres",
+    )
+    ap.add_argument(
+        "--display-max-m",
+        type=float,
+        default=DISPLAY_MAX_M,
+        help="maximum displayed range in metres; defaults to full 38 kHz range",
+    )
     return ap.parse_args()
 
 
@@ -110,10 +125,8 @@ def main():
     name = _example_name(stems)
     sv1, sv2, range1, range2 = _load_stitched_channels(stems)
     sv2_on1 = _resample_to_38k_grid(sv2, range2, range1)
-    sv1, range_crop = _range_window(
-        sv1, range1, args.display_min_m, args.display_max_m)
-    sv2_on1, _ = _range_window(
-        sv2_on1, range1, args.display_min_m, args.display_max_m)
+    sv1, range_crop = _range_window(sv1, range1, args.display_min_m, args.display_max_m)
+    sv2_on1, _ = _range_window(sv2_on1, range1, args.display_min_m, args.display_max_m)
     display_max_m = float(range_crop[-1])
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 7), sharey=True)
@@ -122,19 +135,33 @@ def main():
     cmap.set_bad("#f2f2f2")
     for ax, sv, freq in ((axes[0], sv1, 38), (axes[1], sv2_on1, 200)):
         extent = [0, sv.shape[1], range_crop[-1], range_crop[0]]
-        im = ax.imshow(np.ma.masked_invalid(sv), aspect="auto", cmap=cmap,
-                       vmin=VMIN, vmax=VMAX, origin="upper", extent=extent)
+        im = ax.imshow(
+            np.ma.masked_invalid(sv),
+            aspect="auto",
+            cmap=cmap,
+            vmin=VMIN,
+            vmax=VMAX,
+            origin="upper",
+            extent=extent,
+        )
         ax.set_ylim(display_max_m, args.display_min_m)
         ax.set_xlabel("Ping")
         ax.set_title(f"{freq} kHz calibrated Sv")
     axes[0].set_ylabel("Range (m)")
     axes[1].set_ylabel("Range (m)")
     axes[1].axhline(range2[-1], color="white", linestyle="--", linewidth=1.6)
-    axes[1].text(0.98 * sv2_on1.shape[1], range2[-1] + 20,
-                 f"200 kHz recording limit ({range2[-1]:.0f} m)",
-                 color="#333333", ha="right", va="top", fontsize=14)
-    style_colorbar(fig.colorbar(im, ax=axes, fraction=0.046, pad=0.03),
-                   label=r"$S_v$ (dB re 1 m$^{-1}$)")
+    axes[1].text(
+        0.98 * sv2_on1.shape[1],
+        range2[-1] + 20,
+        f"200 kHz recording limit ({range2[-1]:.0f} m)",
+        color="#333333",
+        ha="right",
+        va="top",
+        fontsize=14,
+    )
+    style_colorbar(
+        fig.colorbar(im, ax=axes, fraction=0.046, pad=0.03), label=r"$S_v$ (dB re 1 m$^{-1}$)"
+    )
     fig.suptitle(f"{name}: 38 kHz reaches the seabed; 200 kHz does not", y=1.02)
 
     output_name = args.output_name or f"hake_channels_{name}_38_200"

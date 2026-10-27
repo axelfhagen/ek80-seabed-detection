@@ -7,6 +7,7 @@ and plotting conventions from ``gen_patch_conformal_failures.py``.
 
 Output: Figures/patch_conformal_wide_bands/
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +20,7 @@ import numpy as np
 import torch
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -92,19 +94,27 @@ def rolling_mean(values: np.ndarray, window: int) -> np.ndarray:
     return out
 
 
-def score_patch(survey: str, idx: int, patch: np.ndarray, mask: np.ndarray,
-                pred: np.ndarray, q_const: float, q_local: float,
-                score_window: int, plot_width: int) -> WidePatch | None:
+def score_patch(
+    survey: str,
+    idx: int,
+    patch: np.ndarray,
+    mask: np.ndarray,
+    pred: np.ndarray,
+    q_const: float,
+    q_local: float,
+    score_window: int,
+    plot_width: int,
+) -> WidePatch | None:
     gt_line, pred_line = depth_lines(mask, pred)
-    valid = (np.isfinite(gt_line) & np.isfinite(pred_line)
-             & (gt_line >= 0) & (pred_line >= 0))
+    valid = np.isfinite(gt_line) & np.isfinite(pred_line) & (gt_line >= 0) & (pred_line >= 0)
     if valid.sum() < 64:
         return None
 
     tw = transition_width_samples(pred)
     const_upper, const_lower = predict_depth_band(pred_line, q_const)
     local_upper, local_lower, local_width = predict_locally_weighted_band(
-        pred_line, tw, q_local, epsilon=EPSILON)
+        pred_line, tw, q_local, epsilon=EPSILON
+    )
     smooth = rolling_mean(local_width, score_window)
     if not np.isfinite(smooth).any():
         return None
@@ -134,10 +144,18 @@ def score_patch(survey: str, idx: int, patch: np.ndarray, mask: np.ndarray,
     )
 
 
-def mine_wide_patches(model, files: list[Path], device: str,
-                      rng: np.random.Generator, q_const: float, q_local: float,
-                      max_per_file: int, max_patches: int,
-                      score_window: int, plot_width: int) -> tuple[list[WidePatch], int]:
+def mine_wide_patches(
+    model,
+    files: list[Path],
+    device: str,
+    rng: np.random.Generator,
+    q_const: float,
+    q_local: float,
+    max_per_file: int,
+    max_patches: int,
+    score_window: int,
+    plot_width: int,
+) -> tuple[list[WidePatch], int]:
     records: list[WidePatch] = []
     seen = 0
     with torch.no_grad():
@@ -154,8 +172,9 @@ def mine_wide_patches(model, files: list[Path], device: str,
                 patch = np.asarray(patches[idx], dtype=np.float32)
                 mask = np.asarray(masks[idx], dtype=np.uint8)
                 pred = predict_patch(model, patch, device)
-                rec = score_patch(survey, int(idx), patch, mask, pred,
-                                  q_const, q_local, score_window, plot_width)
+                rec = score_patch(
+                    survey, int(idx), patch, mask, pred, q_const, q_local, score_window, plot_width
+                )
                 if rec is not None:
                     records.append(rec)
                 seen += 1
@@ -166,8 +185,9 @@ def mine_wide_patches(model, files: list[Path], device: str,
     return records, seen
 
 
-def select_diverse(records: list[WidePatch], n_examples: int,
-                   max_per_survey: int) -> list[WidePatch]:
+def select_diverse(
+    records: list[WidePatch], n_examples: int, max_per_survey: int
+) -> list[WidePatch]:
     records = sorted(records, key=lambda r: r.score, reverse=True)
     selected: list[WidePatch] = []
     counts: dict[str, int] = {}
@@ -188,34 +208,70 @@ def _overlay(ax, rec: WidePatch, x: np.ndarray, lw_scale: float = 1.0) -> None:
     v_pred = np.isfinite(rec.pred_line[x]) & (rec.pred_line[x] >= 0)
 
     if v_const.any():
-        ax.fill_between(x[v_const], rec.const_upper[x][v_const],
-                        rec.const_lower[x][v_const], color=CONST_COLOR,
-                        alpha=0.18, linewidth=0, zorder=2)
+        ax.fill_between(
+            x[v_const],
+            rec.const_upper[x][v_const],
+            rec.const_lower[x][v_const],
+            color=CONST_COLOR,
+            alpha=0.18,
+            linewidth=0,
+            zorder=2,
+        )
     if v_local.any():
-        ax.fill_between(x[v_local], rec.local_upper[x][v_local],
-                        rec.local_lower[x][v_local], color=LOCAL_COLOR,
-                        alpha=0.30, linewidth=0, zorder=3)
-        ax.plot(x[v_local], rec.local_upper[x][v_local], color="#5a189a",
-                linewidth=1.0 * lw_scale, linestyle="--", zorder=5)
-        ax.plot(x[v_local], rec.local_lower[x][v_local], color="#5a189a",
-                linewidth=1.0 * lw_scale, linestyle="--", zorder=5)
+        ax.fill_between(
+            x[v_local],
+            rec.local_upper[x][v_local],
+            rec.local_lower[x][v_local],
+            color=LOCAL_COLOR,
+            alpha=0.30,
+            linewidth=0,
+            zorder=3,
+        )
+        ax.plot(
+            x[v_local],
+            rec.local_upper[x][v_local],
+            color="#5a189a",
+            linewidth=1.0 * lw_scale,
+            linestyle="--",
+            zorder=5,
+        )
+        ax.plot(
+            x[v_local],
+            rec.local_lower[x][v_local],
+            color="#5a189a",
+            linewidth=1.0 * lw_scale,
+            linestyle="--",
+            zorder=5,
+        )
     if v_gt.any():
-        ax.plot(x[v_gt], rec.gt_line[x][v_gt], color=REFERENCE_BOTTOM_COLOR,
-                linewidth=2.2 * lw_scale, linestyle="--", zorder=7)
+        ax.plot(
+            x[v_gt],
+            rec.gt_line[x][v_gt],
+            color=REFERENCE_BOTTOM_COLOR,
+            linewidth=2.2 * lw_scale,
+            linestyle="--",
+            zorder=7,
+        )
     if v_pred.any():
-        ax.plot(x[v_pred], rec.pred_line[x][v_pred],
-                color=UNET_PREDICTION_COLOR, linewidth=1.8 * lw_scale, zorder=8)
+        ax.plot(
+            x[v_pred],
+            rec.pred_line[x][v_pred],
+            color=UNET_PREDICTION_COLOR,
+            linewidth=1.8 * lw_scale,
+            zorder=8,
+        )
 
 
-def plot_single(rec: WidePatch, rank: int, q_const: float, q_local: float,
-                out_path: Path) -> None:
+def plot_single(rec: WidePatch, rank: int, q_const: float, q_local: float, out_path: Path) -> None:
     x = np.arange(rec.start, rec.stop)
-    y_vals = np.concatenate([
-        rec.local_upper[x][np.isfinite(rec.local_upper[x])],
-        rec.local_lower[x][np.isfinite(rec.local_lower[x])],
-        rec.gt_line[x][np.isfinite(rec.gt_line[x]) & (rec.gt_line[x] >= 0)],
-        rec.pred_line[x][np.isfinite(rec.pred_line[x]) & (rec.pred_line[x] >= 0)],
-    ])
+    y_vals = np.concatenate(
+        [
+            rec.local_upper[x][np.isfinite(rec.local_upper[x])],
+            rec.local_lower[x][np.isfinite(rec.local_lower[x])],
+            rec.gt_line[x][np.isfinite(rec.gt_line[x]) & (rec.gt_line[x] >= 0)],
+            rec.pred_line[x][np.isfinite(rec.pred_line[x]) & (rec.pred_line[x] >= 0)],
+        ]
+    )
     if y_vals.size:
         y_min = max(0, int(np.nanmin(y_vals)) - 35)
         y_max = min(rec.pred.shape[0] - 1, int(np.nanmax(y_vals)) + 35)
@@ -223,17 +279,14 @@ def plot_single(rec: WidePatch, rank: int, q_const: float, q_local: float,
         y_min, y_max = 0, rec.pred.shape[0] - 1
 
     fig, axes = plt.subplots(1, 2, figsize=(15, 6.5))
-    axes[0].imshow(rec.patch[0], aspect="auto", cmap="viridis",
-                   vmin=0, vmax=1, origin="upper")
+    axes[0].imshow(rec.patch[0], aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper")
     _overlay(axes[0], rec, x)
     axes[0].set_title("38 kHz input Sv zoom")
 
-    im = axes[1].imshow(rec.pred, aspect="auto", cmap="RdYlBu_r",
-                        vmin=0, vmax=1, origin="upper")
+    im = axes[1].imshow(rec.pred, aspect="auto", cmap="RdYlBu_r", vmin=0, vmax=1, origin="upper")
     _overlay(axes[1], rec, x)
     axes[1].set_title("U-Net probability zoom")
-    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04),
-                   label="P(bottom)")
+    style_colorbar(fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04), label="P(bottom)")
 
     for ax in axes:
         ax.set_xlim(rec.start, rec.stop - 1)
@@ -242,15 +295,13 @@ def plot_single(rec: WidePatch, rank: int, q_const: float, q_local: float,
         ax.set_ylabel("Range (sample)")
 
     handles = [
-        Line2D([0], [0], color=REFERENCE_BOTTOM_COLOR, lw=2.2, linestyle="--",
-               label="Reference bottom"),
-        Line2D([0], [0], color=UNET_PREDICTION_COLOR, lw=1.8,
-               label="U-Net prediction"),
-        Patch(facecolor=LOCAL_COLOR, alpha=0.30,
-              label="Local conformal band"),
+        Line2D(
+            [0], [0], color=REFERENCE_BOTTOM_COLOR, lw=2.2, linestyle="--", label="Reference bottom"
+        ),
+        Line2D([0], [0], color=UNET_PREDICTION_COLOR, lw=1.8, label="U-Net prediction"),
+        Patch(facecolor=LOCAL_COLOR, alpha=0.30, label="Local conformal band"),
     ]
-    axes[1].legend(handles=handles, loc="lower right", framealpha=0.92,
-                   fontsize=11)
+    axes[1].legend(handles=handles, loc="lower right", framealpha=0.92, fontsize=11)
     fig.suptitle("Unusually wide locally weighted conformal band", y=1.02)
     savefig(fig, out_path)
     plt.close(fig)
@@ -266,43 +317,59 @@ def plot_gallery(records: list[WidePatch], out_path: Path) -> None:
     axes_flat = np.atleast_1d(axes).ravel()
     for rank, (ax, rec) in enumerate(zip(axes_flat, records), 1):
         x = np.arange(rec.start, rec.stop)
-        ax.imshow(rec.patch[0], aspect="auto", cmap="viridis",
-                  vmin=0, vmax=1, origin="upper")
+        ax.imshow(rec.patch[0], aspect="auto", cmap="viridis", vmin=0, vmax=1, origin="upper")
         _overlay(ax, rec, x, lw_scale=0.75)
         ax.set_xlim(rec.start, rec.stop - 1)
         ax.set_title(
-            f"#{rank} {rec.survey} p{rec.idx}\n"
-            f"mean local width {rec.score:.1f} samples",
+            f"#{rank} {rec.survey} p{rec.idx}\nmean local width {rec.score:.1f} samples",
             fontsize=12,
         )
         ax.set_xlabel("Ping")
         ax.set_ylabel("Range (sample)")
-    for ax in axes_flat[len(records):]:
+    for ax in axes_flat[len(records) :]:
         ax.set_visible(False)
-    fig.legend(handles=[
-        Line2D([0], [0], color=REFERENCE_BOTTOM_COLOR, lw=2.2, linestyle="--",
-               label="Reference bottom"),
-        Line2D([0], [0], color=UNET_PREDICTION_COLOR, lw=1.8,
-               label="U-Net prediction"),
-        Patch(facecolor=LOCAL_COLOR, alpha=0.30, label="Local conformal band"),
-        Patch(facecolor=CONST_COLOR, alpha=0.18, label="Constant band"),
-    ], loc="lower center", ncol=4, framealpha=0.92, bbox_to_anchor=(0.5, -0.01))
-    fig.suptitle("Patch diagnostics: largest rolling local conformal widths",
-                 y=1.005)
+    fig.legend(
+        handles=[
+            Line2D(
+                [0],
+                [0],
+                color=REFERENCE_BOTTOM_COLOR,
+                lw=2.2,
+                linestyle="--",
+                label="Reference bottom",
+            ),
+            Line2D([0], [0], color=UNET_PREDICTION_COLOR, lw=1.8, label="U-Net prediction"),
+            Patch(facecolor=LOCAL_COLOR, alpha=0.30, label="Local conformal band"),
+            Patch(facecolor=CONST_COLOR, alpha=0.18, label="Constant band"),
+        ],
+        loc="lower center",
+        ncol=4,
+        framealpha=0.92,
+        bbox_to_anchor=(0.5, -0.01),
+    )
+    fig.suptitle("Patch diagnostics: largest rolling local conformal widths", y=1.005)
     fig.tight_layout(rect=[0, 0.03, 1, 0.99])
     savefig(fig, out_path)
     plt.close(fig)
 
 
-def write_report(out_dir: Path, selected: list[WidePatch], q_const: float,
-                 q_local: float, n_calib: int, n_scanned: int,
-                 score_window: int, plot_width: int, threshold: float,
-                 args) -> None:
+def write_report(
+    out_dir: Path,
+    selected: list[WidePatch],
+    q_const: float,
+    q_local: float,
+    n_calib: int,
+    n_scanned: int,
+    score_window: int,
+    plot_width: int,
+    threshold: float,
+    args,
+) -> None:
     rows = "\n".join(
         f"| {i} | `{r.survey}` | {r.idx} | {r.center} | "
         f"{r.start}-{r.stop - 1} | {r.score:.2f} | "
-        f"{np.nanmean(r.local_width[r.start:r.stop]):.2f} | "
-        f"{np.nanmax(r.local_width[r.start:r.stop]):.2f} | "
+        f"{np.nanmean(r.local_width[r.start : r.stop]):.2f} | "
+        f"{np.nanmax(r.local_width[r.start : r.stop]):.2f} | "
         f"{r.metrics['mae_px']:.2f} | `{r.out_path.name if r.out_path else ''}` |"
         for i, r in enumerate(selected, 1)
     )
@@ -373,8 +440,7 @@ def main() -> None:
     ap.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     ap.add_argument("--device", default=None)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--calibration-split", default="calibration",
-                    choices=list(SPLITS))
+    ap.add_argument("--calibration-split", default="calibration", choices=list(SPLITS))
     ap.add_argument("--test-split", default="test", choices=list(SPLITS))
     ap.add_argument("--n-examples", type=int, default=10)
     ap.add_argument("--calib-max-patches", type=int, default=120)
@@ -406,7 +472,10 @@ def main() -> None:
 
     print("Calibrating patch-level conformal thresholds...")
     q_const, q_local, n_calib = calibrate_patch_bands(
-        model, calib_files, device, rng,
+        model,
+        calib_files,
+        device,
+        rng,
         max_per_file=args.candidates_per_file,
         max_patches=args.calib_max_patches,
     )
@@ -415,7 +484,12 @@ def main() -> None:
 
     print("Scoring held-out patches by rolling local-band width...")
     records, n_scanned = mine_wide_patches(
-        model, test_files, device, rng, q_const, q_local,
+        model,
+        test_files,
+        device,
+        rng,
+        q_const,
+        q_local,
         max_per_file=args.candidates_per_file,
         max_patches=args.test_max_patches,
         score_window=args.score_window,
@@ -436,8 +510,18 @@ def main() -> None:
         plot_single(rec, rank, q_const, q_local, out)
         print(f"  saved {out}")
     plot_gallery(selected, args.output_dir / "wide_band_gallery.png")
-    write_report(args.output_dir, selected, q_const, q_local, n_calib,
-                 n_scanned, args.score_window, args.plot_width, threshold, args)
+    write_report(
+        args.output_dir,
+        selected,
+        q_const,
+        q_local,
+        n_calib,
+        n_scanned,
+        args.score_window,
+        args.plot_width,
+        threshold,
+        args,
+    )
     print(f"Done. Report -> {args.output_dir / 'REPORT.md'}")
 
 

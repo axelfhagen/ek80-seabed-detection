@@ -169,7 +169,8 @@ def plot_conformal_hake_methods() -> None:
     if not path.exists():
         return
     rows = [
-        r for r in read_rows(path)
+        r
+        for r in read_rows(path)
         if r["model"] == "finetuned"
         and r["test_domain"] == "hake"
         and r["calibration_domain"] in ("basto", "hake", "balanced_pooled")
@@ -186,13 +187,21 @@ def plot_conformal_hake_methods() -> None:
         ("balanced_pooled", "profile"): 8,
     }
     rows.sort(key=lambda r: order.get((r["calibration_domain"], r["method"]), 99))
+
     def short_domain(name: str) -> str:
         return "balanced" if name == "balanced_pooled" else name
 
     labels = [f"{short_domain(r['calibration_domain'])}\n{r['method']}" for r in rows]
     values = [f(r, "coverage") for r in rows]
     widths = [f(r, "mean_width_m") for r in rows]
-    colors = ["#4c78a8" if r["method"] == "constant" else "#f58518" if r["method"] == "local" else "#54a24b" for r in rows]
+    colors = [
+        "#4c78a8"
+        if r["method"] == "constant"
+        else "#f58518"
+        if r["method"] == "local"
+        else "#54a24b"
+        for r in rows
+    ]
 
     fig, ax = plt.subplots(figsize=(8.8, 4.2))
     bars = ax.bar(np.arange(len(rows)), values, color=colors)
@@ -249,15 +258,30 @@ def plot_effect_summary(hake: dict, basto: dict) -> None:
     items = [
         ("Hake IoU", (hake["finetuned"]["mean_iou"] / hake["original"]["mean_iou"] - 1) * 100),
         ("Hake Dice", (hake["finetuned"]["mean_dice"] / hake["original"]["mean_dice"] - 1) * 100),
-        ("Hake depth MAE", (hake["finetuned"]["mean_depth_mae_m"] / hake["original"]["mean_depth_mae_m"] - 1) * 100),
+        (
+            "Hake depth MAE",
+            (hake["finetuned"]["mean_depth_mae_m"] / hake["original"]["mean_depth_mae_m"] - 1)
+            * 100,
+        ),
         ("Basto IoU", (basto["finetuned"]["mean_iou"] / basto["original"]["mean_iou"] - 1) * 100),
-        ("Basto Dice", (basto["finetuned"]["mean_dice"] / basto["original"]["mean_dice"] - 1) * 100),
-        ("Basto depth MAE", (basto["finetuned"]["mean_bottom_error_m"] / basto["original"]["mean_bottom_error_m"] - 1) * 100),
+        (
+            "Basto Dice",
+            (basto["finetuned"]["mean_dice"] / basto["original"]["mean_dice"] - 1) * 100,
+        ),
+        (
+            "Basto depth MAE",
+            (
+                basto["finetuned"]["mean_bottom_error_m"] / basto["original"]["mean_bottom_error_m"]
+                - 1
+            )
+            * 100,
+        ),
     ]
     labels = [label for label, _ in items]
     values = [value for _, value in items]
     colors = [
-        "#54a24b" if (("MAE" not in label and value > 0) or ("MAE" in label and value < 0))
+        "#54a24b"
+        if (("MAE" not in label and value > 0) or ("MAE" in label and value < 0))
         else "#e45756"
         for label, value in items
     ]
@@ -273,10 +297,19 @@ def plot_effect_summary(hake: dict, basto: dict) -> None:
         elif inside:
             x, ha, color = value + 1.2, "left", "white"
         else:
-            x, ha, color = value + (1.0 if value >= 0 else -1.0), ("left" if value >= 0 else "right"), "black"
+            x, ha, color = (
+                value + (1.0 if value >= 0 else -1.0),
+                ("left" if value >= 0 else "right"),
+                "black",
+            )
         ax.text(
-            x, bar.get_y() + bar.get_height() / 2, f"{value:+.1f}%",
-            ha=ha, va="center", fontsize=8, color=color,
+            x,
+            bar.get_y() + bar.get_height() / 2,
+            f"{value:+.1f}%",
+            ha=ha,
+            va="center",
+            fontsize=8,
+            color=color,
         )
     ax.set_yticks(y, labels)
     ax.set_xlabel("Relative change after fine-tuning")
@@ -311,11 +344,10 @@ def plot_conformal_focus() -> list[dict[str, str]]:
         ("finetuned", "pooled", "basto"): 14,
         ("finetuned", "balanced_pooled", "basto"): 15,
     }
-    constant.sort(key=lambda r: order.get((r["model"], r["calibration_domain"], r["test_domain"]), 99))
-    labels = [
-        f"{r['model']} {r['calibration_domain']}->{r['test_domain']}"
-        for r in constant
-    ]
+    constant.sort(
+        key=lambda r: order.get((r["model"], r["calibration_domain"], r["test_domain"]), 99)
+    )
+    labels = [f"{r['model']} {r['calibration_domain']}->{r['test_domain']}" for r in constant]
     colors = ["#4c78a8" if r["model"] == "original" else "#f58518" for r in constant]
     fig, ax = plt.subplots(figsize=(9.2, max(4.8, 0.34 * len(constant))))
     y = np.arange(len(constant), dtype=float)
@@ -346,9 +378,13 @@ def plot_conformal_focus() -> list[dict[str, str]]:
 
 def write_interpretation(hake: dict, basto: dict, conformal_rows: list[dict[str, str]]) -> None:
     hake_iou_gain = delta(hake["finetuned"]["mean_iou"], hake["original"]["mean_iou"])
-    hake_mae_gain = delta(hake["finetuned"]["mean_depth_mae_m"], hake["original"]["mean_depth_mae_m"])
+    hake_mae_gain = delta(
+        hake["finetuned"]["mean_depth_mae_m"], hake["original"]["mean_depth_mae_m"]
+    )
     basto_iou_gain = delta(basto["finetuned"]["mean_iou"], basto["original"]["mean_iou"])
-    basto_mae_gain = delta(basto["finetuned"]["mean_bottom_error_m"], basto["original"]["mean_bottom_error_m"])
+    basto_mae_gain = delta(
+        basto["finetuned"]["mean_bottom_error_m"], basto["original"]["mean_bottom_error_m"]
+    )
 
     lines = [
         "# Hake fine-tune experiment",

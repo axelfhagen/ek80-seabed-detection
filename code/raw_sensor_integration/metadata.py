@@ -18,9 +18,9 @@ def extract_metadata(path: str) -> Dict[str, Any]:
     data = raw_parser.read_raw_file(path)
 
     metadata = {
-        'file_info': raw_parser.get_file_info(path),
-        'xml_config': {},
-        'range_info': {},
+        "file_info": raw_parser.get_file_info(path),
+        "xml_config": {},
+        "range_info": {},
     }
 
     # Try to parse XML configuration
@@ -29,10 +29,10 @@ def extract_metadata(path: str) -> Dict[str, Any]:
         for i, xml_text in enumerate(xml_sections):
             parsed = parse_xml_config(xml_text)
             if parsed:
-                metadata['xml_config'][f'section_{i}'] = parsed
+                metadata["xml_config"][f"section_{i}"] = parsed
 
     # Extract range-related parameters
-    metadata['range_info'] = extract_range_parameters(metadata['xml_config'])
+    metadata["range_info"] = extract_range_parameters(metadata["xml_config"])
 
     return metadata
 
@@ -44,7 +44,7 @@ def parse_xml_config(xml_text: str) -> Optional[Dict[str, Any]]:
     try:
         # Clean up XML text
         xml_text = xml_text.strip()
-        if not xml_text.startswith('<?xml') and not xml_text.startswith('<'):
+        if not xml_text.startswith("<?xml") and not xml_text.startswith("<"):
             return None
 
         root = ET.fromstring(xml_text)
@@ -62,7 +62,7 @@ def xml_element_to_dict(element) -> Dict[str, Any]:
 
     # Add attributes
     if element.attrib:
-        result['@attributes'] = element.attrib
+        result["@attributes"] = element.attrib
 
     # Add children
     for child in element:
@@ -79,7 +79,7 @@ def xml_element_to_dict(element) -> Dict[str, Any]:
     # Add text content
     if element.text and element.text.strip():
         if result:
-            result['#text'] = element.text.strip()
+            result["#text"] = element.text.strip()
         else:
             return element.text.strip()
 
@@ -94,7 +94,7 @@ def extract_key_values_regex(text: str) -> Dict[str, str]:
     result = {}
 
     # Pattern for <Tag>Value</Tag>
-    pattern = r'<(\w+)>([^<]+)</\1>'
+    pattern = r"<(\w+)>([^<]+)</\1>"
     matches = re.findall(pattern, text)
 
     for key, value in matches:
@@ -113,12 +113,22 @@ def extract_range_parameters(xml_config: Dict[str, Any]) -> Dict[str, Any]:
 
     # Keywords to search for
     keywords = [
-        'range', 'depth', 'sample', 'interval', 'frequency',
-        'pulse', 'power', 'gain', 'tvg', 'absorption',
-        'soundvelocity', 'sound_velocity', 'soundspeed',
+        "range",
+        "depth",
+        "sample",
+        "interval",
+        "frequency",
+        "pulse",
+        "power",
+        "gain",
+        "tvg",
+        "absorption",
+        "soundvelocity",
+        "sound_velocity",
+        "soundspeed",
     ]
 
-    def search_dict(d, path=''):
+    def search_dict(d, path=""):
         if isinstance(d, dict):
             for key, value in d.items():
                 current_path = f"{path}.{key}" if path else key
@@ -143,8 +153,8 @@ def extract_range_parameters(xml_config: Dict[str, Any]) -> Dict[str, Any]:
 
 def _get_xml_attr(attrs_bytes: bytes, name: str) -> Optional[str]:
     """Extract a single attribute value from a bytes snippet of XML attributes."""
-    m = re.search(rb'(?:^|\s)' + name.encode() + rb'="([^"]+)"', attrs_bytes)
-    return m.group(1).decode('ascii') if m else None
+    m = re.search(rb"(?:^|\s)" + name.encode() + rb'="([^"]+)"', attrs_bytes)
+    return m.group(1).decode("ascii") if m else None
 
 
 def _get_nominal_frequencies(data: bytes) -> Dict[str, int]:
@@ -158,10 +168,10 @@ def _get_nominal_frequencies(data: bytes) -> Dict[str, int]:
         </Channel>
     This gives the actual nominal frequency regardless of the FM sweep range.
     """
-    config_end = data.find(b'</Configuration>')
+    config_end = data.find(b"</Configuration>")
     if config_end == -1:
         return {}
-    config = data[:config_end + 20].decode('ascii', errors='replace')
+    config = data[: config_end + 20].decode("ascii", errors="replace")
     freq_map: Dict[str, int] = {}
     pattern = r'ChannelID="([^"]+)"[^>]*>.*?<Transducer\b[^>]*\bFrequency="(\d+)"'
     for m in re.finditer(pattern, config, re.DOTALL):
@@ -190,23 +200,23 @@ def get_channel_settings(path: str) -> List[Dict[str, Any]]:
     #   <Channel ChannelID="..." FrequencyStart="35000" FrequencyEnd="38000"
     #            SampleInterval="0.000128" SoundVelocity="1500" ... />
     channel_settings = {}
-    ping_channel_pattern = rb'<Channel\b([^>]+)/>'
+    ping_channel_pattern = rb"<Channel\b([^>]+)/>"
 
     for match in re.finditer(ping_channel_pattern, data):
         attrs = match.group(1)
-        channel_id = _get_xml_attr(attrs, 'ChannelID')
-        sample_interval_str = _get_xml_attr(attrs, 'SampleInterval')
+        channel_id = _get_xml_attr(attrs, "ChannelID")
+        sample_interval_str = _get_xml_attr(attrs, "SampleInterval")
 
         if not channel_id or not sample_interval_str:
             continue
         if channel_id in channel_settings:
             continue  # keep first occurrence per channel
 
-        sound_velocity_str = _get_xml_attr(attrs, 'SoundVelocity')
-        freq_start_str = _get_xml_attr(attrs, 'FrequencyStart')
-        freq_end_str = _get_xml_attr(attrs, 'FrequencyEnd')
+        sound_velocity_str = _get_xml_attr(attrs, "SoundVelocity")
+        freq_start_str = _get_xml_attr(attrs, "FrequencyStart")
+        freq_end_str = _get_xml_attr(attrs, "FrequencyEnd")
 
-        freq_single_str = _get_xml_attr(attrs, 'Frequency')
+        freq_single_str = _get_xml_attr(attrs, "Frequency")
         if freq_start_str and freq_end_str:
             frequency = (float(freq_start_str) + float(freq_end_str)) / 2
         elif freq_single_str:
@@ -215,37 +225,37 @@ def get_channel_settings(path: str) -> List[Dict[str, Any]]:
             frequency = None
 
         channel_settings[channel_id] = {
-            'channel_id': channel_id,
-            'sample_interval': float(sample_interval_str),
-            'sound_velocity': float(sound_velocity_str) if sound_velocity_str else None,
-            'frequency': frequency,  # FM midpoint fallback; overridden below
+            "channel_id": channel_id,
+            "sample_interval": float(sample_interval_str),
+            "sound_velocity": float(sound_velocity_str) if sound_velocity_str else None,
+            "frequency": frequency,  # FM midpoint fallback; overridden below
         }
 
     # Override with nominal frequency from static config (authoritative)
     nominal_freqs = _get_nominal_frequencies(data)
     for channel_id, settings in channel_settings.items():
         if channel_id in nominal_freqs:
-            settings['frequency'] = nominal_freqs[channel_id]
+            settings["frequency"] = nominal_freqs[channel_id]
 
     # Get sample counts from RAW3 datagrams
     datagram_types = raw_parser.find_datagram_types(data)
-    if 'RAW3' not in datagram_types:
+    if "RAW3" not in datagram_types:
         return list(channel_settings.values())
 
-    for raw3_offset in datagram_types['RAW3'][:50]:
+    for raw3_offset in datagram_types["RAW3"][:50]:
         offset = raw3_offset + 4 + 8  # Skip type + timestamp
-        channel_id = data[offset:offset+128].split(b'\x00')[0].decode('ascii')
+        channel_id = data[offset : offset + 128].split(b"\x00")[0].decode("ascii")
         offset += 128 + 4  # Skip channel + datatype/spare
         offset += 4  # Skip sample offset
-        sample_count = struct.unpack('<i', data[offset:offset+4])[0]
+        sample_count = struct.unpack("<i", data[offset : offset + 4])[0]
 
         if channel_id in channel_settings:
             settings = channel_settings[channel_id]
-            if 'sample_count' not in settings:
-                settings['sample_count'] = sample_count
-                sv = settings['sound_velocity'] or 1500.0
-                max_range = sample_count * settings['sample_interval'] * sv / 2
-                settings['max_range'] = max_range
+            if "sample_count" not in settings:
+                settings["sample_count"] = sample_count
+                sv = settings["sound_velocity"] or 1500.0
+                max_range = sample_count * settings["sample_interval"] * sv / 2
+                settings["max_range"] = max_range
 
     return list(channel_settings.values())
 
@@ -279,7 +289,7 @@ def get_pulse_duration(path: str, channel_id: Optional[str] = None) -> float:
 
     if channel_id is not None:
         # Try to find a match near the channel's config block
-        channel_bytes = channel_id.encode('ascii', errors='ignore')
+        channel_bytes = channel_id.encode("ascii", errors="ignore")
         ch_pos = data.find(channel_bytes)
         if ch_pos != -1:
             # Search in a 10 kB window around the channel entry
@@ -321,12 +331,12 @@ def get_file_summary(path: str) -> Dict[str, Any]:
     channels = get_channel_settings(path)
 
     # Count pings
-    datagram_types = file_info['datagram_types']
-    ping_count = len(datagram_types.get('RAW3', []))
+    datagram_types = file_info["datagram_types"]
+    ping_count = len(datagram_types.get("RAW3", []))
 
     return {
-        'filename': file_info['filename'],
-        'size_mb': file_info['size_mb'],
-        'ping_count': ping_count,
-        'channels': channels,
+        "filename": file_info["filename"],
+        "size_mb": file_info["size_mb"],
+        "ping_count": ping_count,
+        "channels": channels,
     }

@@ -8,6 +8,7 @@ the ResNet34 seed ensemble, and writes:
 - ensemble/member probability maps
 - ensemble probability, entropy, and disagreement maps
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,6 +18,7 @@ from pathlib import Path
 
 import cv2
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -105,11 +107,13 @@ def read_zarr_v3_channel(array_path: Path, channel_idx: int) -> np.ndarray:
             block = np.frombuffer(raw, dtype=dtype).reshape(chunks)
             ps = slice(ping_chunk * chunks[1], min((ping_chunk + 1) * chunks[1], shape[1]))
             rs = slice(range_chunk * chunks[2], min((range_chunk + 1) * chunks[2], shape[2]))
-            out[ps, rs] = block[0, :ps.stop - ps.start, :rs.stop - rs.start]
+            out[ps, rs] = block[0, : ps.stop - ps.start, : rs.stop - rs.start]
     return out.T
 
 
-def load_echopype_inputs(zarr_path: Path, freq1_hz: float, freq2_hz: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def load_echopype_inputs(
+    zarr_path: Path, freq1_hz: float, freq2_hz: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     freq = read_zarr_v3_array(zarr_path / "frequency_nominal").astype(float)
     i1 = int(np.argmin(np.abs(freq - freq1_hz)))
     i2 = int(np.argmin(np.abs(freq - freq2_hz)))
@@ -132,14 +136,22 @@ def load_echopype_inputs(zarr_path: Path, freq1_hz: float, freq2_hz: float) -> t
         trim = min(len(range_arr), int(finite_rows[-1]) + margin)
         sv1, sv2, range_arr = sv1[:trim], sv2[:trim], range_arr[:trim]
 
-    norm1 = normalize_echogram(sv1, method="minmax", vmin=-80.0, vmax=-34.0, fill_nan=0.0).astype(np.float32)
-    norm2 = normalize_echogram(sv2, method="minmax", vmin=-80.0, vmax=-34.0, fill_nan=0.0).astype(np.float32)
+    norm1 = normalize_echogram(sv1, method="minmax", vmin=-80.0, vmax=-34.0, fill_nan=0.0).astype(
+        np.float32
+    )
+    norm2 = normalize_echogram(sv2, method="minmax", vmin=-80.0, vmax=-34.0, fill_nan=0.0).astype(
+        np.float32
+    )
     return np.stack([norm1, norm2, norm1 - norm2], axis=0), sv1, range_arr
 
 
 def load_reference_bottom(zarr_path: Path, sv38: np.ndarray, range_arr: np.ndarray) -> np.ndarray:
     heave_path = zarr_path / "heave"
-    heave = read_zarr_v3_array(heave_path).astype(np.float64) if heave_path.exists() else np.zeros(sv38.shape[1])
+    heave = (
+        read_zarr_v3_array(heave_path).astype(np.float64)
+        if heave_path.exists()
+        else np.zeros(sv38.shape[1])
+    )
     bottom_range, _, _ = detect_bottom_ensemble_pipeline(
         sv38,
         range_arr,
@@ -182,9 +194,15 @@ def load_models(checkpoint_dir: Path, device: str) -> tuple[list[torch.nn.Module
 
 
 @torch.no_grad()
-def predict_batched(model: torch.nn.Module, sv_channels: np.ndarray, target_size: tuple[int, int],
-                    device: str, patch_width: int = 512, stride: int = 256,
-                    batch_size: int = 4) -> np.ndarray:
+def predict_batched(
+    model: torch.nn.Module,
+    sv_channels: np.ndarray,
+    target_size: tuple[int, int],
+    device: str,
+    patch_width: int = 512,
+    stride: int = 256,
+    batch_size: int = 4,
+) -> np.ndarray:
     _, n_range, n_pings = sv_channels.shape
     h, w = target_size
     starts = list(range(0, max(n_pings - patch_width + 1, 1), stride))
@@ -194,7 +212,7 @@ def predict_batched(model: torch.nn.Module, sv_channels: np.ndarray, target_size
     pred_sum = np.zeros((n_range, n_pings), dtype=np.float32)
     pred_count = np.zeros((n_range, n_pings), dtype=np.float32)
     for offset in range(0, len(starts), batch_size):
-        batch_starts = starts[offset:offset + batch_size]
+        batch_starts = starts[offset : offset + batch_size]
         patches = []
         widths = []
         for start in batch_starts:
@@ -202,7 +220,10 @@ def predict_batched(model: torch.nn.Module, sv_channels: np.ndarray, target_size
             patch = sv_channels[:, :, start:end]
             widths.append(end - start)
             if end - start < patch_width:
-                pad = np.zeros((sv_channels.shape[0], n_range, patch_width - (end - start)), dtype=sv_channels.dtype)
+                pad = np.zeros(
+                    (sv_channels.shape[0], n_range, patch_width - (end - start)),
+                    dtype=sv_channels.dtype,
+                )
                 patch = np.concatenate([patch, pad], axis=2)
             patch_hwc = np.transpose(patch, (1, 2, 0))
             patch_resized = cv2.resize(patch_hwc, (w, h), interpolation=cv2.INTER_LINEAR)
@@ -210,9 +231,11 @@ def predict_batched(model: torch.nn.Module, sv_channels: np.ndarray, target_size
         x = torch.from_numpy(np.stack(patches)).float().to(device)
         probs = torch.sigmoid(model(x)).squeeze(1).detach().cpu().numpy()
         for prob, start, width in zip(probs, batch_starts, widths):
-            prob_orig = cv2.resize(prob, (patch_width, n_range), interpolation=cv2.INTER_LINEAR)[:, :width]
-            pred_sum[:, start:start + width] += prob_orig
-            pred_count[:, start:start + width] += 1.0
+            prob_orig = cv2.resize(prob, (patch_width, n_range), interpolation=cv2.INTER_LINEAR)[
+                :, :width
+            ]
+            pred_sum[:, start : start + width] += prob_orig
+            pred_count[:, start : start + width] += 1.0
     return np.divide(pred_sum, pred_count, out=np.zeros_like(pred_sum), where=pred_count > 0)
 
 
@@ -223,24 +246,42 @@ def depths_from_idx(idx: np.ndarray, range_arr: np.ndarray) -> np.ndarray:
     return out
 
 
-def predict_ensemble(models: list[torch.nn.Module], sv: np.ndarray, target_size: tuple[int, int],
-                     device: str, patch_width: int, stride: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def predict_ensemble(
+    models: list[torch.nn.Module],
+    sv: np.ndarray,
+    target_size: tuple[int, int],
+    device: str,
+    patch_width: int,
+    stride: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     preds = []
     for i, model in enumerate(models, 1):
         print(f"Predicting member {i}/{len(models)} ...", flush=True)
-        preds.append(predict_batched(model, sv, target_size, device, patch_width=patch_width, stride=stride))
+        preds.append(
+            predict_batched(model, sv, target_size, device, patch_width=patch_width, stride=stride)
+        )
     all_preds = np.stack(preds)
     return all_preds.mean(axis=0), all_preds.std(axis=0), all_preds
 
 
-def calibrate_constant_q(models: list[torch.nn.Module], cfg: dict, paths: list[Path],
-                         device: str, n_calib: int, threshold: float,
-                         patch_width: int, stride: int, alpha: float) -> float:
+def calibrate_constant_q(
+    models: list[torch.nn.Module],
+    cfg: dict,
+    paths: list[Path],
+    device: str,
+    n_calib: int,
+    threshold: float,
+    patch_width: int,
+    stride: int,
+    alpha: float,
+) -> float:
     errs = []
     for zp in paths[:n_calib]:
         print(f"Calibrating on {zp.name} ...", flush=True)
         sv, sv38, ra = load_echopype_inputs(zp, cfg["freq1_hz"], cfg["freq2_hz"])
-        mean_prob, _, _ = predict_ensemble(models, sv, tuple(cfg["target_size"]), device, patch_width, stride)
+        mean_prob, _, _ = predict_ensemble(
+            models, sv, tuple(cfg["target_size"]), device, patch_width, stride
+        )
         pred_d = depths_from_idx(extract_bottom_line(mean_prob, threshold=threshold), ra)
         gt_d = depths_from_idx(load_reference_bottom(zp, sv38, ra), ra)
         m = np.isfinite(pred_d) & np.isfinite(gt_d) & (pred_d > 0) & (gt_d > 0)
@@ -248,13 +289,24 @@ def calibrate_constant_q(models: list[torch.nn.Module], cfg: dict, paths: list[P
     return float(conformal_quantile(np.concatenate(errs), alpha=alpha))
 
 
-def plot_conformal(zarr_name: str, sv: np.ndarray, mean_prob: np.ndarray, std_prob: np.ndarray,
-                   all_preds: np.ndarray, gt_idx: np.ndarray, range_arr: np.ndarray,
-                   q_const: float, threshold: float, out_path: Path) -> None:
+def plot_conformal(
+    zarr_name: str,
+    sv: np.ndarray,
+    mean_prob: np.ndarray,
+    std_prob: np.ndarray,
+    all_preds: np.ndarray,
+    gt_idx: np.ndarray,
+    range_arr: np.ndarray,
+    q_const: float,
+    threshold: float,
+    out_path: Path,
+) -> None:
     pred_idx = extract_bottom_line(mean_prob, threshold=threshold)
     pred_d = depths_from_idx(pred_idx, range_arr)
     gt_d = depths_from_idx(gt_idx, range_arr)
-    member_depths = np.stack([depths_from_idx(extract_bottom_line(p, threshold), range_arr) for p in all_preds])
+    member_depths = np.stack(
+        [depths_from_idx(extract_bottom_line(p, threshold), range_arr) for p in all_preds]
+    )
     lo = np.nanmin(member_depths, axis=0)
     hi = np.nanmax(member_depths, axis=0)
     sig = std_prob[np.clip(pred_idx, 0, std_prob.shape[0] - 1), np.arange(std_prob.shape[1])]
@@ -267,7 +319,9 @@ def plot_conformal(zarr_name: str, sv: np.ndarray, mean_prob: np.ndarray, std_pr
     bottom = min(float(range_arr[-1]), np.percentile(dvals, 99) + 18.0)
 
     fig, axes = plt.subplots(2, 1, figsize=(14, 8.5), sharex=True)
-    axes[0].imshow(sv[0], aspect="auto", origin="upper", cmap="viridis", vmin=0, vmax=1, extent=extent)
+    axes[0].imshow(
+        sv[0], aspect="auto", origin="upper", cmap="viridis", vmin=0, vmax=1, extent=extent
+    )
     axes[0].fill_between(x, lo, hi, color="#9467bd", alpha=0.45, lw=0, label="Member spread")
     axes[0].plot(x, gt_d, color="#d62728", lw=1.2, label="Reference")
     axes[0].plot(x, pred_d, color="#ffbf00", lw=1.0, label="Ensemble mean")
@@ -275,16 +329,27 @@ def plot_conformal(zarr_name: str, sv: np.ndarray, mean_prob: np.ndarray, std_pr
     axes[0].set_ylim(bottom, top)
     axes[0].legend(loc="upper right", fontsize=10)
 
-    axes[1].imshow(sv[0], aspect="auto", origin="upper", cmap="viridis", vmin=0, vmax=1, extent=extent)
-    axes[1].fill_between(x, pred_d - q_const, pred_d + q_const, color="#ff7f0e", alpha=0.45, lw=0,
-                         label=f"90% constant conformal band (+/-{q_const:.2f} m)")
+    axes[1].imshow(
+        sv[0], aspect="auto", origin="upper", cmap="viridis", vmin=0, vmax=1, extent=extent
+    )
+    axes[1].fill_between(
+        x,
+        pred_d - q_const,
+        pred_d + q_const,
+        color="#ff7f0e",
+        alpha=0.45,
+        lw=0,
+        label=f"90% constant conformal band (+/-{q_const:.2f} m)",
+    )
     axes[1].plot(x, pred_d, color="#ffbf00", lw=1.0, label="Ensemble mean")
     axes[1].plot(x, gt_d, color="#d62728", lw=1.0, label="Reference")
     axes[1].set_ylabel("Depth (m)")
     axes[1].set_xlabel("Ping")
     axes[1].set_ylim(bottom, top)
     axes[1].legend(loc="upper right", fontsize=10)
-    axes[1].set_title(f"Median probability disagreement at predicted bottom: {np.nanmedian(sig):.3f}", fontsize=12)
+    axes[1].set_title(
+        f"Median probability disagreement at predicted bottom: {np.nanmedian(sig):.3f}", fontsize=12
+    )
     fig.suptitle(f"{zarr_name}: conformal bottom band", fontsize=16)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     savefig(fig, out_path)
@@ -292,14 +357,23 @@ def plot_conformal(zarr_name: str, sv: np.ndarray, mean_prob: np.ndarray, std_pr
 
 
 def _map_panel(ax, data, title, extent, cmap, vmin=None, vmax=None):
-    im = ax.imshow(data, aspect="auto", origin="upper", extent=extent, cmap=cmap, vmin=vmin, vmax=vmax)
+    im = ax.imshow(
+        data, aspect="auto", origin="upper", extent=extent, cmap=cmap, vmin=vmin, vmax=vmax
+    )
     ax.set_title(title, fontsize=12)
     ax.set_ylabel("Depth (m)")
     return im
 
 
-def plot_maps(zarr_name: str, sv: np.ndarray, mean_prob: np.ndarray, std_prob: np.ndarray,
-              all_preds: np.ndarray, range_arr: np.ndarray, out_dir: Path) -> None:
+def plot_maps(
+    zarr_name: str,
+    sv: np.ndarray,
+    mean_prob: np.ndarray,
+    std_prob: np.ndarray,
+    all_preds: np.ndarray,
+    range_arr: np.ndarray,
+    out_dir: Path,
+) -> None:
     extent = [0, mean_prob.shape[1], range_arr[-1], range_arr[0]]
     entropy = prediction_entropy(mean_prob)
 
@@ -308,7 +382,15 @@ def plot_maps(zarr_name: str, sv: np.ndarray, mean_prob: np.ndarray, std_prob: n
         _map_panel(axes[0, 0], sv[0], "38 kHz input (normalised)", extent, "viridis", 0, 1),
         _map_panel(axes[0, 1], mean_prob, "Ensemble mean probability", extent, "magma", 0, 1),
         _map_panel(axes[1, 0], entropy, "Probability entropy", extent, "inferno", 0, 1),
-        _map_panel(axes[1, 1], std_prob, "Ensemble probability std.", extent, "cividis", 0, float(np.nanpercentile(std_prob, 99))),
+        _map_panel(
+            axes[1, 1],
+            std_prob,
+            "Ensemble probability std.",
+            extent,
+            "cividis",
+            0,
+            float(np.nanpercentile(std_prob, 99)),
+        ),
     ]
     for ax, im in zip(axes.ravel(), ims):
         fig.colorbar(im, ax=ax, fraction=0.025, pad=0.015)
@@ -336,13 +418,19 @@ def plot_maps(zarr_name: str, sv: np.ndarray, mean_prob: np.ndarray, std_prob: n
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--zarr", default=str(PROJECT_ROOT / "Datasets/echopype_zarr" / DEFAULT_ZARR_NAME))
+    parser.add_argument(
+        "--zarr", default=str(PROJECT_ROOT / "Datasets/echopype_zarr" / DEFAULT_ZARR_NAME)
+    )
     parser.add_argument("--checkpoint-dir", default=str(DEFAULT_CKPT_DIR))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--n-calib", type=int, default=5)
-    parser.add_argument("--q-const-m", type=float, default=None,
-                        help="reuse an existing constant conformal half-width and skip calibration")
+    parser.add_argument(
+        "--q-const-m",
+        type=float,
+        default=None,
+        help="reuse an existing constant conformal half-width and skip calibration",
+    )
     parser.add_argument("--alpha", type=float, default=0.1)
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--patch-width", type=int, default=512)
@@ -358,8 +446,16 @@ def main() -> None:
     if args.q_const_m is None:
         split_files = get_split_files(PROJECT_ROOT / "Datasets/echopype_zarr")
         q_const = calibrate_constant_q(
-            models, cfg, sorted(split_files["calibration"]), args.device,
-            args.n_calib, args.threshold, args.patch_width, args.stride, args.alpha)
+            models,
+            cfg,
+            sorted(split_files["calibration"]),
+            args.device,
+            args.n_calib,
+            args.threshold,
+            args.patch_width,
+            args.stride,
+            args.alpha,
+        )
     else:
         q_const = float(args.q_const_m)
     print(f"q_const={q_const:.3f} m", flush=True)
@@ -367,11 +463,22 @@ def main() -> None:
     sv, sv38, range_arr = load_echopype_inputs(zarr_path, cfg["freq1_hz"], cfg["freq2_hz"])
     gt_idx = load_reference_bottom(zarr_path, sv38, range_arr)
     mean_prob, std_prob, all_preds = predict_ensemble(
-        models, sv, tuple(cfg["target_size"]), args.device, args.patch_width, args.stride)
+        models, sv, tuple(cfg["target_size"]), args.device, args.patch_width, args.stride
+    )
 
     stem = zarr_path.stem
-    plot_conformal(zarr_path.name, sv, mean_prob, std_prob, all_preds, gt_idx,
-                   range_arr, q_const, args.threshold, out_dir / f"{stem}_conformal_band.png")
+    plot_conformal(
+        zarr_path.name,
+        sv,
+        mean_prob,
+        std_prob,
+        all_preds,
+        gt_idx,
+        range_arr,
+        q_const,
+        args.threshold,
+        out_dir / f"{stem}_conformal_band.png",
+    )
     plot_maps(zarr_path.name, sv, mean_prob, std_prob, all_preds, range_arr, out_dir)
     np.savez_compressed(
         out_dir / f"{stem}_maps.npz",

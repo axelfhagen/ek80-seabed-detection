@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -23,8 +24,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from raw_sensor_integration.data_loader import load_zarr
 from raw_sensor_integration.bottom_labelling import (
-    detect_bottom_simple, detect_bottom_edge, detect_bottom_gradient,
-    ensemble_bottom, post_process_bottom,
+    detect_bottom_simple,
+    detect_bottom_edge,
+    detect_bottom_gradient,
+    ensemble_bottom,
+    post_process_bottom,
 )
 from data_visualization.thesis_style import apply_thesis_style, savefig
 
@@ -56,12 +60,27 @@ def labels_for_file(zarr_path):
     threshold = -31.0 if data1.calibrated else "auto"
     draft = data1.transducer_draft or 0.0
 
-    s = detect_bottom_simple(sv1, range_array, heave, data1.pulse_duration,
-                             transducer_draft=draft, minimum_range=10.0,
-                             threshold_log_sv=threshold, offset=0.5)
-    e = detect_bottom_edge(sv1, range_array, heave, data1.pulse_duration,
-                           frequency_hz=data1.frequency_hz, transducer_draft=draft,
-                           minimum_range=10.0, threshold_log_sv=threshold, offset=0.5)
+    s = detect_bottom_simple(
+        sv1,
+        range_array,
+        heave,
+        data1.pulse_duration,
+        transducer_draft=draft,
+        minimum_range=10.0,
+        threshold_log_sv=threshold,
+        offset=0.5,
+    )
+    e = detect_bottom_edge(
+        sv1,
+        range_array,
+        heave,
+        data1.pulse_duration,
+        frequency_hz=data1.frequency_hz,
+        transducer_draft=draft,
+        minimum_range=10.0,
+        threshold_log_sv=threshold,
+        offset=0.5,
+    )
     g = detect_bottom_gradient(sv1, range_array, minimum_range=10.0, offset=0.5)
 
     b2 = ensemble_bottom([s, e], max_deviation=MAX_DEV, primary_count=2)
@@ -86,15 +105,23 @@ def main(only_grid=None):
 
     grids = range(N_GRIDS) if only_grid is None else [only_grid - 1]
     for gi in grids:
-        chunk = files[gi * GRID * GRID:(gi + 1) * GRID * GRID]
+        chunk = files[gi * GRID * GRID : (gi + 1) * GRID * GRID]
         fig, axes = plt.subplots(GRID, GRID, figsize=(24, 24))
         for ax, zarr_path in zip(axes.ravel(), chunk):
             try:
                 sv1, range_array, b2, b3 = labels_for_file(zarr_path)
             except Exception as exc:
-                ax.text(0.5, 0.5, f"FAIL\n{zarr_path.stem}\n{exc}",
-                        ha="center", va="center", fontsize=7, transform=ax.transAxes)
-                ax.set_xticks([]); ax.set_yticks([])
+                ax.text(
+                    0.5,
+                    0.5,
+                    f"FAIL\n{zarr_path.stem}\n{exc}",
+                    ha="center",
+                    va="center",
+                    fontsize=7,
+                    transform=ax.transAxes,
+                )
+                ax.set_xticks([])
+                ax.set_yticks([])
                 continue
             n_pings = sv1.shape[1]
             extent = [0, n_pings, range_array[-1], range_array[0]]
@@ -102,22 +129,34 @@ def main(only_grid=None):
             # traces stay full-resolution and align via the unchanged extent.
             row_step = max(1, sv1.shape[0] // 800)
             col_step = max(1, sv1.shape[1] // 800)
-            ax.imshow(sv1[::row_step, ::col_step], aspect="auto", cmap="viridis",
-                      vmin=-80, vmax=-34, extent=extent, interpolation="nearest")
+            ax.imshow(
+                sv1[::row_step, ::col_step],
+                aspect="auto",
+                cmap="viridis",
+                vmin=-80,
+                vmax=-34,
+                extent=extent,
+                interpolation="nearest",
+            )
             x = np.arange(n_pings)
             ax.plot(x, b2, color="cyan", lw=1.3)
             ax.plot(x, b3, color="red", lw=0.9, ls="--")
             ax.set_title(zarr_path.stem.replace("D", "", 1), fontsize=10)
-            ax.set_xticks([]); ax.set_yticks([])
+            ax.set_xticks([])
+            ax.set_yticks([])
 
         # Blank any unused axes (last grid may be short).
-        for ax in axes.ravel()[len(chunk):]:
+        for ax in axes.ravel()[len(chunk) :]:
             ax.axis("off")
 
-        fig.suptitle(f"Bottom-label ensemble comparison (grid {gi + 1}/{N_GRIDS})",
-                     fontsize=24)
-        fig.legend(handles=legend_handles, loc="lower center", ncol=2,
-                   fontsize=18, bbox_to_anchor=(0.5, 0.005))
+        fig.suptitle(f"Bottom-label ensemble comparison (grid {gi + 1}/{N_GRIDS})", fontsize=24)
+        fig.legend(
+            handles=legend_handles,
+            loc="lower center",
+            ncol=2,
+            fontsize=18,
+            bbox_to_anchor=(0.5, 0.005),
+        )
         fig.tight_layout(rect=[0, 0.03, 1, 0.98])
         out = OUTPUT_DIR / f"ensemble_overlay_grid_{gi + 1}.png"
         savefig(fig, out, dpi=150)
@@ -127,6 +166,7 @@ def main(only_grid=None):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid", type=int, default=None, help="render only grid N (1-3)")
     args = parser.parse_args()
