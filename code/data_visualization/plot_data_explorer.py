@@ -11,21 +11,18 @@ from __future__ import annotations
 
 import argparse
 import gc
-import glob
 import json
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
 from matplotlib.collections import LineCollection
-from matplotlib.colors import ListedColormap, LogNorm, Normalize
+from matplotlib.colors import LogNorm, Normalize
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
@@ -42,7 +39,7 @@ CHECKPOINTS = PROJECT_ROOT / "code" / "checkpoints"
 RESULTS_CSV = PROJECT_ROOT / "code" / "deep_learning" / "training" / "results.csv"
 GPS_OVERVIEW_CSV = PROJECT_ROOT / "Figures" / "gps_overview" / "gps_overview_data.csv"
 
-# Large fonts per Figures/CLAUDE.md
+# Large fonts for thesis figures
 plt.rcParams.update({
     "axes.titlesize": 16,
     "axes.labelsize": 14,
@@ -297,9 +294,9 @@ def fig_heading_rose(file_index: pd.DataFrame | None = None, max_files: int = 10
         counts, edges = np.histogram(bearings, bins=bins)
         widths = np.deg2rad(np.diff(edges))
         centers = np.deg2rad(0.5 * (edges[:-1] + edges[1:]))
-        bars = ax.bar(centers, counts, width=widths, bottom=0,
-                      edgecolor="white", linewidth=0.4,
-                      color=plt.cm.cividis(counts / max(counts.max(), 1)))
+        ax.bar(centers, counts, width=widths, bottom=0,
+               edgecolor="white", linewidth=0.4,
+               color=plt.cm.cividis(counts / max(counts.max(), 1)))
         ax.set_title(f"Vessel-heading rose (n={len(bearings):,} segments)", pad=24)
     else:
         ax.set_title("No headings available")

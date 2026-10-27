@@ -120,7 +120,7 @@ def plot_file(zname, dense, summary_row):
 
     # Detected bottom (ensemble of simple/edge/gradient + temporal cleanup).
     try:
-        bottom, _, det = detect_bottom_ensemble_pipeline(
+        bottom, _, _ = detect_bottom_ensemble_pipeline(
             sv_db, rng, heave=data.heave,
             pulse_duration=data.pulse_duration,
             frequency_hz=data.frequency_hz, minimum_range=10.0,
@@ -128,7 +128,6 @@ def plot_file(zname, dense, summary_row):
     except Exception as e:
         print(f'  detection failed for {zname}: {e}')
         bottom = np.full(n_pings, np.nan)
-        det = {}
 
     # Drop isolated spikes (detector occasionally locks onto the near-surface
     # ringdown layer instead of the seabed), then break the line across pings

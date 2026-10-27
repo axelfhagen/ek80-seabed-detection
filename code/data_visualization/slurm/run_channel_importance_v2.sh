@@ -17,7 +17,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 PYTHONWARNINGS=ignore python code/data_visualization/analyze_channel_importance_v2.py

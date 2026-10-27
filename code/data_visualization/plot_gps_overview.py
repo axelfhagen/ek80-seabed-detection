@@ -6,7 +6,6 @@ plot them on a world/regional map to verify geographic origin.
 import sys
 import gc
 from pathlib import Path
-from collections import defaultdict
 
 import matplotlib
 matplotlib.use('Agg')
@@ -140,7 +139,7 @@ def plot_all_sources(df: pd.DataFrame):
     fig.tight_layout()
     fig.savefig(OUTPUT_DIR / 'gps_all_sources.png', dpi=200, bbox_inches='tight')
     plt.close(fig)
-    print(f'\nSaved gps_all_sources.png')
+    print('\nSaved gps_all_sources.png')
 
 
 def plot_world_overview(df: pd.DataFrame):

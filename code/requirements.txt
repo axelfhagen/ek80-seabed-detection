@@ -1,6 +1,7 @@
 pandas
 numpy
 zarr
+numcodecs
 xarray
 matplotlib
 scipy
@@ -10,6 +11,21 @@ torch
 torchvision
 segmentation-models-pytorch
 albumentations
+opencv-python
+grad-cam
 tqdm
 numba
 echopype
+pyarrow
+folium
+branca
+
+# Used only by the vendored reference code in raw_sensor_integration/rsi_bottomdetection/
+dask[distributed]
+
+# Used only in exploration notebooks
+scikit-learn
+seaborn
+rasterio
+requests
+python-dotenv

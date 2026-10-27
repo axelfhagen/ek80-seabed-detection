@@ -25,8 +25,7 @@ sys.path.insert(0, str(ROOT / "code"))
 
 from raw_sensor_integration.data_loader import load_zarr
 from raw_sensor_integration.bottom_labelling import (
-    detect_bottom_ensemble_pipeline, detect_bottom_simple,
-    detect_bottom_edge, detect_bottom_gradient,
+    detect_bottom_ensemble_pipeline,
 )
 from data_visualization.thesis_style import (
     apply_thesis_style, FIGSIZE_FULL, style_colorbar, savefig,

@@ -3,7 +3,7 @@
 
 Output: Figures/shallow_C2_failure/
 
-The three files in "/cluster/work/axelfh/EK80 38 200 kHz ved kai/" are broadband
+The three files in "<DATA_ROOT>/EK80 38 200 kHz ved kai/" are broadband
 (LFM) EK80 recordings taken at the quay. Water depth is only ~10-19 m, far
 shallower than the Basto crossings the U-Net was trained on, and the recording
 is dominated by near-field transducer ringing, dock structure and a very short
@@ -62,12 +62,13 @@ from validation.conformal import (
     predict_locally_weighted_band, compute_transition_width, extract_bottom_depths,
     calibrate_depth, calibrate_locally_weighted)
 from data_visualization.thesis_style import apply_thesis_style, savefig, style_colorbar
+from project_paths import DATA_ROOT
 
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import SemanticSegmentationTarget
 
 # ── Constants ──────────────────────────────────────────────────────────────
-RAW_DIR = Path("/cluster/work/axelfh/EK80 38 200 kHz ved kai")
+RAW_DIR = DATA_ROOT / "EK80 38 200 kHz ved kai"
 STEMS = ["shallow_C2-D20260526-T134234",
          "shallow_C2-D20260526-T134826",
          "shallow_C2-D20260526-T135419"]
@@ -283,7 +284,6 @@ def process(stem, model):
     raw = RAW_DIR / (stem + ".raw")
     sv1, range1, sv2, range2, pulse, heave = load_sv_bb(raw)
 
-    n = min(sv1.shape[0], sv2.shape[0] if sv2.shape[0] else sv1.shape[0])
     # align ping counts
     npings = min(sv1.shape[1], sv2.shape[1])
     sv1 = sv1[:, :npings]
@@ -383,8 +383,8 @@ def fig_probability(g, m, path):
                          extent=extent)
     axes[1].set_title("P(bottom)")
     plt.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
-    im2 = axes[2].imshow(g["prob"] >= 0.5, aspect="auto", cmap="gray",
-                         extent=extent)
+    axes[2].imshow(g["prob"] >= 0.5, aspect="auto", cmap="gray",
+                   extent=extent)
     axes[2].imshow(np.ma.masked_where(~g["ref_mask"].astype(bool),
                                       g["ref_mask"]), aspect="auto",
                    cmap="autumn", alpha=0.35, extent=extent)
@@ -483,7 +483,6 @@ def fig_gradcam(g, model, path):
     s, e = worst_window(g)
     patch = g["sv_channels"][:, :, s:e]                       # (3,H,W)
     ra = g["range1"]
-    h, w = patch.shape[1], patch.shape[2]
     hwc = np.transpose(patch, (1, 2, 0))
     res = cv2.resize(hwc, (TARGET_SIZE[1], TARGET_SIZE[0]),
                      interpolation=cv2.INTER_LINEAR)

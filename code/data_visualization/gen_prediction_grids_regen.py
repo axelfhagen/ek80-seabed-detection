@@ -38,8 +38,7 @@ from deep_learning.training.config import PipelineConfig
 from deep_learning.training.survey_groups import get_split_files
 from deep_learning.architectures import create_model
 from deep_learning.training.diagnostics import (
-    _load_full, _adaptive_grid,
-    _CONF_ALPHA, _CONF_EPSILON, _CONF_SIGMA_MODE,
+    _load_full, _CONF_ALPHA, _CONF_EPSILON, _CONF_SIGMA_MODE,
 )
 from deep_learning.evaluate import (
     evaluate_file, extract_bottom_line, bottom_depth_error,

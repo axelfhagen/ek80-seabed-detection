@@ -2,25 +2,26 @@
 Investigate and plot 200 kHz echograms from TransferNow raw files with bottom labels.
 """
 import sys
-sys.path.insert(0, '/cluster/work/axelfh/Master/code')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from pathlib import Path
 from raw_sensor_integration.data_loader import load_raw, list_channels
 from raw_sensor_integration.bottom_labelling import detect_bottom_tvg, detect_bottom_dp
+from project_paths import REPO_ROOT, DATA_ROOT
 
 TRANSFER_DIRS = {
-    'TransferNow-3': '/cluster/work/axelfh/Master/Datasets/extra_raw_files/TransferNow-RawFilesEK80_3',
-    'TransferNow-4': '/cluster/work/axelfh/Master/Datasets/extra_raw_files/TransferNow-RawFilesEK80_4',
-    'TransferNow-5': '/cluster/work/axelfh/extra_raw/TransferNow-RawFilesEK80_5',
-    'TransferNow-6': '/cluster/work/axelfh/extra_raw/TransferNow-RawFilesEK80_6',
+    'TransferNow-3': str(REPO_ROOT / 'Datasets/extra_raw_files/TransferNow-RawFilesEK80_3'),
+    'TransferNow-4': str(REPO_ROOT / 'Datasets/extra_raw_files/TransferNow-RawFilesEK80_4'),
+    'TransferNow-5': str(DATA_ROOT / 'extra_raw/TransferNow-RawFilesEK80_5'),
+    'TransferNow-6': str(DATA_ROOT / 'extra_raw/TransferNow-RawFilesEK80_6'),
 }
 
-OUT_DIR = '/cluster/work/axelfh/Master/code/plots_transfernow'
+OUT_DIR = str(REPO_ROOT / 'code' / 'plots_transfernow')
 os.makedirs(OUT_DIR, exist_ok=True)
 
 TARGET_FREQ = 200000  # 200 kHz
@@ -40,7 +41,7 @@ for dir_label, dir_path in TRANSFER_DIRS.items():
 
     try:
         channels = list_channels(str(first_file))
-        print(f"  Available channels:")
+        print("  Available channels:")
         for ch in channels:
             print(f"    {ch['channel_id']}: {ch['frequency_hz']/1000:.0f} kHz, "
                   f"{ch.get('sample_count', '?')} samples, "
@@ -58,7 +59,7 @@ for dir_label, dir_path in TRANSFER_DIRS.items():
         # Use nearest frequency
         available_freqs = [ch['frequency_hz'] for ch in channels if ch['frequency_hz']]
         if not available_freqs:
-            print(f"  No frequencies available, skipping.")
+            print("  No frequencies available, skipping.")
             continue
         nearest = min(available_freqs, key=lambda f: abs(f - TARGET_FREQ))
         print(f"  Using nearest frequency: {nearest/1000:.0f} kHz")

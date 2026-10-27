@@ -25,7 +25,6 @@ import argparse
 import numpy as np
 import cv2
 import torch
-import torch.nn.functional as F
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / 'code'))
@@ -785,7 +784,6 @@ def fig_per_patch_grad_examples(model, patches, masks, meta, out_path,
 
         g_abs = np.abs(g); ig_abs = np.abs(ig)
         g_max = max(g_abs.max(), 1e-12)
-        ig_max = max(ig_abs.max(), 1e-12)
         for c in range(3):
             im = axes[r, 2 + c].imshow(g_abs[c], cmap='hot', aspect='auto',
                                        vmin=0, vmax=g_max)
@@ -869,7 +867,6 @@ def fig_gradcam_per_channel(model, patches, masks, meta, out_path,
 
     for r, idx in enumerate(chosen):
         p = patches[idx]
-        m = masks[idx]
         composite = channels_to_rgb_composite(p)
         probs = predict_probs(model, p)
         pred = (probs > 0.5).astype(np.uint8)
@@ -915,7 +912,6 @@ def fig_summary_dashboard(ablation, pairwise, grad_agg, ig_agg, out_path):
     fig, axes = plt.subplots(1, 2, figsize=(22, 7))
 
     base_iou = float(np.mean(ablation['baseline']['iou']))
-    base_dice = float(np.mean(ablation['baseline']['dice']))
 
     # Drop in IoU from shuffle ablation
     shuffle_drop = np.array([

@@ -22,7 +22,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 
 from raw_sensor_integration.data_loader import load_raw
 from raw_sensor_integration.preprocessing import normalize_echogram

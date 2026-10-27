@@ -12,7 +12,6 @@ Output: Figures/label_noise_ceiling/
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 
 from pathlib import Path
 import sys
@@ -24,7 +23,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / 'code'))
 
 from data_visualization.thesis_style import apply_thesis_style, savefig
-from data_visualization.thesis_style import UNET_PREDICTION_COLOR
 from deep_learning.training.config import PipelineConfig
 from deep_learning.training.model_setup import build_model
 from deep_learning.evaluate import evaluate_file, extract_bottom_line

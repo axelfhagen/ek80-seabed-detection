@@ -29,7 +29,7 @@ from data_visualization.thesis_style import (
 )
 from data_visualization.crosspass_data import (
     load_ping_table, per_crossing_bin_medians, robust_std,
-    LON_MIN, LON_MAX, LAT_MIN, LAT_MAX,
+    LAT_MIN, LAT_MAX,
 )
 
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "failure_mining"

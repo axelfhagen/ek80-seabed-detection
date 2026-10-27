@@ -28,10 +28,11 @@ if _project_root not in sys.path:
 
 from deep_learning.echo_dataset import save_patches_cached
 from deep_learning.training.datasets import DATASET_SPECS as VARIANTS, DatasetSpec
+from project_paths import REPO_ROOT
 
 # ── Where zarr stores live ────────────────────────────────────────────
-ZARR_DIR = Path("/cluster/work/axelfh/Master/Datasets/echopype_zarr")
-OUTPUT_ROOT = Path("/cluster/work/axelfh/Master/Datasets/patch_datasets")
+ZARR_DIR = REPO_ROOT / "Datasets" / "echopype_zarr"
+OUTPUT_ROOT = REPO_ROOT / "Datasets" / "patch_datasets"
 
 FREQ1 = 38_000
 FREQ2 = 200_000

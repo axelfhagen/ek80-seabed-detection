@@ -1,6 +1,7 @@
 """Plot echograms from the 3 failed June 2025 raw-to-zarr conversions."""
 import sys
-sys.path.insert(0, '/cluster/work/axelfh/Master/code')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import matplotlib
 matplotlib.use('Agg')
@@ -9,14 +10,15 @@ import numpy as np
 from raw_sensor_integration.ping_parser import extract_pings, pings_to_power_image
 from raw_sensor_integration.raw_parser import read_raw_file, find_datagram_types
 from raw_sensor_integration.metadata import get_channel_settings
+from project_paths import REPO_ROOT, DATA_ROOT
 
 RAW_FILES = [
-    "/cluster/work/axelfh/Data_raw/EK80/D202506/D20250624/D20250624-T050243.raw",
-    "/cluster/work/axelfh/Data_raw/EK80/D202506/D20250625/D20250625-T015027.raw",
-    "/cluster/work/axelfh/Data_raw/EK80/D202506/D20250626/D20250626-T042617.raw",
+    str(DATA_ROOT / "Data_raw/EK80/D202506/D20250624/D20250624-T050243.raw"),
+    str(DATA_ROOT / "Data_raw/EK80/D202506/D20250625/D20250625-T015027.raw"),
+    str(DATA_ROOT / "Data_raw/EK80/D202506/D20250626/D20250626-T042617.raw"),
 ]
 
-OUT_DIR = "/cluster/work/axelfh/Master/code/plots_june2025"
+OUT_DIR = str(REPO_ROOT / "code" / "plots_june2025")
 
 import os
 os.makedirs(OUT_DIR, exist_ok=True)

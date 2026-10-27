@@ -9,16 +9,13 @@ keyed on the predicted positive mask, so the resulting heatmap shows which
 input regions drove the model's seabed prediction.
 """
 
-import os
 import sys
 from pathlib import Path
 
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import torch
-import torch.nn.functional as F
 
 # Project imports
 PROJECT_ROOT = Path('/cluster/work/axelfh/Master')
@@ -361,9 +358,6 @@ def fig05_layer_comparison(model, sample):
     # Hide the unused panel
     axes[0, 2].axis('off')
     axes[0, 3].axis('off')
-
-    positions = [(1, 0), (1, 1), (1, 2), (1, 3),
-                 (0, 2), (0, 3)]
 
     # Layout: row 0: input, prob, decoder-2, decoder-1
     #         row 1: layer1, layer2, layer3, layer4

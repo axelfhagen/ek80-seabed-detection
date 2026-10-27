@@ -40,7 +40,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from data_visualization.thesis_style import (
-    apply_thesis_style, savefig, FIGSIZE_FULL, LEGEND_SIZE)
+    apply_thesis_style, savefig, LEGEND_SIZE)
 from validation.conformal import conformal_quantile, evaluate_coverage
 from deep_learning.training.survey_groups import SURVEYS, SPLITS
 
@@ -115,7 +115,7 @@ def main():
             c, _, _ = evaluate_coverage(pred, gt, q_hat[a])
             cov.append(c)
         offset = (k - 0.5) * width
-        bars = ax.bar(x + offset, cov, width,
+        ax.bar(x + offset, cov, width,
                       color="#4c78a8" if k == 0 else "#f58518",
                       edgecolor="black", linewidth=0.6,
                       label=f"{lvl} target")

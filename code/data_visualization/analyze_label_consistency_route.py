@@ -32,7 +32,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 from data_visualization.thesis_style import (
     apply_thesis_style, style_colorbar, keep_spines, savefig, LEGEND_SIZE)
 from data_visualization.crosspass_data import (
-    load_ping_table, robust_std, LON_MIN, LON_MAX, LAT_MIN, LAT_MAX)
+    load_ping_table, robust_std, LAT_MIN, LAT_MAX)
 
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "label_consistency_route"
 

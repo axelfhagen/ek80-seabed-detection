@@ -180,8 +180,6 @@ def _diag(ax, lo, hi):
 
 def fig_summary(rows, stems):
     """Deployed-vs-smoothed scatters that stay readable with many files."""
-    jit_d = np.array([r['raw']['jitter_m'] for r in rows])
-    jit_s = np.array([r['cascade']['jitter_m'] for r in rows])
     jmp_d = np.array([r['raw']['max_jump_m'] for r in rows])
     jmp_s = np.array([r['cascade']['max_jump_m'] for r in rows])
     sv_d = np.array([r['raw']['mean_sv_db'] for r in rows])

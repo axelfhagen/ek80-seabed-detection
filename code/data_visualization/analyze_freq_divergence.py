@@ -30,13 +30,14 @@ from raw_sensor_integration.data_loader import load_raw
 from raw_sensor_integration.preprocessing import normalize_echogram
 from raw_sensor_integration.metadata import get_channel_settings
 from data_visualization.thesis_style import apply_thesis_style, savefig
+from project_paths import DATA_ROOT
 
 FREQ1 = 38_000
 FREQ2 = 200_000
 SURFACE_FRAC = 0.15          # ignore the top of the range (saturated near-field)
 RAW_DIRS = [
-    Path("/cluster/work/axelfh/test_raw"),
-    Path("/cluster/work/axelfh/test_raw_2"),
+    DATA_ROOT / "test_raw",
+    DATA_ROOT / "test_raw_2",
 ]
 OUTPUT_DIR = PROJECT_ROOT / "Figures" / "freq_divergence"
 

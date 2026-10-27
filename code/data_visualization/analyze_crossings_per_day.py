@@ -18,7 +18,6 @@ Output: Figures/crossings_per_day/
 
 from __future__ import annotations
 
-import sys
 import warnings
 from pathlib import Path
 

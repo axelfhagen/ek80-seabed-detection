@@ -4,7 +4,7 @@
 Writes the result to `Datasets/patch_quality_metrics_extended.csv` (~50 cols).
 
 Run as:
-    python -m code.data_cleaning.run_extended_metrics
+    python code/data_cleaning/run_extended_metrics.py [--workers N]
 """
 
 import argparse

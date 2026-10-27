@@ -7,7 +7,6 @@ as a single clean figure to motivate the repeated-crossings argument.
 Output: Figures/basto_route/
 """
 
-import sys
 import warnings
 from pathlib import Path
 

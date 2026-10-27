@@ -127,7 +127,7 @@ def save_panels(sv_db, mask, range_arr, title, output_path):
 def process_zarr(zarr_path, output_dir):
     freqs = discover_frequencies(zarr_path)
     if not freqs:
-        print(f"  No frequencies found, skipping")
+        print("  No frequencies found, skipping")
         return 0
 
     count = 0

@@ -25,8 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / 'code'))
 
 from data_visualization.thesis_style import (
-    apply_thesis_style, FIGSIZE_STD, FIGSIZE_FULL, FIGSIZE_HALF,
-    style_colorbar, savefig, keep_spines,
+    apply_thesis_style, FIGSIZE_STD, FIGSIZE_FULL, style_colorbar, savefig, keep_spines,
 )
 from validation.conformal_labelless import (
     split_crossings, build_calibration_scores, calibrate_labelless,
@@ -404,7 +403,7 @@ def main():
         print(f"\nGallery ({len(rendered)} crossings, calm to noisy):")
         for cid, dev in rendered:
             print(f"  {cid}: median dev {dev:.2f} m")
-        print(f"\nCrossing noisiness (test set), overall:")
+        print("\nCrossing noisiness (test set), overall:")
         print(f"  median dev across crossings: "
               f"med={noise['median_dev_m'].median():.2f} m, "
               f"p90={noise['median_dev_m'].quantile(0.9):.2f} m, "

@@ -12,7 +12,6 @@ approach that only improves masks where the improvement is clear.
 
 import numpy as np
 from scipy.signal import medfilt
-from pathlib import Path
 
 from .metrics import get_bottom_line, compute_mask_metrics
 

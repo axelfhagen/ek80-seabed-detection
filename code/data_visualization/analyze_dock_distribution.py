@@ -16,7 +16,6 @@ import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -513,7 +512,7 @@ def print_summary(summary: pd.DataFrame):
               f'{p:>10,} {100*p/total_patches:>5.1f}%  '
               f'{md:>8.1f} m  {of:>8.1f}%  {sm:>9.2f} m')
 
-    print(f'\nDock terminals:')
+    print('\nDock terminals:')
     for name, coords, radius in [('Horten', HORTEN, HORTEN_RADIUS_M),
                                   ('Moss', MOSS, MOSS_RADIUS_M)]:
         near = summary[summary.apply(
@@ -521,7 +520,7 @@ def print_summary(summary: pd.DataFrame):
         print(f'  {name} ({coords[0]:.3f}N, {coords[1]:.3f}E): '
               f'{len(near)} files within {radius}m')
 
-    print(f'\nPer-survey breakdown:')
+    print('\nPer-survey breakdown:')
     print(f'{"Survey":<16} {"Files":>6} {"Dock":>6} {"Shallow":>8} {"Deep":>6}')
     print('-' * 44)
     for survey in sorted(summary['survey'].unique()):
@@ -541,7 +540,7 @@ def main():
 
     summary = compute_file_summary_chunked()
 
-    print(f'\n── Generating visualizations ──')
+    print('\n── Generating visualizations ──')
     plot_cluster_map(summary)
     plot_depth_map(summary)
     plot_depth_histogram_files(summary)
@@ -550,7 +549,7 @@ def main():
     plot_quality_vs_depth(summary)
     plot_quality_vs_dock_dist(summary)
 
-    print(f'\n── Generating echogram grids (loading zarr files) ──')
+    print('\n── Generating echogram grids (loading zarr files) ──')
     for cluster in CLUSTER_ORDER:
         plot_echogram_grid(summary, cluster)
 

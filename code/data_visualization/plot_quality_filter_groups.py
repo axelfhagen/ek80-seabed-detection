@@ -11,7 +11,6 @@ WEAK_BOTTOM, BOTTOM_JUMPS, ...), this script:
 A `_README.md` and a global `filter_summary.csv` are written into the same folder.
 """
 
-import json
 import sys
 from pathlib import Path
 

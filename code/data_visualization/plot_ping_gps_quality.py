@@ -75,7 +75,7 @@ def plot_single_file(raw_path: Path, output_dir: Path) -> bool:
         return False
 
     if data.gps is None or data.gps.empty or data.gps['lat'].isna().all():
-        print(f'    SKIP: no GPS data', flush=True)
+        print('    SKIP: no GPS data', flush=True)
         del data
         gc.collect()
         return False

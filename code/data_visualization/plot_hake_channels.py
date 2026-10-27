@@ -28,10 +28,11 @@ warnings.filterwarnings("ignore")
 
 from raw_sensor_integration.preprocessing import load_sv_from_zarr
 from data_visualization.thesis_style import apply_thesis_style, style_colorbar, savefig
+from project_paths import DATA_ROOT
 
 FREQ1, FREQ2 = 38_000, 200_000
 VMIN, VMAX = -80.0, -34.0
-ZARR_DIR = Path("/cluster/work/axelfh/test_raw_hake_zarr")
+ZARR_DIR = DATA_ROOT / "test_raw_hake_zarr"
 OUT_DIR = PROJECT_ROOT / "Figures" / "hake_channels"
 LATEX_DIR = PROJECT_ROOT / "Latex" / "Figures" / "hake_channels"
 EXAMPLE_STEMS = [

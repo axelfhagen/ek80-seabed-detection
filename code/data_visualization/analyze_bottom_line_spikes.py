@@ -31,7 +31,7 @@ sys.path.insert(0, str(PROJECT_ROOT / 'code'))
 
 from deep_learning.unet_model import create_unet, predict_full_echogram
 from deep_learning.evaluate import (
-    extract_bottom_line, load_file_data, bottom_depth_error,
+    extract_bottom_line, load_file_data,
 )
 from deep_learning.bottom_extraction import (
     extract_bottom_contiguous, extract_bottom_gated, extract_bottom_dp,

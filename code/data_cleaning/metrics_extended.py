@@ -310,7 +310,6 @@ def _water_col_p99(ch, bottom, valid):
     """
     if valid.sum() == 0:
         return np.nan
-    H = ch.shape[0]
     water = []
     for j in np.where(valid)[0]:
         b = bottom[j]
@@ -326,7 +325,6 @@ def _water_col_high_frac(ch, bottom, valid, thr=0.5):
     """Fraction of water-column pixels brighter than ``thr``."""
     if valid.sum() == 0:
         return np.nan
-    H = ch.shape[0]
     water = []
     for j in np.where(valid)[0]:
         b = bottom[j]
@@ -381,7 +379,7 @@ def compute_extended_metrics(patch, mask):
     dict of metric_name -> float (NaN where not computable).
     """
     ch0 = patch[0]
-    ch1 = patch[1]
+    ch1 = patch[1]  # noqa: F841 - unused, but keeps the >= 2-channel requirement
     H, W = ch0.shape
 
     bottom = get_bottom_line(mask)

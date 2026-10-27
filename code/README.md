@@ -5,6 +5,8 @@ Deep learning approach to seabed detection in Simrad EK80 echograms, built aroun
 ## Structure
 
 ```text
+project_paths.py               # REPO_ROOT / DATA_ROOT defaults, overridable via environment variables
+
 raw_sensor_integration/
     raw_parser.py              # binary .raw file reading, datagram offset mapping
     ping_parser.py             # RAW3 decoding into Ping objects (complex64 samples)
@@ -17,35 +19,45 @@ raw_sensor_integration/
     preprocessing.py           # normalization, downsampling, zarr Sv loading, patch extraction
     visualization.py           # echogram plotting helpers
     zarr_dataset.py            # save_patches_npz(), ZarrBottomDataset (npz-based workflow)
+    bathymetry_*.py, advanced_bathymetry_*.py  # bathymetry maps from detected bottom depths
     rsi_bottomdetection/       # vendored CRIMAC-classifiers-bottom (MIT, reference only)
-    notebooks/                 # numbered exploration notebooks (01-16)
+    notebooks/                 # numbered exploration notebooks
+    slurm/                     # SLURM job scripts
 
 deep_learning/
     unet_model.py              # smp.Unet wrapper, DiceBCE loss, training/inference
+    architectures/             # model variants (smp models, vanilla U-Net, regression U-Net, lightweight CNN)
     echo_dataset.py            # patch extraction (3-ch or 1-ch), PyTorch Dataset, caching
+    bottom_extraction.py       # bottom line from predicted masks
     evaluate.py                # per-file metrics (IoU, Dice, bottom depth error)
     training/
         config.py              # PipelineConfig dataclass with all hyperparameters
+        datasets.py            # dataset variant specifications (DATASET_SPECS)
         train.py               # CLI entry point for end-to-end training
-        notebooks/             # training experiment notebooks (01-03)
+        notebooks/             # training experiment notebooks
+        slurm/                 # SLURM job scripts for training and evaluation
 
-data_visualization/
-    plot_*.py                  # one figure or small set per topic
-    analyze_*.py               # analysis + summary figure (often + a CSV)
-    visualize_*.py             # batch panels, one per input file
-    gen_*.py                   # multi-panel grids
-    stitch_*.py                # data composition + figure
-    archive/                   # superseded script versions (kept for provenance)
+validation/                    # conformal prediction, ensembles, uncertainty and dataset-shift analyses
+data_cleaning/                 # patch quality metrics, scoring, re-labelling
+data_visualization/            # thesis figure and analysis scripts, shared thesis_style.py
+experiments/                   # self-contained experiments (e.g. hake fine-tuning)
+thesis_metrics_regen/          # scripts that recompute the headline thesis numbers
+Data/                          # notebook for downloading NMDC sensor data through its API
 
 convert_raw_to_patches.py      # batch script: raw dirs -> zarr -> cached .npz patches
 generate_all_datasets.py       # generate dataset variants with different hyperparameters
                                # each variant gets a params.json with extraction + training config
 generate_patches_chunk.py      # SLURM job-array chunk worker for patch generation
 infer_test_raw.py              # U-Net inference + 3x3 plot grids over a raw directory
+scan_empty_patches.py          # report empty masks / all-zero patches in the patch caches
 ```
 
-Figure scripts write into `Figures/<topic>/`. See `Figures/CLAUDE.md` for style and
-naming conventions.
+Most packages have their own `README.md` with a per-module listing.
+
+Figure scripts write into `Figures/<topic>/` relative to the repository root. `Figures/`
+is not included in this repository. Datasets, zarr stores and model checkpoints are
+expected under `Datasets/` (relative to the repository root) and `DATA_ROOT`; neither is
+included.
 
 ## Data flow
 
@@ -78,5 +90,9 @@ Training uses DiceBCE loss, AdamW with differential learning rates (encoder 1e-4
 ```bash
 pip install -r requirements.txt
 ```
+
+Paths default to the cluster layout used for the thesis. Set `REPO_ROOT` and `DATA_ROOT`
+to run elsewhere (`code/project_paths.py` for Python, the same variables in the SLURM
+scripts).
 
 Data pipeline notebooks run from `code/raw_sensor_integration/notebooks/` with `sys.path.insert(0, '../..')`. Training notebooks in `code/deep_learning/training/notebooks/` use `sys.path.insert(0, '../../..')`.

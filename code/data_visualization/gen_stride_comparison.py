@@ -184,7 +184,6 @@ def plot_overlays(rows, strides, out_path, zoom=False, savefig=None):
 
 
 def plot_summary(rows, strides, out_path, savefig=None):
-    colors = stride_palette(strides)
     sx = sorted(strides)  # ascending for x-axis
 
     def agg(key):

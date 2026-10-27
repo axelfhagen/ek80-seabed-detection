@@ -19,7 +19,6 @@ sys.path.insert(0, str(PROJECT_ROOT / "code"))
 
 from data_visualization.thesis_style import (  # noqa: E402
     apply_thesis_style,
-    FIGSIZE_STD,
     savefig,
     style_colorbar,
 )

@@ -2,7 +2,6 @@
 
 import sys
 import gc
-import json
 import warnings
 from pathlib import Path
 

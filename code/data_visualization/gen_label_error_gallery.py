@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import sys
 
-import numpy as np
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

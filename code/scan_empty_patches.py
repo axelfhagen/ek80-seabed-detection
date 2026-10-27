@@ -1,7 +1,6 @@
 """Scan production patch caches for empty (all-zero) masks and degenerate patch images."""
 import glob
 import os
-import sys
 
 import numpy as np
 

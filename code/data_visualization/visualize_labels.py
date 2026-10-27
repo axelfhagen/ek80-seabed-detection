@@ -31,7 +31,7 @@ from raw_sensor_integration.bottom_detection import (
     bottom_to_sample_index,
     create_bottom_mask,
 )
-from raw_sensor_integration import ping_parser, metadata
+from raw_sensor_integration import ping_parser
 
 warnings.filterwarnings('ignore')
 

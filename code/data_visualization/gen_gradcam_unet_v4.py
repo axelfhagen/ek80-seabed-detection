@@ -333,7 +333,6 @@ def fig05_decision_boundary(model, sample, layer):
     echo = echogram_38khz(sample)
     probs = sample['probs']
     cam = gv.gradcam_single(model, [layer], sample['input'], sample['pred_mask'])
-    x = np.arange(echo.shape[1])
     md = depth_extent(sample)
 
     fig, axes = plt.subplots(1, 3, figsize=(24, 9))

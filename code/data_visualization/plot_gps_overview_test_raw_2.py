@@ -1,5 +1,5 @@
 """
-Extract GPS tracks from all .raw files in /cluster/work/axelfh/test_raw_2/
+Extract GPS tracks from all .raw files in DATA_ROOT/test_raw_2/
 and plot where the data was collected.
 
 Outputs to Figures/gps_overview_test_raw_2/.
@@ -25,8 +25,9 @@ sys.path.insert(0, str(PROJECT_ROOT / 'code'))
 
 from raw_sensor_integration.raw_parser import read_raw_file
 from raw_sensor_integration.gps_parser import parse_nme0_datagrams, parse_gps_sentences
+from project_paths import DATA_ROOT
 
-RAW_DIR = Path('/cluster/work/axelfh/test_raw_2')
+RAW_DIR = DATA_ROOT / 'test_raw_2'
 OUTPUT_DIR = PROJECT_ROOT / 'Figures' / 'gps_overview_test_raw_2'
 CSV_CACHE = OUTPUT_DIR / 'test_raw_2_gps_all.csv'
 
@@ -202,7 +203,7 @@ def main():
         print('No GPS data found in any file!')
         return
 
-    print(f'\nGPS summary:')
+    print('\nGPS summary:')
     print(f'  Files with GPS: {df["file"].nunique()}')
     print(f'  Total fixes: {len(df)}')
     print(f'  Lat range: [{df["lat"].min():.4f}, {df["lat"].max():.4f}]')

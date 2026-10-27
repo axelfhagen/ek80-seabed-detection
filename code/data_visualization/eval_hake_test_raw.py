@@ -47,6 +47,7 @@ from deep_learning.unet_model import create_unet, predict_full_echogram
 from deep_learning.evaluate import extract_bottom_line, bottom_depth_error
 from deep_learning.bottom_extraction import extract_bottom_dp
 from data_visualization.thesis_style import apply_thesis_style, style_colorbar, savefig
+from project_paths import DATA_ROOT
 
 FREQ1 = 38_000
 FREQ2 = 200_000
@@ -57,8 +58,8 @@ PATCH_WIDTH = 512
 STRIDE = 256
 CROP_PAD_SAMPLES = 160             # rows of context kept above/below the seabed
 
-RAW_DIR = Path("/cluster/work/axelfh/test_raw_hake")
-ZARR_DIR = Path("/cluster/work/axelfh/test_raw_hake_zarr")
+RAW_DIR = DATA_ROOT / "test_raw_hake"
+ZARR_DIR = DATA_ROOT / "test_raw_hake_zarr"
 OUT_DIR = PROJECT_ROOT / "Figures" / "hake_test_eval"
 # Most general checkpoint: 1728-file random-pool split, patch_width 512, with
 # hflip/noise/brightness augmentation — the best bet for out-of-distribution data.

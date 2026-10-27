@@ -16,15 +16,13 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
 from scipy.stats import spearmanr
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / 'code'))
 
 from data_visualization.thesis_style import (
-    apply_thesis_style, style_colorbar, savefig,
+    apply_thesis_style, savefig,
     REFERENCE_BOTTOM_COLOR, UNET_PREDICTION_COLOR,
 )
 from deep_learning.evaluate import extract_bottom_line

@@ -10,7 +10,7 @@ Files without both 38+200 kHz are skipped.
 Also generates individual echogram PNGs for each file if they don't exist yet.
 
 Usage:
-    python code/infer_test_raw.py --raw-dir /cluster/work/axelfh/test_raw_2
+    python code/infer_test_raw.py --raw-dir $DATA_ROOT/test_raw_2
 """
 from __future__ import annotations
 
@@ -175,7 +175,6 @@ def generate_echogram(raw_path, out_dir, max_pings=1000):
         if power_db.size == 0:
             ax.set_title(f"{ch}\n(no data)")
             continue
-        ch_pings = [p for p in pings if ch in p.channel_id]
         n_samples, n_pings_ch = power_db.shape
         finite = power_db[np.isfinite(power_db)]
         if finite.size == 0:
@@ -230,8 +229,8 @@ def plot_3x3_grid(results, mode, title, save_path):
                 ax.plot(pings_p, depths_p, color="red", linewidth=1.0, alpha=0.9)
             ax.set_title(res["name"], fontsize=9)
         else:
-            im = ax.imshow(res["prediction"], aspect="auto", cmap="RdYlBu_r",
-                           vmin=0, vmax=1, origin="upper", extent=extent)
+            ax.imshow(res["prediction"], aspect="auto", cmap="RdYlBu_r",
+                      vmin=0, vmax=1, origin="upper", extent=extent)
             pred_bottom = extract_bottom_line(res["prediction"], threshold=0.5)
             valid = pred_bottom >= 0
             if valid.any():

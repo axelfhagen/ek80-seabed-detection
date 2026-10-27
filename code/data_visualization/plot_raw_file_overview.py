@@ -137,7 +137,7 @@ def plot_single_file(raw_path: Path, output_dir: Path) -> dict:
         return None
 
     if data.gps is None or data.gps.empty or data.gps['lat'].isna().all():
-        print(f'    SKIP: no GPS data', flush=True)
+        print('    SKIP: no GPS data', flush=True)
         del data
         gc.collect()
         return None
@@ -327,7 +327,7 @@ def plot_summary(stats_list: list[dict], output_dir: Path):
     fig.tight_layout()
     fig.savefig(output_dir / 'recording_summary.png', dpi=200, bbox_inches='tight')
     plt.close(fig)
-    print(f'Saved recording_summary.png')
+    print('Saved recording_summary.png')
 
 
 def main():
@@ -356,7 +356,7 @@ def main():
         df.to_csv(csv_path, index=False)
         print(f'\nSaved stats for {len(stats_list)} files to {csv_path}')
 
-        print(f'\n── Summary ──')
+        print('\n── Summary ──')
         print(f'  Duration: {df["duration_s"].median()/60:.1f} min median '
               f'({df["duration_s"].min()/60:.1f}–{df["duration_s"].max()/60:.1f})')
         print(f'  Pings:    {int(df["n_pings"].median())} median '

@@ -14,14 +14,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from matplotlib import cm
 from PIL import Image
 
 REPO = Path(__file__).resolve().parents[2]
@@ -374,7 +372,7 @@ def save_track_png(lat: np.ndarray, lon: np.ndarray, times: np.ndarray,
     ax.set_aspect('equal')
     ax.grid(alpha=0.3)
     ax.set_title('Vessel track over panorama window')
-    cb = fig.colorbar(sc, ax=ax, label='Hours from start', shrink=0.7)
+    fig.colorbar(sc, ax=ax, label='Hours from start', shrink=0.7)
     fig.tight_layout()
     fig.savefig(out_path)
     plt.close(fig)

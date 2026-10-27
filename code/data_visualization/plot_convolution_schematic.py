@@ -83,7 +83,7 @@ def main():
     in_n = 6
     in_x0 = 0.0
     in_top = 6.0
-    in_centre = draw_grid(ax, in_x0, in_top, in_n, in_n, in_cell)
+    draw_grid(ax, in_x0, in_top, in_n, in_n, in_cell)
     # Window A (top-left) and window B (slid to bottom-right).
     highlight_window(ax, in_x0, in_top, 0, 0, 3, in_cell, COL_A)
     highlight_window(ax, in_x0, in_top, 3, 3, 3, in_cell, COL_B, ls=(0, (4, 3)))
