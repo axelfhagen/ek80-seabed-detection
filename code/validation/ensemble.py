@@ -8,9 +8,7 @@ uncertainty estimate without requiring dropout at inference time.
 
 from __future__ import annotations
 
-import json
 import sys
-from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 

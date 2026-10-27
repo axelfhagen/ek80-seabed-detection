@@ -563,10 +563,10 @@ def plot_stratified_coverage(table, q_const, q_local, save_path):
     x = np.arange(len(surveys))
     w = 0.38
     fig, ax = plt.subplots(figsize=FIGSIZE_STD)
-    bc = ax.bar(x - w / 2, table["coverage_constant"], w, color="#ff7f0e",
-                label="Constant-width")
-    bl = ax.bar(x + w / 2, table["coverage_local"], w, color="#9467bd",
-                label="Locally-weighted")
+    ax.bar(x - w / 2, table["coverage_constant"], w, color="#ff7f0e",
+           label="Constant-width")
+    ax.bar(x + w / 2, table["coverage_local"], w, color="#9467bd",
+           label="Locally-weighted")
     # outline the calibration survey
     for i, is_c in enumerate(table["is_calib"]):
         if is_c:

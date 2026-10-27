@@ -7,5 +7,6 @@ conda activate master_env
 export MPLCONFIGDIR=/tmp/matplotlib-${USER}
 mkdir -p "$MPLCONFIGDIR"
 
-cd /cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+cd "$REPO_ROOT"
 python -u code/experiments/hake_finetune/summarize_results.py

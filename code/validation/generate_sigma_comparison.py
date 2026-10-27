@@ -33,12 +33,14 @@ _project_root = str(Path(__file__).resolve().parents[1])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from project_paths import REPO_ROOT  # noqa: E402
+
 import torch
 import matplotlib
 matplotlib.use('Agg')
 
 from validation.conformal import (
-    conformal_quantile, calibrate_depth, predict_depth_band,
+    conformal_quantile, calibrate_depth,
     calibrate_locally_weighted, predict_locally_weighted_band,
     compute_transition_width,
 )
@@ -53,7 +55,7 @@ from data_visualization.thesis_style import (
 )
 
 
-OUTPUT_DIR = Path("/cluster/work/axelfh/Master/Figures/conformal/sigma_compare")
+OUTPUT_DIR = REPO_ROOT / "Figures" / "conformal" / "sigma_compare"
 VIZ_SEED = 7          # same selection as the v3 coarse gallery
 N_VIZ_FILES = 10
 

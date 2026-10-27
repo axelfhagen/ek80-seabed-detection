@@ -22,7 +22,6 @@ End-to-end pipeline:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -32,6 +31,8 @@ import pandas as pd
 _project_root = str(Path(__file__).resolve().parents[1])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
+
+from project_paths import REPO_ROOT  # noqa: E402
 
 import torch
 import matplotlib
@@ -45,7 +46,6 @@ from validation.conformal_labelless import (
     LabellessCalibration,
     build_calibration_scores,
     calibrate_labelless,
-    extract_crossing_pings,
     pairwise_coverage,
     pairwise_coverage_curve,
     plot_labelless_band,
@@ -55,12 +55,12 @@ from validation.conformal_labelless import (
 
 
 # ── Defaults ──────────────────────────────────────────────────────────
-DEFAULT_CHECKPOINT = (
-    "/cluster/work/axelfh/Master/code/checkpoints/"
-    "exp_20260511_191547_all_surveys_jun2025/smp_unet_resnet34_best.pth"
+DEFAULT_CHECKPOINT = str(
+    REPO_ROOT / "code" / "checkpoints"
+    / "exp_20260511_191547_all_surveys_jun2025" / "smp_unet_resnet34_best.pth"
 )
-DEFAULT_ZARR_DIR = "/cluster/work/axelfh/Master/Datasets/echopype_zarr"
-DEFAULT_OUT_DIR = "/cluster/work/axelfh/Master/Figures/conformal/labelless"
+DEFAULT_ZARR_DIR = str(REPO_ROOT / "Datasets" / "echopype_zarr")
+DEFAULT_OUT_DIR = str(REPO_ROOT / "Figures" / "conformal" / "labelless")
 
 FREQ1, FREQ2 = 38_000, 200_000
 VMIN, VMAX = -80.0, -34.0
@@ -362,7 +362,7 @@ def main():
     if not zarr_paths:
         raise SystemExit(f'No zarr files found in {args.zarr_dir}')
 
-    print(f"── Loading model ──")
+    print("── Loading model ──")
     device = _device()
     print(f"  device: {device}")
     model = load_model(Path(args.checkpoint), device)
@@ -421,7 +421,7 @@ def main():
         print(f"  Adaptive sigma = per-bin cross-crossing dispersion "
               f"({len(disp)} bins; median {disp['sigma_disp_m'].median():.2f} m)")
     elif args.adaptive:
-        print(f"  Adaptive sigma = probability-transition width (per ping)")
+        print("  Adaptive sigma = probability-transition width (per ping)")
 
     # ── Calibration ───────────────────────────────────────────────────
     scores, bin_info = build_calibration_scores(
@@ -467,7 +467,7 @@ def main():
     cal.to_json(out_dir / 'calibration.json')
 
     # ── Coverage curve sweep ──────────────────────────────────────────
-    print(f"\n── Sweeping α for coverage curve ──")
+    print("\n── Sweeping α for coverage curve ──")
     curve = pairwise_coverage_curve(
         df_calib, df_test,
         alphas=np.arange(0.02, 0.51, 0.02),

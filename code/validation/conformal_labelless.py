@@ -63,7 +63,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from validation.conformal import conformal_quantile, extract_bottom_depths
+from validation.conformal import conformal_quantile
 
 
 # ---------------------------------------------------------------------------

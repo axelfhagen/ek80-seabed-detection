@@ -20,12 +20,13 @@ _project_root = str(Path(__file__).resolve().parents[1])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from project_paths import REPO_ROOT  # noqa: E402
+
 import torch
 import matplotlib
 matplotlib.use('Agg')
 
 from deep_learning.unet_model import create_unet, predict_full_echogram
-from deep_learning.evaluate import extract_bottom_line
 from raw_sensor_integration.preprocessing import load_sv_from_zarr, normalize_echogram
 from raw_sensor_integration.bottom_detection import (
     bottom_to_sample_index, create_bottom_mask, detect_bottom_ensemble_pipeline,
@@ -34,7 +35,7 @@ from raw_sensor_integration.data_loader import load_zarr
 from deep_learning.training.survey_groups import get_split_files
 from validation.conformal import (
     conformal_quantile, calibrate_depth, predict_depth_band,
-    evaluate_coverage, extract_bottom_depths, coverage_curve,
+    evaluate_coverage, extract_bottom_depths,
     calibrate_profile, predict_profile_band, evaluate_profile_coverage,
     calibrate_locally_weighted, predict_locally_weighted_band,
     compute_transition_width, plot_sigma_vs_error,
@@ -44,13 +45,13 @@ from data_visualization.thesis_style import (
 )
 
 # ── Config ────────────────────────────────────────────────────────────
-CHECKPOINT = Path("/cluster/work/axelfh/Master/code/checkpoints/"
-                  "exp_20260513_100101_arch_sweep_2/smp_unet_resnet34_best.pth")
+CHECKPOINT = (REPO_ROOT / "code" / "checkpoints"
+              / "exp_20260513_100101_arch_sweep_2" / "smp_unet_resnet34_best.pth")
 FREQ1, FREQ2 = 38_000, 200_000
 VMIN, VMAX = -80.0, -34.0
 TARGET_SIZE = (512, 512)
 PATCH_WIDTH, STRIDE = 256, 128
-OUTPUT_DIR = Path("/cluster/work/axelfh/Master/Figures/conformal")
+OUTPUT_DIR = REPO_ROOT / "Figures" / "conformal"
 
 ALPHA = 0.10
 

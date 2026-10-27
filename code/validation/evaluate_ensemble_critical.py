@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 from pathlib import Path
@@ -56,7 +55,7 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 from deep_learning.evaluate import (
-    extract_bottom_line, bottom_depth_error,
+    extract_bottom_line,
 )
 from deep_learning.training.survey_groups import get_split_files
 from validation.ensemble import (

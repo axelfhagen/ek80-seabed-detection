@@ -32,7 +32,8 @@
 set -euo pipefail
 SLURM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SLURM_DIR"
-FIG=/cluster/work/axelfh/Master/Figures/conformal
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+FIG="$REPO_ROOT/Figures/conformal"
 
 submit() { echo "+ sbatch $*"; sbatch "$@"; }
 

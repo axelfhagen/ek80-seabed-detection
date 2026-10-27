@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "code"))
 
-from deep_learning.unet_model import create_unet, predict_full_echogram, add_mc_dropout  # noqa: E402
+from deep_learning.unet_model import create_unet, predict_full_echogram  # noqa: E402
 from deep_learning.evaluate import load_file_data, extract_bottom_line  # noqa: E402
 from deep_learning.training.survey_groups import get_survey_files  # noqa: E402
 from validation.uncertainty import mc_dropout_predict, prediction_entropy  # noqa: E402

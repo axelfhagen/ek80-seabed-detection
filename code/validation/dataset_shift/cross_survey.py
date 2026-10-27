@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from pathlib import Path
 
 import numpy as np
@@ -425,11 +424,11 @@ def print_summary(matrix: np.ndarray, survey_names: list[str],
     print(f"CROSS-SURVEY GENERALIZATION SUMMARY ({metric})")
     print("=" * 60)
 
-    print(f"\nDiagonal (in-survey performance):")
+    print("\nDiagonal (in-survey performance):")
     print(f"  Mean: {diag.mean():.4f}  Std: {diag.std():.4f}  "
           f"Range: [{diag.min():.4f}, {diag.max():.4f}]")
 
-    print(f"\nOff-diagonal (cross-survey generalization):")
+    print("\nOff-diagonal (cross-survey generalization):")
     print(f"  Mean: {off_diag.mean():.4f}  Std: {off_diag.std():.4f}  "
           f"Range: [{off_diag.min():.4f}, {off_diag.max():.4f}]")
 

@@ -59,7 +59,7 @@ from validation.conformal import (
     compute_transition_width, extract_bottom_depths)
 from validation.metrics import calibration_curve
 from data_visualization.thesis_style import (
-    apply_thesis_style, savefig, style_colorbar, FIGSIZE_HALF,
+    apply_thesis_style, savefig, FIGSIZE_HALF,
     REFERENCE_BOTTOM_COLOR, UNET_PREDICTION_COLOR)
 
 # Reuse the Hake loading pipeline (stitched, bottom-cropped groups) verbatim.

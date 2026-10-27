@@ -26,7 +26,8 @@ module purge
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 CHECKPOINT="${PROJECT}/code/checkpoints/exp_20260525_220040_baseline_random_split_2/smp_unet_resnet34_best.pth"

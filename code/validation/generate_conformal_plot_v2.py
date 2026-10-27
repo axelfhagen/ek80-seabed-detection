@@ -45,6 +45,8 @@ _project_root = str(Path(__file__).resolve().parents[1])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from project_paths import REPO_ROOT  # noqa: E402
+
 import torch
 import matplotlib
 matplotlib.use('Agg')
@@ -62,7 +64,7 @@ from data_visualization.thesis_style import (
 )
 
 # ── Config ────────────────────────────────────────────────────────────
-OUTPUT_DIR = Path("/cluster/work/axelfh/Master/Figures/conformal/v2_recalibrated")
+OUTPUT_DIR = REPO_ROOT / "Figures" / "conformal" / "v2_recalibrated"
 ALPHA = 0.10
 RNG_SEED = 0
 EPSILON = 0.5

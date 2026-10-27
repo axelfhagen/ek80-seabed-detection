@@ -319,7 +319,7 @@ def main():
             print(f"Only {len(samples)} surveys loaded, skipping {freq_label}")
             continue
 
-        print(f"\nSurvey sample counts:")
+        print("\nSurvey sample counts:")
         for name, data in samples.items():
             print(f"  {data['label']}: {len(data['sv']):,} samples")
 
@@ -337,7 +337,7 @@ def main():
             print(f"Saved {path}")
 
         pairwise = compute_pairwise_stats(samples)
-        print(f"\nPairwise statistics (full water column):")
+        print("\nPairwise statistics (full water column):")
         print(pairwise[["label_a", "label_b", "ks_statistic", "jsd"]]
               .to_string(index=False))
 

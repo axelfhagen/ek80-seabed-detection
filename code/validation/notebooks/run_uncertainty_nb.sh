@@ -13,7 +13,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-NB=/cluster/work/axelfh/Master/code/validation/notebooks/06_validation_uncertainty.ipynb
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+NB="$REPO_ROOT/code/validation/notebooks/06_validation_uncertainty.ipynb"
 
 jupyter nbconvert --to notebook --execute \
     --ExecutePreprocessor.timeout=600 \

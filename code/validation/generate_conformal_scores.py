@@ -38,6 +38,8 @@ _project_root = str(Path(__file__).resolve().parents[1])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from project_paths import REPO_ROOT  # noqa: E402
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt  # noqa: E402
@@ -63,7 +65,7 @@ from validation.generate_conformal_adaptive import (  # noqa: E402
 from validation.generate_conformal_plot import load_model, CHECKPOINT  # noqa: E402
 
 # ── Config ────────────────────────────────────────────────────────────
-OUTPUT_DIR = Path("/cluster/work/axelfh/Master/Figures/conformal/scores")
+OUTPUT_DIR = REPO_ROOT / "Figures" / "conformal" / "scores"
 ALPHA = 0.10
 RNG_SEED = 0
 EPSILON = 0.5

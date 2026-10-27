@@ -36,8 +36,6 @@ import torch
 from data_visualization.eval_hake_test_raw import (
     RAW_DIR,
     DEFAULT_CHECKPOINT,
-    FREQ1,
-    FREQ2,
     STRIDE,
     TARGET_SIZE,
     PATCH_WIDTH,
