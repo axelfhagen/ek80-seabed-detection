@@ -1,0 +1,23 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy scipy pandas matplotlib xarray zarr Pillow tqdm numba \
+            segmentation-models-pytorch albumentations opencv-python-headless pytest ruff
+      - name: Lint
+        run: ruff check tests code/deep_learning code/validation code/data_cleaning
+      - name: Test
+        run: pytest
