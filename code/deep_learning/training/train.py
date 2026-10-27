@@ -3,18 +3,18 @@
 Usage
 -----
     # From a directory of zarr files:
-    python code/deep_learning/train.py \
+    python code/deep_learning/training/train.py \
         --zarr-dir /path/to/zarr_directory \
         --epochs 30
 
     # From raw files (auto-converts to zarr first):
-    python code/deep_learning/train.py \
+    python code/deep_learning/training/train.py \
         --raw-dirs /path/to/raw_folder1 /path/to/raw_folder2 \
         --zarr-cache-dir /path/to/zarr_cache \
         --epochs 30
 
     # Mixed: some zarr files + raw dirs:
-    python code/deep_learning/train.py \
+    python code/deep_learning/training/train.py \
         --zarr-paths /path/to/existing.zarr \
         --raw-dirs /path/to/raw_folder \
         --epochs 30

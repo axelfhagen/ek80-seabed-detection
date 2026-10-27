@@ -24,7 +24,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 ZARR_DIR="${PROJECT}/Datasets/echopype_zarr"
 CACHE_DIR="${PROJECT}/Datasets/patch_cache"
 GRID_NAME="${1:?Usage: sbatch eval_checkpoints.sh <grid_name> <task_id>}"

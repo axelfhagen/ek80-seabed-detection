@@ -21,7 +21,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 CACHE_DIR="${PROJECT}/Datasets/patch_cache_aug_ablation_fast"
 GRID_NAME="aug_ablation"
 TASK_ID=$SLURM_ARRAY_TASK_ID

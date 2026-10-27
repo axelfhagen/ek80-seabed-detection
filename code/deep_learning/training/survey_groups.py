@@ -7,7 +7,6 @@ cruise (consecutive or near-consecutive days from the same campaign).
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Optional
 

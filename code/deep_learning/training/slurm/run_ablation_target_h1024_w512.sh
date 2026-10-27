@@ -24,7 +24,8 @@ conda activate master_env
 # target_size happens on the fly in the dataset; only the network input
 # shape changes. Batch size is halved (8 -> 4) to absorb the doubled
 # activation footprint from the taller input.
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 ZARR_DIR="${PROJECT}/Datasets/echopype_zarr"
 CACHE_DIR="${PROJECT}/Datasets/patch_cache"
 

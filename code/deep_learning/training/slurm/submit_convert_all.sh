@@ -3,10 +3,11 @@
 # Usage: bash submit_convert_all.sh
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DATA_ROOT="/cluster/work/axelfh/Data_raw/EK80"
+DATA_ROOT="${DATA_ROOT:-/cluster/work/axelfh}"
+RAW_ROOT="${DATA_ROOT}/Data_raw/EK80"
 
 count=0
-for day_dir in "${DATA_ROOT}"/*/D*/; do
+for day_dir in "${RAW_ROOT}"/*/D*/; do
     [ -d "$day_dir" ] || continue
     n_raw=$(find "$day_dir" -maxdepth 1 -name "*.raw" | wc -l)
     [ "$n_raw" -eq 0 ] && continue

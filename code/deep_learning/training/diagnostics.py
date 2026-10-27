@@ -249,7 +249,6 @@ def _compute_curve_points(pred_flat, gt_flat, n_thresholds=200):
         pred_pos = sorted_pred >= t
         tp = float(np.sum(pred_pos & sorted_gt))
         fp = float(np.sum(pred_pos & ~sorted_gt))
-        fn = total_pos - tp
 
         tpr[i] = tp / (total_pos + eps)
         fpr[i] = fp / (total_neg + eps)
@@ -520,8 +519,8 @@ def plot_error_maps(selected: list[FileResult], out_dir: Path) -> None:
         error_map[pred_binary & ~gt_bool] = 1.0    # FP
         error_map[~pred_binary & gt_bool] = -1.0   # FN
 
-        im = ax_err.imshow(error_map, aspect='auto', cmap='RdBu', vmin=-1, vmax=1,
-                           origin='upper', extent=extent)
+        ax_err.imshow(error_map, aspect='auto', cmap='RdBu', vmin=-1, vmax=1,
+                      origin='upper', extent=extent)
         ax_err.set_title('FP (red) / FN (blue)', fontsize=9)
 
     for idx in range(k, nrows * ncols):
@@ -1002,7 +1001,7 @@ def plot_per_file_metrics(summaries: list[FileSummary], save_path: Path) -> None
     y_pos = np.arange(n)
 
     from matplotlib.colors import Normalize
-    from matplotlib.cm import ScalarMappable, get_cmap
+    from matplotlib.cm import get_cmap
     norm = Normalize(vmin=min(ious) - 0.01, vmax=max(ious) + 0.01)
     cmap = get_cmap('RdYlGn')
     colors = [cmap(norm(v)) for v in ious]

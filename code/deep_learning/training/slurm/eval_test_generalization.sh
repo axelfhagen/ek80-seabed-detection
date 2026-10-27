@@ -31,7 +31,8 @@ module purge
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 RESUME_DIR="${1:?Usage: sbatch eval_test_generalization.sh <RESUME_DIR> <NAME>}"

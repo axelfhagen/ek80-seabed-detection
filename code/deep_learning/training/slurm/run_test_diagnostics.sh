@@ -15,7 +15,8 @@ conda activate master_env
 
 export PYTHONUNBUFFERED=1
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 echo "Job ID: $SLURM_JOB_ID"

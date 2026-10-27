@@ -151,7 +151,7 @@ def main():
             print(f"\n>>> {name}")
             try:
                 results[name] = bool(fn(tmp))
-            except Exception as e:
+            except Exception:
                 import traceback
                 traceback.print_exc()
                 results[name] = False

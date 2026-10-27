@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# Inference + visualization on /cluster/work/axelfh/test_raw_2 (~72 raw files)
+# Inference + visualization on ${DATA_ROOT}/test_raw_2 (~72 raw files)
 # Generates per-file echograms and 3x3 grids (hard + soft predictions)
 # using the best U-Net checkpoint from exp_all_surveys_jun2025.
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -21,7 +21,9 @@ module purge
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+DATA_ROOT="${DATA_ROOT:-/cluster/work/axelfh}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 echo "════════════════════════════════════════════════════════════════════"
@@ -35,7 +37,7 @@ echo "Start:  $(date)"
 echo "════════════════════════════════════════════════════════════════════"
 
 python code/infer_test_raw.py \
-    --raw-dir /cluster/work/axelfh/test_raw_2 \
+    --raw-dir "${DATA_ROOT}/test_raw_2" \
     --output-dir code/plots_test_raw_2 \
     --max-pings 2000
 

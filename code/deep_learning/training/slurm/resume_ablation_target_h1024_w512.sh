@@ -16,7 +16,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 ZARR_DIR="${PROJECT}/Datasets/echopype_zarr"
 CACHE_DIR="${PROJECT}/Datasets/patch_cache"
 CHECKPOINT_DIR="${PROJECT}/code/checkpoints/exp_20260522_214015_ablation_target_h1024_w512"

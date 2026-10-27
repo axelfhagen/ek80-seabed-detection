@@ -17,7 +17,9 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+DATA_ROOT="${DATA_ROOT:-/cluster/work/axelfh}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 echo "============================================================"
@@ -28,7 +30,7 @@ echo "Start:  $(date)"
 echo "============================================================"
 
 python code/infer_test_raw.py \
-    --raw-dir /cluster/work/axelfh/test_raw \
+    --raw-dir "${DATA_ROOT}/test_raw" \
     --checkpoint code/checkpoints/exp_20260511_191547_all_surveys_jun2025/smp_unet_resnet34_best.pth \
     --output-dir code/plots_test_raw \
     --max-pings 2000 \

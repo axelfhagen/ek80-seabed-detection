@@ -16,7 +16,8 @@
 # --list as the first arg to preview the selection without submitting.
 set -euo pipefail
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 SLURM_DIR="${PROJECT}/code/deep_learning/training/slurm"
 CKPT_PARENT="${PROJECT}/code/checkpoints"
 MANIFEST="${SLURM_DIR}/diag_regen_manifest.txt"

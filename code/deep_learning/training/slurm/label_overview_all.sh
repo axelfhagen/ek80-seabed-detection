@@ -13,7 +13,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-cd /cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+cd "$REPO_ROOT"
 
 python code/data_visualization/visualize_label_panels.py --all \
     --zarr-dir Datasets/echopype_zarr \

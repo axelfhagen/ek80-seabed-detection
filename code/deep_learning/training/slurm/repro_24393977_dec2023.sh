@@ -26,7 +26,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 # Exactly the 21 files run 24393977 trained on (Dec 20-21 2023 survey).

@@ -1507,8 +1507,6 @@ def build_datasets_from_config(cfg):
                 cfg.cache_dir, n_nb, patch_width=cfg.patch_width,
                 n_channels=cfg.in_channels)
             n_train_nb = max(1, int(nb_count * 0.8))
-            nb_train = [(nb_path, i) for i in range(n_train_nb)]
-            nb_val = [(nb_path, i) for i in range(n_train_nb, nb_count)]
             train_idx.append([(nb_path, i, f'_no_bottom::{i}')
                               for i in range(n_train_nb)])
             val_idx.append([(nb_path, i, f'_no_bottom::{i}')

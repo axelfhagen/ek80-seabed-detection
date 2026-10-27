@@ -95,7 +95,7 @@ def main():
     print(f"This task ({task_id+1}/{task_count}): {len(shard)} files")
     print("-" * 60)
 
-    extracted = hits = empty = failed = 0
+    extracted = empty = failed = 0
     for i, zp in enumerate(shard, 1):
         try:
             npz_path, count = ensure_cached(zp, args.cache_dir, cfg, verbose=False)

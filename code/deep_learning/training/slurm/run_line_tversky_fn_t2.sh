@@ -23,7 +23,8 @@ module purge
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 CACHE_DIR="${PROJECT}/Datasets/patch_datasets/line_t2_pw512"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

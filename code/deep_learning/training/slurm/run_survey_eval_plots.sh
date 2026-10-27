@@ -13,7 +13,8 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-cd /cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+cd "$REPO_ROOT"
 
 echo "============================================================"
 echo "Survey evaluation plots | Job: ${SLURM_JOB_ID}"

@@ -15,7 +15,9 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+DATA_ROOT="${DATA_ROOT:-/cluster/work/axelfh}"
+PROJECT="$REPO_ROOT"
 cd "$PROJECT"
 
 echo "============================================================"
@@ -34,7 +36,7 @@ matplotlib.use('Agg')
 
 from infer_test_raw import generate_echogram
 
-raw_dir = '/cluster/work/axelfh/test_raw'
+raw_dir = '${DATA_ROOT}/test_raw'
 out_dir = 'code/plots_test_raw/echograms'
 os.makedirs(out_dir, exist_ok=True)
 

@@ -15,10 +15,8 @@ import sys
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
-import torch
 
 _project_root = str(Path(__file__).resolve().parents[1])
 if _project_root not in sys.path:

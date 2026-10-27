@@ -12,5 +12,6 @@
 module load Anaconda3/2024.02-1
 conda activate master_env
 
-cd /cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+cd "$REPO_ROOT"
 python code/deep_learning/training/slurm/prewarm_aug_ablation_cache.py

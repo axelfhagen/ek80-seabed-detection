@@ -25,10 +25,11 @@ from deep_learning.architectures import create_model
 from deep_learning.evaluate import (
     evaluate_file, plot_evaluation,
 )
+from project_paths import REPO_ROOT
 
-ZARR_BASE = Path("/cluster/work/axelfh/Master/Datasets/echopype_zarr")
-CHECKPOINT_DIR = Path("/cluster/work/axelfh/Master/code/checkpoints")
-OUTPUT_DIR = Path("/cluster/work/axelfh/Master/Figures/new_data_eval")
+ZARR_BASE = REPO_ROOT / "Datasets" / "echopype_zarr"
+CHECKPOINT_DIR = REPO_ROOT / "code" / "checkpoints"
+OUTPUT_DIR = REPO_ROOT / "Figures" / "new_data_eval"
 
 MODELS = {
     "cosine_gentle": "exp_20260420_082458_cosine_gentle/unet_resnet34_best.pth",
@@ -214,7 +215,7 @@ def main():
             by_group = {}
             for r in file_results:
                 by_group.setdefault(r["group"], []).append(r)
-            print(f"\n  Per-group breakdown:")
+            print("\n  Per-group breakdown:")
             for g, rs in sorted(by_group.items()):
                 g_ious = [r["iou"] for r in rs]
                 g_errs = [r["bottom_error_mean_m"] for r in rs

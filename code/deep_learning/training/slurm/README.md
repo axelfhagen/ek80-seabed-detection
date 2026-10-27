@@ -1,109 +1,71 @@
-# HPC Experiment System
+# training/slurm
 
-Automated hyperparameter search for seabed segmentation using Slurm array jobs.
+Slurm job scripts for training, evaluation and data preparation on the cluster,
+plus the experiment-grid tooling for hyperparameter sweeps.
 
-## How it works
+Paths: each script defines `REPO_ROOT` (default `/cluster/work/axelfh/Master`)
+and, where needed, `DATA_ROOT` (default `/cluster/work/axelfh`). Set them in the
+environment before `sbatch` to run elsewhere. The `#SBATCH --output/--error`
+lines still hold absolute log paths because Slurm does not expand variables in
+directives; edit them or pass `--output/--error` to `sbatch`.
 
-The system has three layers:
+## Experiment grids
 
-1. **`experiment_grid.py`** defines named experiment grids — each grid is a list
-   of hyperparameter configurations. A configuration is a dict of CLI args for
-   `train.py`. Grids can be simple lists or generated with `_expand_grid()` for
-   cartesian products.
-
-2. **`launch_sweep.sh`** is a generic Slurm array job script. When submitted as
-   `sbatch --array=1-N launch_sweep.sh <grid_name>`, each array task reads its
-   config from `experiment_grid.py` using `$SLURM_ARRAY_TASK_ID` as the index,
-   converts the dict to CLI args, and runs `train.py`.
-
-3. **`submit_sweep.sh`** is a convenience wrapper that counts the grid size,
-   shows a preview, asks for confirmation, and submits with a concurrency limit
-   (default 10 simultaneous jobs via Slurm's `%10` array throttle).
-
-After jobs complete, results are automatically logged to `../results.csv` by
-`train.py`. Use `analyze_results.py` or the `/analyze-experiments` Claude
-command to rank runs, group by factors, and get suggestions for the next sweep.
-
-## Quick start
+- `experiment_grid.py` - named grids of `train.py` argument dicts
+  (`--list`, `--index`, `--count`). Grids are plain lists or cartesian products
+  built with `_expand_grid()`.
+- `launch_sweep.sh` - array-job template. Task `$SLURM_ARRAY_TASK_ID` reads its
+  config from `experiment_grid.py` and runs `train.py`.
+- `submit_sweep.sh <grid>` - previews a grid, asks for confirmation and submits
+  it as an array job with a concurrency limit.
+- `resume_sweep.sh`, `resume_lower_lr.sh`, `eval_checkpoints.sh` - resume or
+  eval-only backfill of individual sweep tasks.
+- `prune_sweep.py` - successive halving: ranks a finished sweep in
+  `../results.csv` and emits a new grid with the top-K configs.
 
 ```bash
-cd /cluster/work/axelfh/Master/code/deep_learning/training/slurm
-
-# 1. See available grids
+cd code/deep_learning/training/slurm
 python experiment_grid.py --grid loss_sweep --list
-
-# 2. Submit
 ./submit_sweep.sh loss_sweep
-
-# 3. Monitor
-squeue -u axelfh
-
-# 4. Analyze (after jobs finish)
-python ../analyze_results.py --suggest
+python ../analyze_results.py --suggest     # after the jobs finish
 ```
 
-## Available grids
+`train.py` appends one row per completed run to `../results.csv`
+(`../results_log.py`); view it with `../show_runs.py` or `../analyze_results.py`.
 
-| Grid | Size | Tests |
-|------|------|-------|
-| `baseline` | 1 | Single reference run with defaults |
-| `loss_sweep` | 6 | dice_bce (3 weights) + focal + focal_dice + tversky |
-| `tversky_sweep` | 12 | alpha/beta combinations for Tversky loss |
-| `lr_sweep` | 12 | encoder_lr × decoder_lr combinations |
-| `encoder_sweep` | 5 | resnet34, resnet50, efficientnet-b0/b3, mobilenet_v2 |
-| `scheduler_sweep` | 4 | plateau vs cosine annealing variants |
-| `freeze_sweep` | 4 | encoder, stages, none, unfreeze-after |
-| `dataset_sweep` | 7 | patch size, normalization, overlap, mask mode |
+## Script groups
 
-## Adding a new grid
-
-Edit `experiment_grid.py`:
-
-```python
-GRIDS["my_sweep"] = _expand_grid(
-    fixed={**_COMMON, "encoder": "resnet34"},
-    variable={
-        "encoder-lr": [1e-5, 1e-4, 1e-3],
-        "batch-size": [4, 8],
-    },
-)
-```
-
-Preview with `python experiment_grid.py --grid my_sweep --list`, then submit.
-
-## Successive halving
-
-For large sweeps, run a short round first:
-
-```bash
-# Temporarily lower epochs in the grid, submit all configs
-./submit_sweep.sh my_big_sweep
-
-# After jobs finish, keep top 4 and generate a longer round
-python prune_sweep.py --grid my_big_sweep --top 4 --next-epochs 250
-```
-
-This outputs a new grid (`my_big_sweep_round2`) with just the winners.
-Per-job early stopping (`--early-stopping-patience 25`) also naturally kills
-bad configurations before they waste the full epoch budget.
-
-## File overview
-
-```
-experiment_grid.py   — Grid definitions + CLI (--list, --index, --count)
-launch_sweep.sh      — Slurm array job template (called by submit_sweep.sh)
-submit_sweep.sh      — Convenience wrapper: preview → confirm → sbatch
-prune_sweep.py       — Successive halving: rank results, pick top-K
-../analyze_results.py — Results analysis, group-by, flags, suggestions
-../results.csv       — Append-only log of all training runs
-../show_runs.py      — Pretty-print results.csv with sorting/filtering
-../CLAUDE.md         — Protocol for Claude-assisted experiment iteration
-```
-
-## Claude-in-the-loop workflow
-
-1. Run `/analyze-experiments` — Claude reads results.csv, ranks runs, and suggests next configs
-2. Review suggestions, adjust if needed
-3. Claude formats the `sbatch` command
-4. Submit, wait for jobs to complete
-5. Repeat from step 1
+- Data preparation: `convert_raw_to_zarr.sh`, `convert_single_raw.sh`,
+  `submit_convert_all.sh`, `submit_convert_june.sh`, `generate_patches.sh`,
+  `run_generate_datasets.sh`, `run_extract_missing.sh`,
+  `extract_line_mask_patches.sh`, `convert_cache_to_fast.sh`,
+  `prewarm_aug_ablation.sh` with `prewarm_aug_ablation_cache.py`.
+- Single training runs: `run_train_8h.sh` (auto-resuming 8 h chunks),
+  `run_train_regression_8h.sh`, `run_finetune*.sh`, `run_full_finetune.sh`,
+  `run_cosine_gentle.sh`, `run_earlystop*.sh`, `run_resnet50.sh`,
+  `run_loss_sweep.sh`, `run_dataset_*.sh` (one per dataset preset),
+  `run_line_*.sh` (line-mask target), `run_jun2025*.sh`,
+  `run_ablation_target_h1024_w512.sh`, `retrain_arch_6_*.sh`, `resume_*.sh`,
+  `repro_24393977_dec2023.sh`, `run_overfit_demo.sh`.
+- Augmentation ablation: `launch_aug_ablation.sh`, `resume_aug_ablation.sh`,
+  `aug_ablation_file_list.txt`.
+- Survey-level experiments: `run_per_survey.sh`, `submit_per_survey.sh`,
+  `run_all_surveys.sh`, `submit_new_surveys.sh`, `launch_cross_survey.sh`,
+  `submit_cross_survey.sh`, `run_cross_survey_chunk_arch_sweep_2.sh`.
+- Ensembles: `ensemble_train.sh`, `ensemble_eval.sh`, `submit_ensemble.sh`,
+  `ensemble_critical_eval.sh`, `ensemble_seeds/` (five ResNet-34 seeds,
+  `run_ensemble_eval.sh`, `submit_all.sh`).
+- Evaluation and figures: `eval_common_0*.sh`, `eval_test_generalization.sh`,
+  `run_thesis_figure_inference.sh`, `run_gen_prediction_grids_oct2024.sh`,
+  `gen_prediction_grids_regen_conformal.sh`, `gen_prediction_patches_regen.sh`,
+  `diagnostics_conformal_gradcam.sh`, `run_regen_diagnostics.sh` and
+  `submit_regen_diagnostics.sh` (manifests `diag_regen_manifest.txt`,
+  `regen_bottomline_regression.txt`), `run_mc_dropout_calibrated_oct2024.sh`,
+  `run_bottom_extraction_compare.sh`, `run_rolling_window_fidelity.sh`,
+  `run_spatial_grid_comparison.sh`, `run_survey_eval_plots.sh`,
+  `label_overview_all.sh`, `run_visualize_labels.sh`, `run_line_mask_eval.sh`,
+  `run_test_raw_inference.sh`, `run_test_raw_echograms.sh`,
+  `run_infer_test_raw_2.sh`.
+- Checks and benchmarks: `run_smoketest_pipeline.sh`,
+  `run_smoketest_line_mask.sh`, `run_smoketest_fast_cache.sh`,
+  `run_test_diagnostics.sh`, `run_dl_bench.sh`.

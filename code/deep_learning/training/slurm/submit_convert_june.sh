@@ -3,12 +3,14 @@
 # One process per file avoids memory accumulation across files.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DATA_ROOT="/cluster/work/axelfh/Data_raw/EK80/D202506"
-ZARR_OUT="/cluster/work/axelfh/Master/Datasets/echopype_zarr"
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+DATA_ROOT="${DATA_ROOT:-/cluster/work/axelfh}"
+RAW_ROOT="${DATA_ROOT}/Data_raw/EK80/D202506"
+ZARR_OUT="${REPO_ROOT}/Datasets/echopype_zarr"
 
 count=0
 for day in D20250624 D20250625 D20250626; do
-    for raw_file in "${DATA_ROOT}/${day}"/*.raw; do
+    for raw_file in "${RAW_ROOT}/${day}"/*.raw; do
         [ -f "$raw_file" ] || continue
         stem=$(basename "$raw_file" .raw)
 

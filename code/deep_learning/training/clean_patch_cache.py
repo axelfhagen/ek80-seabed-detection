@@ -122,7 +122,7 @@ def main():
     if not zarr_dir_resolved.is_dir():
         sys.exit(f"ERROR: zarr dir {zarr_dir_resolved} not found. "
                  f"Run this script from the project root "
-                 f"(e.g. /cluster/work/axelfh/Master) so that "
+                 f"(the repository root) so that "
                  f"'{zarr_dir}' resolves correctly.")
     if not any(zarr_dir_resolved.glob("*.zarr")):
         sys.exit(f"ERROR: no *.zarr in {zarr_dir_resolved}. "

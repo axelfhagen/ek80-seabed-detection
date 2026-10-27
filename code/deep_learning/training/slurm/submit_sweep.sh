@@ -10,7 +10,8 @@ set -euo pipefail
 
 GRID="${1:?Usage: submit_sweep.sh <grid_name> [max_concurrent]}"
 MAX_CONCURRENT="${2:-10}"
-PROJECT=/cluster/work/axelfh/Master
+REPO_ROOT="${REPO_ROOT:-/cluster/work/axelfh/Master}"
+PROJECT="$REPO_ROOT"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 N=$(python "$PROJECT/code/deep_learning/training/slurm/experiment_grid.py" \
