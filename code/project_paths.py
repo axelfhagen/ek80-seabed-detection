@@ -10,5 +10,5 @@ import os
 from pathlib import Path
 
 CODE_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = Path(os.environ.get("REPO_ROOT", CODE_ROOT.parent))
-DATA_ROOT = Path(os.environ.get("DATA_ROOT", "/cluster/work/axelfh"))
+REPO_ROOT = Path(os.environ.get("REPO_ROOT") or CODE_ROOT.parent)
+DATA_ROOT = Path(os.environ.get("DATA_ROOT") or "/cluster/work/axelfh")
