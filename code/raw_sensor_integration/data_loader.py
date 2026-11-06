@@ -782,7 +782,7 @@ def raw_to_zarr(
             angle_athwart_np[i] = phi.values.astype(np.float32)
             n_splitbeam += 1
 
-        del beam, bs_full, ed
+        del beam, bs_full
         gc.collect()
 
         sv_da = ds_Sv["Sv"]
@@ -813,8 +813,9 @@ def raw_to_zarr(
         print(f"  Angles: extracted for {n_splitbeam}/{n_ch} channel(s)")
     except Exception as e:
         print(f"  Angles: not available ({e})")
-        del ed
-        gc.collect()
+
+    del ed
+    gc.collect()
 
     # 5. Write to zarr
     ds_Sv.to_zarr(str(output_path), mode="w")
