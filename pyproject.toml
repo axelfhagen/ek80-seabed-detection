@@ -1,6 +1,6 @@
 [project]
 name = "ek80-seabed-detection"
-version = "0.1.0"
+version = "1.0.0"
 description = "Code for a Master's thesis on U-Net seabed detection in Simrad EK80 echosounder data"
 requires-python = ">=3.11"
 

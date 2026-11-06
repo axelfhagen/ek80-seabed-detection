@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the thesis it was written for."
+title: "ek80-seabed-detection: code for U-Net seabed detection with conformal prediction bounds in EK80 echosounder data"
+type: software
+authors:
+  - family-names: Hagen
+    given-names: Axel Friberg
+repository-code: "https://github.com/axelfhagen/ek80-seabed-detection"
+license: MIT
+version: 1.0.0
+date-released: 2026-11-06
+keywords:
+  - echosounder
+  - Simrad EK80
+  - seabed detection
+  - U-Net
+  - conformal prediction
+  - hydroacoustics
+preferred-citation:
+  type: thesis
+  thesis-type: "Master's thesis"
+  title: "Deep Learning for Seabed Detection with Conformal Prediction Bounds in Dual-Frequency EK80 Echosounder Data: A Repeated-Route Case Study on the M/F Bastø Electric"
+  authors:
+    - family-names: Hagen
+      given-names: Axel Friberg
+  institution:
+    name: "Norwegian University of Science and Technology (NTNU)"
+    city: Trondheim
+    country: "NO"
+  department: "Department of Mathematical Sciences"
+  year: 2026
+  month: 6
+  url: "https://github.com/axelfhagen/ek80-seabed-detection/releases/download/v1.0.0/master-thesis.pdf"
