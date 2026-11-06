@@ -41,3 +41,9 @@ unexpected pass.
 `code/raw_sensor_integration/rsi_bottomdetection/` is vendored from
 [CRIMAC-classifiers-bottom](https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-classifiers-bottom)
 (MIT, Copyright (c) 2021 NORCE). Its licence file is kept alongside it.
+
+## Licence
+
+The code is released under the MIT licence (see `LICENSE`). The vendored CRIMAC code keeps its
+own MIT licence. The thesis text in `thesis/` is not covered by `LICENSE`. All rights to it are
+reserved by the author.
